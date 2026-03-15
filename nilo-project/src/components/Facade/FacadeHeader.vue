@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useLoginStateStore } from '../../store/LoginStateStore';
+import Avator from '../public/Avator.vue';
 const props = withDefaults(defineProps<{ theme?: string }>(), {
     theme: "light"
 }) // theme属性，可以是light或dark，默认为light
+const loginStateStore = useLoginStateStore();
 </script>
 
 <template>
@@ -12,14 +15,23 @@ const props = withDefaults(defineProps<{ theme?: string }>(), {
         </div>
         <div class="search">
             <div class="search-bar">
-                <div class="search-bar-main">
+                <div class="search-bar-content">
                     <input />
                     <div class="iconfont icon-search"></div>
+                </div>
+                <div class="search-bar-panel">
+                    <div class="history"></div>
+                    <div class="trending"></div>
                 </div>
             </div>
         </div>
         <div class="user">
-            <img class="user-avator" src="../assets/user.png" />
+            <div class="user-avator">
+                <Avator
+                    :src="loginStateStore.loginState && loginStateStore.userInfo && loginStateStore.userInfo.avatar ? loginStateStore.userInfo.avatar : ''"
+                    :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
+                    :width="48"></Avator>
+            </div>
             <nav>
                 <div class="iconfont icon-message"></div>
                 <div class="description">消息</div>
@@ -70,22 +82,27 @@ const props = withDefaults(defineProps<{ theme?: string }>(), {
     .search {
         display: flex;
         align-items: center;
+        flex: 1;
+        position: relative;
 
         .search-bar {
-            width: 100%;
+            width: 90%;
+            margin: 0 auto;
         }
 
-        .search-bar-main {
+        .search-bar-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #f1f2f3de;
+            background-color: #f1f2f3;
+            opacity: 0.8;
             border-radius: 8px;
             padding: 0 10px;
             height: 36px;
+            position: relative;
 
             &:hover {
-                background-color: #f1f2f3;
+                opacity: 1;
             }
 
             input {
@@ -93,13 +110,23 @@ const props = withDefaults(defineProps<{ theme?: string }>(), {
                 border: none;
                 background: none;
                 outline: none;
-                height: 34px;
+                height: 30px;
+                background-color: #f1f2f3;
+                opacity: inherit;
+
+                &:focus {
+                    border-radius: 5px;
+                    background-color: #c6c6c6;
+                    z-index: 1000;
+                }
             }
 
             .icon-search {
                 color: #18191c;
                 font-size: 18px;
+                line-height: 18px;
                 cursor: pointer;
+                padding-left: 15px;
             }
         }
     }
@@ -110,9 +137,7 @@ const props = withDefaults(defineProps<{ theme?: string }>(), {
         align-items: center;
 
         .user-avator {
-            width: 48px;
-            border-radius: 50%;
-            margin-right: 20px;
+            margin: 0 20px;
         }
 
         >nav {

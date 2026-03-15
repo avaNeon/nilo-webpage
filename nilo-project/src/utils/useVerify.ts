@@ -1,0 +1,8 @@
+export default function () {
+    const regs = {
+        // 密码：长度为8-20个字符，必须包含至少一个字母和一个数字，可以使用特殊符号!@#$%^&*()_+-=
+        password: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+\-=]{8,20}$/
+    }
+
+    return { regs }
+}

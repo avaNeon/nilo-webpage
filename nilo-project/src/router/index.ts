@@ -9,6 +9,10 @@ const router = createRouter({
             name: "facade",
             component: Facade
         },
+        {
+            path: "/",
+            redirect: "/facade"
+        }
     ]
 })
 

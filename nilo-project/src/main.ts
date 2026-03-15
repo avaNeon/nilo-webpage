@@ -3,15 +3,15 @@ import App from './App.vue'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import router from './router'
-import VueCookies from 'vue-cookies'
 
 import '@/assets/scss/base.scss'
 import './assets/icon/iconfont.css'
+import { createPinia } from 'pinia'
 
+const pinia = createPinia()
 const app = createApp(App)
 app.use(ElementPlus)
 app.use(router)
-
-app.config.globalProperties.vueCookies = VueCookies
+app.use(pinia)
 
 app.mount('#app')

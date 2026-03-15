@@ -1,33 +1,52 @@
 <script setup lang="ts">
-import { ref, reactive, inject, onMounted, onUnmounted } from 'vue'
-import FacadeHeader from '../components/FacadeHeader.vue';
+import { ref, inject, onMounted, onUnmounted } from 'vue'
+import FacadeHeader from '../components/Facade/FacadeHeader.vue'
+import Account from '../components/Facade/Account.vue'
+import request from '../utils/useRequest'
+import { Api } from '../utils/api'
+import { useLoginStateStore } from '../store/LoginStateStore'
+import message from '../utils/useMessage'
 
 // 获取内容部分最大最小宽度
-const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0);
-const mainContentMinWidth: number = inject('mainContentMinWidth', 0);
+const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
+const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 // 判断是否固定顶部变量
-const headerFixed = ref(false);
+const headerFixed = ref(false)
 // 不透明度
-const headerOpacity = ref(0);
+const headerOpacity = ref(0)
 
 // 滚动监听函数
 function scrollChecker() {
-    let scrollY = window.scrollY;
+    let scrollY = window.scrollY
     if (scrollY <= 40) {
-        headerFixed.value = false;
-        headerOpacity.value = 0;
+        headerFixed.value = false
+        headerOpacity.value = 0
     }
     else {
-        headerFixed.value = true;
+        headerFixed.value = true
         // 计算不透明度：从 40px 开始出现，到 200px 达到 100%
         // (scrollY - 40) / (200 - 40)
-        let opacity = (scrollY - 40) / 160;
-        headerOpacity.value = Math.min(1, Math.max(0, opacity));
+        let opacity = (scrollY - 40) / 160
+        headerOpacity.value = Math.min(1, Math.max(0, opacity))
     }
+}
+
+const loginStateStore = useLoginStateStore()
+
+async function autoLogin() {
+    const result = await request({ method: 'get', url: Api.autoLogin })
+    if (!result?.data) {
+        return
+    }
+    loginStateStore.setLoginState(true)
+    loginStateStore.setUserInfo(result.data)
+    loginStateStore.showPanel = false
+    message.success("自动登录成功！欢迎回来！")
 }
 
 onMounted(() => {
     window.addEventListener('scroll', scrollChecker)
+    autoLogin()
 })
 
 onUnmounted(() => {
@@ -50,6 +69,7 @@ onUnmounted(() => {
             </div>
         </header>
     </div>
+    <Account />
 </template>
 
 <style>
