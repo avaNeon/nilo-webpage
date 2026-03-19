@@ -2,8 +2,9 @@ import axios, { type AxiosProgressEvent, type ResponseType } from 'axios'
 import { ElLoading } from 'element-plus'
 import message from '../utils/useMessage'
 import Cookies from 'js-cookie'
-
 import { useLoginStateStore } from "../store/LoginStateStore"
+import { ServiceType } from '../models/ServiceType'
+import { ServicePrefixMap } from './api'
 
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'
 const contentTypeJson = 'application/json'
@@ -12,9 +13,10 @@ let loading: {
     close: () => void,
 } | null = null;
 
+
+// 默认使用 axios.create 基础配置，不设置固定 baseURL
 const instance = axios.create({
     withCredentials: true,
-    baseURL: "/api",
     timeout: 10 * 1000,
 });
 
@@ -86,6 +88,7 @@ interface RequestConfig {
     showError?: boolean,
     uploadProgressCallback?: (event: AxiosProgressEvent) => void,
     errorCallback?: (data: any) => void,
+    serviceType?: ServiceType, // 新增：指定服务类型
 }
 
 const request = (config: RequestConfig) => {
@@ -99,7 +102,8 @@ const request = (config: RequestConfig) => {
         responseType = 'json',
         showError = true,
         uploadProgressCallback,
-        errorCallback
+        errorCallback,
+        serviceType = ServiceType.web // 默认 web 服务
     } = config;
 
     const token = Cookies.get('token_normal');
@@ -108,8 +112,13 @@ const request = (config: RequestConfig) => {
         'token': token || ''
     };
 
+
+    // 拼接二级前缀，兼容 Vite 代理
+    const prefix = `${import.meta.env.VITE_APP_BASE_URL}` + ServicePrefixMap[serviceType] || '';
+    const realUrl = prefix + url;
+
     if (method.toLowerCase() === 'get') {
-        return instance.get(url, {
+        return instance.get(realUrl, {
             params,
             headers,
             errorCallback,
@@ -134,7 +143,7 @@ const request = (config: RequestConfig) => {
             }
             postData = formData;
         }
-        return instance.post(url, postData, {
+        return instance.post(realUrl, postData, {
             params, // 这样 params 会拼到 URL 上
             onUploadProgress: uploadProgressCallback,
             responseType,

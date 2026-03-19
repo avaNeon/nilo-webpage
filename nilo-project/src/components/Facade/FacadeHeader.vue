@@ -1,16 +1,44 @@
 <script setup lang="ts">
+import useCategoryStore from '../../store/CategoryStore';
 import { useLoginStateStore } from '../../store/LoginStateStore';
 import Avator from '../public/Avator.vue';
+import { Api, ServicePrefixMap } from '../../utils/api';
 const props = withDefaults(defineProps<{ theme?: string }>(), {
     theme: "light"
 }) // theme属性，可以是light或dark，默认为light
 const loginStateStore = useLoginStateStore();
+const categoryStore = useCategoryStore();
+
+// 请求图标的完整url
+function getIcon(iconPath: string | undefined): string {
+    if (!iconPath) {
+        return ''
+    }
+    else {
+        return `${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap.web}${Api.sourcePath}${iconPath}`
+    }
+}
 </script>
 
 <template>
     <div :class="['header-bar', 'header-bar-' + props.theme]">
         <div class="menu">
-            <RouterLink to="/facade" class="iconfont icon-logo">首页</RouterLink>
+            <el-popover class="popover" placement="bottom-start" popper-class="category-popper">
+                <template #reference>
+                    <RouterLink to="/facade" class="iconfont icon-logo">首页</RouterLink>
+                </template>
+                <div class="popover-content">
+                    <nav class="category-item" v-for="item in categoryStore.categoryList" :key="item.categoryNumber">
+                        <RouterLink class="router-link" style="color: #18191c; text-decoration: none;"
+                            :to="`/facade/${item.categoryNumber}`">
+                            <img :src="getIcon(item.icon)" style="width: 20px;margin-right: 10px;" />
+                            <span>
+                                {{ item.categoryName }}
+                            </span>
+                        </RouterLink>
+                    </nav>
+                </div>
+            </el-popover>
             <nav></nav>
         </div>
         <div class="search">
@@ -30,7 +58,8 @@ const loginStateStore = useLoginStateStore();
                 <Avator
                     :src="loginStateStore.loginState && loginStateStore.userInfo && loginStateStore.userInfo.avatar ? loginStateStore.userInfo.avatar : ''"
                     :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
-                    :width="48"></Avator>
+                    :width="48">
+                </Avator>
             </div>
             <nav>
                 <div class="iconfont icon-message"></div>
@@ -56,6 +85,61 @@ const loginStateStore = useLoginStateStore();
         </div>
     </div>
 </template>
+
+<style lang="scss">
+.category-popper {
+    width: max-content !important;
+}
+
+.popover-content {
+    --category-rows: 5;
+    --category-item-height: 40px;
+    --category-row-gap: 10px;
+
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(var(--category-rows), auto);
+    row-gap: var(--category-row-gap);
+    column-gap: 30px;
+    max-height: 400px;
+
+
+    .category-item {
+        position: relative;
+        padding: 5px 10px;
+        height: var(--category-item-height);
+        font-size: 15px;
+
+        line-height: 30px;
+        text-align: center;
+
+        border-radius: 10px;
+
+        cursor: pointer;
+
+        &:hover {
+            background-color: #f1f2f3;
+        }
+
+        .router-link {
+            display: flex;
+            align-items: center;
+        }
+    }
+
+    /* 第2列起，每列首个元素画一条整列分隔线 */
+    .category-item:nth-child(5n + 1):not(:first-child)::before {
+        content: '';
+        position: absolute;
+        left: -15px;
+        top: 0;
+        width: 1px;
+        height: calc(var(--category-rows) * var(--category-item-height) + (var(--category-rows) - 1) * var(--category-row-gap));
+        background-color: #e3e5e7;
+        pointer-events: none;
+    }
+}
+</style>
 
 <style lang="scss" scoped>
 .header-bar {
@@ -97,7 +181,7 @@ const loginStateStore = useLoginStateStore();
             background-color: #f1f2f3;
             opacity: 0.8;
             border-radius: 8px;
-            padding: 0 10px;
+            padding: 0 8px;
             height: 36px;
             position: relative;
 
@@ -110,7 +194,7 @@ const loginStateStore = useLoginStateStore();
                 border: none;
                 background: none;
                 outline: none;
-                height: 30px;
+                height: 32px;
                 background-color: #f1f2f3;
                 opacity: inherit;
 
@@ -189,6 +273,7 @@ const loginStateStore = useLoginStateStore();
     color: black;
     background-color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    border-bottom: rgb(227, 229, 231) solid 1px;
 
     .icon-logo {
         color: black;

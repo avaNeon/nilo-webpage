@@ -5,7 +5,6 @@ import loginSvg from '../../assets/login.svg';
 import { useLoginStateStore } from '../../store/LoginStateStore';
 import request from '../../utils/useRequest';
 import { Api } from '../../utils/api';
-import { ref } from 'vue';
 import message from '../../utils/useMessage';
 import confirm from '../../utils/useConfirm';
 
@@ -102,10 +101,12 @@ function logout() {
 <style lang="scss" scoped>
 .onLogin {
     position: relative;
+    z-index: 200;
 
     &:hover {
         .avator {
-            transform: translate(-20px, 20px) scale(1.5);
+            transform: translate(-20px, 20px) scale(1.6);
+            transition:all 0.2s 0s ease;
         }
 
         .user-panel {
@@ -114,13 +115,14 @@ function logout() {
             /* 
                计算逻辑：
                1. 基础位移：left: 50%, top: 50%, translateX(-50%) 让面板顶部中点对齐头像中心。
-               2. 同步移动：加上和头像一样的 translate(-20px, 20px)。
+               2. 同步移动：加上和头像一样的 translate(-30px, 30px)。
                3. 保持相对位置：因为缩放中心默认是中心，而我们希望“顶部中点”对齐“头像中心”，
                   所以通过 transform-origin: top center 将缩放原点固定在面板顶部中点。
                   这样放大时面板会向四周扩散，但顶部中点依然死死钉在头像中心。
             */
             transform-origin: top center;
             transform: translate(calc(-50% - 20px), 20px) scale(1.3);
+            transition:all 0.2s 0s ease;
         }
     }
 
@@ -129,7 +131,7 @@ function logout() {
         cursor: pointer;
         position: relative;
         z-index: 10;
-        transition: all 0.3s ease;
+        transition: all 0.2s 0.1s ease;
     }
 
     .user-panel {
@@ -147,7 +149,7 @@ function logout() {
         border-radius: 4px;
         padding: 10px;
         z-index: 9;
-        transition: all 0.2s ease;
+        transition: all 0.2s 0.1s ease;
 
         padding: 30px 10px 20px;
         display: flex;
