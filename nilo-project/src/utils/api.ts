@@ -1,4 +1,5 @@
 import type { FileInfo } from "../models/FileInfo";
+import { ServiceType } from "../models/ServiceType";
 import request from "./useRequest";
 
 //单服务版本
@@ -11,8 +12,8 @@ const Api = {
     sendEmailCode: "/account/sendEmailCode",
     autoLogin: "/account/autoLogin",
     getUserRelation: "/account/userRelation",
-    sourcePath: "/api/file/image?sourcePath=",
-    loadAllCategory: "/category/loadAllCategory",
+    sourcePath: "/file/image?sourcePath=",
+    loadAllCategories: "/category/categories/all",
     getSysSetting: "/sysSetting/getSetting",
     //发布视频
     preUploadVideo: "/file/preUploadVideo",
@@ -134,8 +135,15 @@ const doUserAction = async (config: any, callback: () => void) => {
     callback()
 }
 
+// 区分不同的微服务
+const ServicePrefixMap = {
+    [ServiceType.web]: '/web',
+    [ServiceType.admin]: '/admin',
+}
+
 export {
     Api,
     uploadImage,
-    doUserAction
+    doUserAction,
+    ServicePrefixMap
 }

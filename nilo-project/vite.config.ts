@@ -11,14 +11,19 @@ export default defineConfig({
     }
   },
   server: {
-    host: '0.0.0.0',
+    host: '127.0.0.1',
     port: 3000,
     hmr: true,
     proxy: {
-      "/api": {
+      "/api/web": {
         target: "http://localhost:7071/",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api\/web/, ''),
+      },
+      "/api/admin": {
+        target: "http://localhost:7070/",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/admin/, ''),
       }
     }
   },

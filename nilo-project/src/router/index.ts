@@ -5,7 +5,7 @@ const router = createRouter({
     history: createWebHistory(),
     routes: [
         {
-            path: "/facade",
+            path: "/facade/:categoryNumber?/:subCategoryNumber?",
             name: "facade",
             component: Facade
         },
