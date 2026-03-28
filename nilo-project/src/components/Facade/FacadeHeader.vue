@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import useCategoryStore from '../../store/CategoryStore';
 import { useLoginStateStore } from '../../store/LoginStateStore';
-import Avator from '../public/Avator.vue';
-import { Api, ServicePrefixMap } from '../../utils/api';
+import Avatar from '../public/Avatar.vue';
+import { Api, ServicePrefixMap } from '../../utils/Api';
 const props = withDefaults(defineProps<{ theme?: string }>(), {
     theme: "light"
 }) // theme属性，可以是light或dark，默认为light
@@ -54,12 +54,12 @@ function getIcon(iconPath: string | undefined): string {
             </div>
         </div>
         <div class="user">
-            <div class="user-avator">
-                <Avator
+            <div class="user-avatar">
+                <Avatar
                     :src="loginStateStore.loginState && loginStateStore.userInfo && loginStateStore.userInfo.avatar ? loginStateStore.userInfo.avatar : ''"
                     :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
                     :width="48">
-                </Avator>
+                </Avatar>
             </div>
             <nav>
                 <div class="iconfont icon-message"></div>
@@ -220,7 +220,7 @@ function getIcon(iconPath: string | undefined): string {
         justify-content: flex-end;
         align-items: center;
 
-        .user-avator {
+        .user-avatar {
             margin: 0 20px;
         }
 

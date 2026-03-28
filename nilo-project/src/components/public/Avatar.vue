@@ -4,12 +4,12 @@ import userSvg from '../../assets/user.svg';
 import loginSvg from '../../assets/login.svg';
 import { useLoginStateStore } from '../../store/LoginStateStore';
 import request from '../../utils/useRequest';
-import { Api } from '../../utils/api';
+import { Api } from '../../utils/Api';
 import message from '../../utils/useMessage';
 import confirm from '../../utils/useConfirm';
 
 const props = withDefaults(defineProps<{
-    userId: number | null,
+    userId: string | null,
     src: string,
     width: number,
     lazy: boolean,
@@ -55,7 +55,7 @@ function logout() {
 <template>
     <!-- 如果用户已登录，则显示用户头像，如果找不到用户头像则显示默认头像 -->
     <div class="onLogin" v-if="loginStateStore.loginState">
-        <RouterLink class="avator" :to="`/user/${userId}`" target="_blank">
+        <RouterLink class="avatar" :to="`/user/${userId}`" target="_blank">
             <Cover :src="src" :lazy="lazy" :default-src="userSvg" :width="width" :scale="1" fit="cover"
                 border-radius="50%" border="2px white solid">
             </Cover>
@@ -104,7 +104,7 @@ function logout() {
     z-index: 200;
 
     &:hover {
-        .avator {
+        .avatar {
             transform: translate(-20px, 20px) scale(1.6);
             transition:all 0.2s 0s ease;
         }
@@ -126,7 +126,7 @@ function logout() {
         }
     }
 
-    .avator {
+    .avatar {
         display: inline-block;
         cursor: pointer;
         position: relative;
@@ -138,7 +138,7 @@ function logout() {
         opacity: 0;
         visibility: hidden;
         position: absolute;
-        // 定位到 avator 的中心点高度
+        // 定位到 avatar 的中心点高度
         top: 50%;
         left: 50%;
         // 核心：translateX(-50%) 确保水平居中，此时顶部正好在父容器 (onLogin) 的 50% 位置

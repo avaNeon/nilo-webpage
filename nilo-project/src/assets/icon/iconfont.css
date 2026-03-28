@@ -39,11 +39,11 @@
 }
 
 .icon-left:before {
-  content: "\f039";
+  content: "\f03a";
 }
 
 .icon-right:before {
-  content: "\f03a";
+  content: "\f039";
 }
 
 .icon-logo:before {

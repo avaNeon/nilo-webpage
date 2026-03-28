@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { Api } from '../../utils/api';
-import { THUMBNAIL_SUFFIX } from '../../utils/constant';
+import { Api } from '../../utils/Api';
+import { THUMBNAIL_SUFFIX } from '../../utils/Constant';
 
 const props = withDefaults(defineProps<{
     src: string,                // 图片原链接
@@ -49,7 +49,6 @@ function showPreview() {
     }
 }
 // 组件引用
-const coverRef = ref<HTMLDivElement>()
 </script>
 
 <template>

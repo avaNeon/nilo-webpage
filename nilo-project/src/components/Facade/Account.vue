@@ -4,7 +4,7 @@ import Dialog from '../public/Dialog.vue';
 import useVerify from '../../utils/useVerify';
 import { useLoginStateStore } from '../../store/LoginStateStore';
 import request from '../../utils/useRequest';
-import { Api } from '../../utils/api';
+import { Api } from '../../utils/Api';
 import { type CaptchaInfo } from '../../models/CaptchaInfo';
 import message from '../../utils/useMessage';
 
