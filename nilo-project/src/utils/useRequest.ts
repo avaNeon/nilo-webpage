@@ -4,7 +4,7 @@ import message from '../utils/useMessage'
 import Cookies from 'js-cookie'
 import { useLoginStateStore } from "../store/LoginStateStore"
 import { ServiceType } from '../models/ServiceType'
-import { ServicePrefixMap } from './api'
+import { ServicePrefixMap } from './Api'
 
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'
 const contentTypeJson = 'application/json'

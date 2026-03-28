@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, inject, onMounted, onUnmounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import FacadeHeader from '../components/Facade/FacadeHeader.vue'
 import Account from '../components/Facade/Account.vue'
 import Category from '../components/Facade/Category.vue'
 import useCategoryStore from '../store/CategoryStore'
-import { Api, ServicePrefixMap } from '../utils/api'
+import { Api, ServicePrefixMap } from '../utils/Api'
 import defaultBg from '../assets/banner-background-beach.jpg'
+import { BODY_PADDING } from '../utils/Constant'
 
 // 获取内容部分最大最小宽度
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
@@ -93,8 +94,11 @@ onUnmounted(() => {
         <div class="category">
             <Category :folded="categoryFolded && !hideFixedFolded"></Category>
         </div>
-        <div style="height: 200px; background-color: blueviolet;">
-
+        <div class="router-view" :style="{
+            'marginLeft': BODY_PADDING,
+            'margin-right': BODY_PADDING
+        }">
+            <RouterView></RouterView>
         </div>
     </div>
     <Account />
@@ -128,5 +132,9 @@ body {
         width: 100%;
         z-index: 100;
     }
+}
+
+.router-view {
+    margin-top: 110px;
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import useCategoryStore from '../../store/CategoryStore';
+import { BODY_PADDING } from '../../utils/Constant';
 
 const categoryStore = useCategoryStore();
 
@@ -55,7 +56,10 @@ function waitAndLeave(e: MouseEvent) {
 
 <template>
     <div class="category-bar unfolded" v-if="!folded" @mouseenter="isUnfoldedHovered = true"
-        @mouseleave="isUnfoldedHovered = false">
+        @mouseleave="isUnfoldedHovered = false" :style="{
+            'padding-left': BODY_PADDING,
+            'padding-right': BODY_PADDING
+        }">
         <RouterLink to="/popular" class="popular">
             <div class="iconfont icon-hot"></div>
             <div class="popular-info">热门</div>
@@ -96,7 +100,11 @@ function waitAndLeave(e: MouseEvent) {
             </RouterLink>
         </div>
     </div>
-    <div class="category-bar folded" v-else @mouseenter="isFoldedHovered = true" @mouseleave="isFoldedHovered = false">
+    <div class="category-bar folded" v-else @mouseenter="isFoldedHovered = true" @mouseleave="isFoldedHovered = false"
+        :style="{
+            'padding-left': BODY_PADDING,
+            'padding-right': BODY_PADDING
+        }">
         <RouterLink to="/popular" class="popular">
             <div class="iconfont icon-hot"></div>
             <div class="popular-info">热门</div>
@@ -117,7 +125,8 @@ function waitAndLeave(e: MouseEvent) {
 <style lang="scss" scoped>
 .category-bar {
     display: flex;
-    padding: 5px 100px;
+    padding-top: 5px;
+    padding-bottom: 5px;
     background-color: white;
     justify-content: space-around;
 
@@ -159,6 +168,8 @@ function waitAndLeave(e: MouseEvent) {
             overflow: hidden;
             max-height: 80px;
 
+            min-width: 800px;
+
             transition: max-height 0.2s 0.2s ease; // 收起时有0.2s的过渡时间和0.2s的延迟，延迟时间必须大于subItemsDalayAndTransition，避免和子分类的过渡冲突
 
             &.expanded {
@@ -181,7 +192,7 @@ function waitAndLeave(e: MouseEvent) {
                     .sub-category-items {
                         opacity: 1;
                         visibility: visible;
-                        transform: translateY(0);
+                        transform: translateX(-50%) translateY(0);
                     }
                 }
 
@@ -210,8 +221,8 @@ function waitAndLeave(e: MouseEvent) {
                 .sub-category-items {
                     position: absolute;
                     z-index: 200;
-                    top: 30px; // 紧挨着父级
-                    left: 0;
+                    top: calc(100% + 4px); // 紧挨着父级
+                    left: 50%;
 
                     background-color: white;
                     border: 1px solid rgb(227, 229, 231);
@@ -221,14 +232,15 @@ function waitAndLeave(e: MouseEvent) {
 
                     opacity: 0;
                     visibility: hidden;
-                    transform: translateY(10px);
+                    transform: translateX(-50%) translateY(10px);
 
                     display: flex; // 改回 flex
                     flex-direction: column;
                     justify-content: space-around;
                     row-gap: 10px;
                     // 子菜单变化时间和延迟保持0.2s
-                    transition: all ease;
+                    transition-property: opacity, visibility, transform;
+                    transition-timing-function: ease;
 
                     .sub-category-item {
                         width: 100%;
@@ -257,6 +269,8 @@ function waitAndLeave(e: MouseEvent) {
         .others {
             width: 300px;
             padding: 5px;
+
+            min-width: 180px;
 
             .online-user-count {
                 color: rgb(56, 56, 56);

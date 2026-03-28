@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Facade from "../pages/Facade.vue"
+import index from '../components/Facade/index/index.vue';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -7,7 +8,13 @@ const router = createRouter({
         {
             path: "/facade/:categoryNumber?/:subCategoryNumber?",
             name: "facade",
-            component: Facade
+            component: Facade,
+            children: [
+                {
+                    path: '',
+                    component: index
+                }
+            ]
         },
         {
             path: "/",
