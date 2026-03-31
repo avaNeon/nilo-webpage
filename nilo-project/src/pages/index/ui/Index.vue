@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { inject, onMounted, onUnmounted, provide } from 'vue'
 import { RouterView } from 'vue-router'
-import FacadeHeader from '@/widgets/facadeHeader/ui/FacadeHeader.vue'
+import IndexHeader from '@/widgets/indexHeader/ui/IndexHeader.vue'
 import Account from '@/features/account/ui/Account.vue'
 import Category from '@/entities/category/ui/Category.vue'
 import defaultBg from '@/assets/banner-background-beach.jpg'
@@ -44,14 +44,14 @@ onUnmounted(() => {
             <div class="header" :style="{
                 'background-image': bgImgUrl ? `url(${bgImgUrl})` : `url(${defaultBg})`
             }">
-                <FacadeHeader />
+                <IndexHeader />
             </div>
             <div class="fixed-header" v-if="headerFixed" :style="{
                 opacity: headerOpacity,
                 'max-width': mainContentMaxWidth + 'px',
                 'min-width': mainContentMinWidth + 'px',
             }">
-                <FacadeHeader theme="dark" />
+                <IndexHeader theme="dark" />
             </div>
         </header>
         <div class="category" :style="{

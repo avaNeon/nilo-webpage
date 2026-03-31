@@ -1,7 +1,7 @@
 import { Api } from "@/shared/config/Api";
 import request from "@/shared/lib/request";
 import { ref } from "vue";
-import type { VideoList } from "../../shared/model/VideoList";
+import type { VideoList } from "../../../shared/model/VideoList";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
 import useCategoryStore from "@/shared/store/CategoryStore";
 

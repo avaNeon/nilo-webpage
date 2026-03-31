@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<{
             <div class="category-item-container" v-for="categoryItem in categoryStore.categoryList"
                 :key="categoryItem.categoryNumber" @mouseenter="waitAndChange($event)"
                 @mouseleave="waitAndLeave($event)">
-                <RouterLink class="category-item" :to="`/facade/${categoryItem.categoryNumber}`">
+                <RouterLink class="category-item" :to="`/c/${categoryItem.categoryNumber}`">
                     <span class="category-name">
                         {{ categoryItem.categoryName }}
                     </span>
@@ -43,7 +43,7 @@ const props = withDefaults(defineProps<{
                     <div class="sub-category-item" v-for="subCategoryItem in categoryItem.children"
                         :key="subCategoryItem.categoryNumber">
                         <RouterLink class="sub-category-nav"
-                            :to="`/facade/${categoryItem.categoryNumber}/${subCategoryItem.categoryNumber}`">
+                            :to="`/c/${categoryItem.categoryNumber}/${subCategoryItem.categoryNumber}`">
                             {{ subCategoryItem.categoryName }}
                         </RouterLink>
                     </div>
@@ -75,7 +75,7 @@ const props = withDefaults(defineProps<{
         </RouterLink>
         <div class="category-items" :class="{ expanded: isFoldedHovered }">
             <RouterLink class="category-item" v-for="categoryItem in categoryStore.categoryList"
-                :key="categoryItem.categoryNumber" :to="`/facade/${categoryItem.categoryNumber}`">
+                :key="categoryItem.categoryNumber" :to="`/c/${categoryItem.categoryNumber}`">
                 <span class="category-name">
                     {{ categoryItem.categoryName }}
                 </span>

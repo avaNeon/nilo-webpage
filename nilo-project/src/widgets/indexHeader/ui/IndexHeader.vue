@@ -14,12 +14,12 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
         <div class="menu">
             <el-popover class="popover" placement="bottom-start" popper-class="category-popper">
                 <template #reference>
-                    <RouterLink to="/facade" class="iconfont icon-logo">首页</RouterLink>
+                    <RouterLink to="/" class="iconfont icon-logo">首页</RouterLink>
                 </template>
                 <div class="popover-content">
                     <nav class="category-item" v-for="item in categoryStore.categoryList" :key="item.categoryNumber">
                         <RouterLink class="router-link" style="color: #18191c; text-decoration: none;"
-                            :to="`/facade/${item.categoryNumber}`">
+                            :to="`/c/${item.categoryNumber}`">
                             <img :src="getIcon(item.icon)" style="width: 20px;margin-right: 10px;" />
                             <span>
                                 {{ item.categoryName }}
