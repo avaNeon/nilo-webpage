@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Facade from '@/pages/ui/Facade.vue'
+import Index from '@/pages/index/ui/Index.vue'
 import RecommendVideo from '@/widgets/recommendVideo/ui/RecommendVideo.vue';
 
 const router = createRouter({
@@ -9,24 +9,22 @@ const router = createRouter({
          * 主页
          */
         {
-            path: "/facade/:categoryNumber?/:subCategoryNumber?",
-            name: "facade",
-            component: Facade,
+            path: "/",
+            name: "index",
+            component: Index,
             children: [
                 // default
                 {
                     path: '',
                     component: RecommendVideo
+                },
+                // 分类页
+                {
+                    path: "c/:categoryNumber?/:subCategoryNumber?",
+                    component: RecommendVideo
                 }
             ]
         },
-        /**
-         * 还是主页
-         */
-        {
-            path: "/",
-            redirect: "/facade"
-        }
     ]
 })
 
