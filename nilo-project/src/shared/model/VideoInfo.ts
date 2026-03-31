@@ -1,4 +1,4 @@
-import type { BriefUserInfo } from "@/entities/model/BriefUserInfo";
+import type { BriefUserInfo } from "@/shared/model/BriefUserInfo";
 
 export interface VideoInfo {
     videoId: string | null;

@@ -5,10 +5,10 @@ import { ref } from "vue"
 
 // 验证码请求的最小间隔时间，单位为毫秒
 const miliDelay: number = 500
-// 设置一个验证码请求状态变量，防止短时间内重复请求验证码
-const isRequesting = ref(false)
 
 export function useCaptcha() {
+    // 设置一个验证码请求状态变量，防止短时间内重复请求验证码
+    const isRequesting = ref(false)
     /**
      * 验证码信息对象
      */

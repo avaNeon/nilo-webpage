@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { VideoInfo } from '@/entities/model/VideoInfo';
+import type { VideoInfo } from '@/shared/model/VideoInfo';
 import { calculateDuration, calculateRelativeTime } from '@/shared/utils/DateUtil';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { routerToNewPage } from '@/shared/utils/RouteUtil';
@@ -40,9 +40,13 @@ const props = withDefaults(defineProps<{
         </RouterLink>
         <div class="video-info">
             <div class="video-name" @click="routerToNewPage(`/video/${props.videoInfo.videoId}`)">
-                {{ props.videoInfo.videoName }}
+                <span :title="props.videoInfo.videoName || ''">
+                    {{ props.videoInfo.videoName }}
+                </span>
+
             </div>
-            <div class="other-info">
+            <div class="other-info"
+                :title="`${props.videoInfo.briefUserInfo?.nickName} · ${calculateRelativeTime(props.videoInfo.lastUpdateTime)}`">
                 <span class="author-name iconfont icon-upzhu"
                     @click="routerToNewPage(`/user/${props.videoInfo.briefUserInfo?.userId}`)">{{
                         props.videoInfo.briefUserInfo?.nickName }}</span>
@@ -55,8 +59,6 @@ const props = withDefaults(defineProps<{
 
 <style lang="scss" scoped>
 .video.horizontal {
-    flex: 1 1 0;
-
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -143,10 +145,20 @@ const props = withDefaults(defineProps<{
     }
 
     .video-info {
+        height: 25%;
+        display: flex;
+        flex-direction: column;
+        justify-content: end;
+
         .video-name {
+            font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
             cursor: pointer;
+
+            text-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
 
             &:hover {
                 color: #00AEEC;
@@ -156,6 +168,10 @@ const props = withDefaults(defineProps<{
         .other-info {
             height: 20px;
             line-height: 20px;
+
+            text-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
 
             .author-name {
                 font-weight: 500;

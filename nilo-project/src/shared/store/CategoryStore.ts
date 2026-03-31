@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import type { CategoryInfo } from "@/entities/model/CategoryInfo";
+import type { CategoryInfo } from "@/shared/model/CategoryInfo";
 
 const useCategoryStore = defineStore('category', {
     state() {
@@ -16,6 +16,8 @@ const useCategoryStore = defineStore('category', {
              * 当前选中的一级分类信息，默认为 null
              */
             currentPCategory: null as CategoryInfo | null,
+            /** 当前分类编号 */
+            currentCategoryNumber: null as string | null,
         }
     },
     actions: {
@@ -47,6 +49,7 @@ const useCategoryStore = defineStore('category', {
         setCurrentPCategory(data: string) {
             if (data) {
                 this.currentPCategory = this.categoryMap[data] || {} as CategoryInfo
+                this.currentCategoryNumber = data
             }
             else {
                 this.currentPCategory = {} as CategoryInfo
@@ -56,6 +59,9 @@ const useCategoryStore = defineStore('category', {
             return this.categoryList.find(parent =>
                 parent.children?.some(child => child.categoryNumber === subCategory.categoryNumber)
             )
+        },
+        setCategoryNumber(categoryNumber: string | null) {
+            this.currentCategoryNumber = categoryNumber
         }
     }
 })

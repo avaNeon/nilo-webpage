@@ -8,8 +8,10 @@ const { isUnfoldedHovered, isFoldedHovered, itemHover, subItemsDalayAndTransitio
 
 const props = withDefaults(defineProps<{
     folded?: boolean
+    maxWidth: number
+    minWidth: number
 }>(), {
-    folded: false
+    folded: false,
 })
 
 </script>
@@ -18,7 +20,7 @@ const props = withDefaults(defineProps<{
     <div class="category-bar unfolded" v-if="!folded" @mouseenter="isUnfoldedHovered = true"
         @mouseleave="isUnfoldedHovered = false" :style="{
             'padding-left': BODY_PADDING,
-            'padding-right': BODY_PADDING
+            'padding-right': BODY_PADDING,
         }">
         <RouterLink to="/popular" class="popular">
             <div class="iconfont icon-hot"></div>
@@ -63,7 +65,9 @@ const props = withDefaults(defineProps<{
     <div class="category-bar folded" v-else @mouseenter="isFoldedHovered = true" @mouseleave="isFoldedHovered = false"
         :style="{
             'padding-left': BODY_PADDING,
-            'padding-right': BODY_PADDING
+            'padding-right': BODY_PADDING,
+            'max-width': maxWidth + 'px',
+            'min-width': minWidth + 'px',
         }">
         <RouterLink to="/popular" class="popular">
             <div class="iconfont icon-hot"></div>
@@ -77,7 +81,7 @@ const props = withDefaults(defineProps<{
                 </span>
             </RouterLink>
         </div>
-        <img class="down-arrow" :class="{ rotated: isFoldedHovered }" src="../../assets/down_arrow.svg" alt="展开箭头" />
+        <img class="down-arrow" :class="{ rotated: isFoldedHovered }" src="@/assets/down_arrow.svg" alt="展开箭头" />
     </div>
 
 </template>
@@ -127,8 +131,6 @@ const props = withDefaults(defineProps<{
 
             overflow: hidden;
             max-height: 80px;
-
-            min-width: 800px;
 
             transition: max-height 0.2s 0.2s ease; // 收起时有0.2s的过渡时间和0.2s的延迟，延迟时间必须大于subItemsDalayAndTransition，避免和子分类的过渡冲突
 
@@ -284,8 +286,8 @@ const props = withDefaults(defineProps<{
     &.folded {
         position: fixed;
         top: 64px;
-        left: 0;
-        width: 100vw;
+        margin: 0 auto;
+        width: 100%;
         z-index: 100;
         color: rgb(132, 132, 132);
         border-bottom: rgb(227, 229, 231) solid 1px;

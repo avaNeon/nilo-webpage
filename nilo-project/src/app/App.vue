@@ -6,7 +6,7 @@ import { useAutoLogin } from '@/app/composables/useAutoLogin'
 import { useInitCategories } from '@/app/composables/useInitCategories'
 
 provide('mainContentMaxWidth', 2000)
-provide('mainContentMinWidth', 1000)
+provide('mainContentMinWidth', 1440)
 
 const { autoLogin } = useAutoLogin()
 const { loadAllCategories } = useInitCategories()

@@ -1,4 +1,4 @@
-import type { VideoInfo } from "@/entities/model/VideoInfo"
+import type { VideoInfo } from "@/shared/model/VideoInfo"
 import { Api } from "@/shared/config/Api"
 import { CAROUSEL_VIDEO_COUNT } from "@/shared/config/Config"
 import request from "@/shared/lib/request"
