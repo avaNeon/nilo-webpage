@@ -1,4 +1,4 @@
-import { ServiceType } from "@/entities/model/ServiceType";
+import { ServiceType } from "@/shared/model/ServiceType";
 
 //单服务版本
 const Api = {
@@ -34,7 +34,7 @@ const Api = {
     ucDeleteVideo: "/creativeCenter/deleteVideo",
     //获取视频列表
     loadRecommendVideo: "/video/recommend",
-    loadVideo: "/video/loadVideo",
+    loadVideo: "/video/video",
     loadVideoPList: "/video/loadVideoPList",
     getVideoResource: "/api/file/videoResource",
     getVideoInfo: "/video/getVideoInfo",

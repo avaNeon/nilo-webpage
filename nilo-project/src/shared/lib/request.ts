@@ -3,7 +3,7 @@ import { ElLoading } from 'element-plus'
 import message from '@/shared/lib/message'
 import Cookies from 'js-cookie'
 import { useLoginStateStore } from "@/shared/store/LoginStateStore"
-import { ServiceType } from '@/entities/model/ServiceType'
+import { ServiceType } from '@/shared/model/ServiceType'
 import { ServicePrefixMap } from '@/shared/config/Api'
 
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'

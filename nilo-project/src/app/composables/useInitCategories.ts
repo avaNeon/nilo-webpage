@@ -1,8 +1,8 @@
 import useCategoryStore from '@/shared/store/CategoryStore'
 import { Api } from '@/shared/config/Api'
 import request from '@/shared/lib/request'
-import type { CategoryInfo } from '@/entities/model/CategoryInfo'
-import { ServiceType } from '@/entities/model/ServiceType'
+import type { CategoryInfo } from '@/shared/model/CategoryInfo'
+import { ServiceType } from '@/shared/model/ServiceType'
 
 /**
  * 初始化分类信息

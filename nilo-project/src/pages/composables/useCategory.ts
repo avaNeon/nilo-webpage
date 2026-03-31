@@ -14,6 +14,10 @@ export function useCategory() {
         watch([() => route.params.categoryNumber, () => categoryStore.categoryMap], ([categoryNumber]) => {
             categoryStore.setCurrentPCategoryByNumber((categoryNumber || null) as string | null)
         }, { immediate: true })
+        // 同上，改变子分类状态
+        watch(() => route.params.subCategoryNumber, (subCategoryNumber) => {
+            categoryStore.setCategoryNumber((subCategoryNumber || null) as string | null)
+        }, { immediate: true })
 
         // 监听完整路径，如果是首页则清空分类
         watch(() => route.path, (newPath) => {

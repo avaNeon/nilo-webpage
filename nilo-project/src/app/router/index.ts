@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Facade from '@/pages/Facade.vue'
-import index from '@/widgets/videoList/ui/VideoList.vue';
+import Facade from '@/pages/ui/Facade.vue'
+import RecommendVideo from '@/widgets/recommendVideo/ui/RecommendVideo.vue';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -13,9 +13,10 @@ const router = createRouter({
             name: "facade",
             component: Facade,
             children: [
+                // default
                 {
                     path: '',
-                    component: index
+                    component: RecommendVideo
                 }
             ]
         },

@@ -1,4 +1,4 @@
-import type { FileInfo } from "@/entities/model/FileInfo";
+import type { FileInfo } from "@/shared/model/FileInfo";
 import request from "@/shared/lib/request";
 import { Api } from "@/shared/config/Api";
 

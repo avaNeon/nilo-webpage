@@ -2,7 +2,7 @@ import { useLoginStateStore } from '@/shared/store/LoginStateStore'
 import { Api } from '@/shared/config/Api'
 import request from '@/shared/lib/request'
 import message from '@/shared/lib/message'
-import { ServiceType } from '@/entities/model/ServiceType'
+import { ServiceType } from '@/shared/model/ServiceType'
 
 /**
  * 自动登录
