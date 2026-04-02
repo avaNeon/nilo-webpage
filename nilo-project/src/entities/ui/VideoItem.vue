@@ -102,7 +102,7 @@ const props = withDefaults(defineProps<{
                 bottom: 0;
                 height: 20%;
                 /* 覆盖底部 20% 高度 */
-                background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+                background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, $color-mask-60 100%);
                 pointer-events: none;
             }
 
@@ -161,7 +161,7 @@ const props = withDefaults(defineProps<{
             text-overflow: ellipsis;
 
             &:hover {
-                color: #00AEEC;
+                color: $color-bilibili-blue;
             }
         }
 
@@ -179,7 +179,7 @@ const props = withDefaults(defineProps<{
                 cursor: pointer;
 
                 &:hover {
-                    color: #00AEEC;
+                    color: $color-bilibili-blue;
                 }
 
                 &::before {
@@ -190,7 +190,7 @@ const props = withDefaults(defineProps<{
             .author-name,
             .post-date {
                 font-size: 14px;
-                color: rgb(124, 123, 123);
+                color: $color-text-muted;
             }
         }
     }
@@ -241,7 +241,7 @@ const props = withDefaults(defineProps<{
                 bottom: 0;
                 height: 20%;
                 /* 覆盖底部 20% 高度 */
-                background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+                background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, $color-mask-60 100%);
                 pointer-events: none;
             }
 
@@ -290,7 +290,7 @@ const props = withDefaults(defineProps<{
             cursor: pointer;
 
             &:hover {
-                color: #00AEEC;
+                color: $color-bilibili-blue;
             }
         }
 
@@ -300,14 +300,14 @@ const props = withDefaults(defineProps<{
 
             .author-name {
                 font-size: 14px;
-                color: rgb(124, 123, 123);
+                color: $color-text-muted;
 
                 font-weight: 500;
                 transition: all 0.2s ease;
                 cursor: pointer;
 
                 &:hover {
-                    color: #00AEEC;
+                    color: $color-bilibili-blue;
                 }
 
                 &::before {

@@ -144,8 +144,8 @@ function logout() {
         // 核心：translateX(-50%) 确保水平居中，此时顶部正好在父容器 (onLogin) 的 50% 位置
         transform: translateX(-50%);
         width: 230px;
-        background-color: #fff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background-color: white;
+        box-shadow: 0 2px 8px $color-shadow-sm;
         border-radius: 4px;
         padding: 10px;
         z-index: 9;
@@ -172,7 +172,7 @@ function logout() {
 
             .coin-text {
                 font-size: 10px;
-                color: rgb(123, 123, 123);
+                color: $color-text-muted;
                 margin-right: 5px;
             }
         }
@@ -185,7 +185,7 @@ function logout() {
             .relation-item {
                 width: 100px;
                 font-size: 10px;
-                color: rgb(123, 123, 123);
+                color: $color-text-muted;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -211,11 +211,11 @@ function logout() {
             text-decoration: none;
 
             &:hover {
-                background-color: #dcdbdb;
+                background-color: $color-neutral-3;
             }
 
             .option {
-                color: rgb(123, 123, 123);
+                color: $color-text-muted;
                 font-size: 11px;
                 font-weight: 600;
 
@@ -225,7 +225,7 @@ function logout() {
             }
 
             .right-arrow {
-                color: rgb(123, 123, 123);
+                color: $color-text-muted;
                 font-size: 11px;
                 font-weight: 600;
             }

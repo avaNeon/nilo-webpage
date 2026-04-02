@@ -42,11 +42,10 @@ const isLoading = inject<boolean>('isLoading') || false
 </template>
 
 <style lang="scss" scoped>
-$grid-gap: 12px;
 
 .grid-layout {
     display: grid;
-    gap: $grid-gap;
+    gap: $video-item-gap;
 
     // 防止视频子内容宽度限制不能平分空间
     > * {
@@ -71,6 +70,6 @@ $grid-gap: 12px;
     line-height: 100px;
     font-size: 14px;
     font-weight: 500;
-    color: rgb(123, 121, 121);
+    color: $color-text-muted;
 }
 </style>
