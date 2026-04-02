@@ -293,7 +293,7 @@ const props = withDefaults(defineProps<{
     }
 
     &.folded {
-        position: fixed;
+        position: absolute;
         top: $header-bar-height;
         margin: 0 auto;
         width: 100%;
