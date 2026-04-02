@@ -27,9 +27,9 @@ const props = withDefaults(defineProps<{
             <div class="popular-info">热门</div>
         </RouterLink>
         <div class="category-items" :class="{ expanded: isUnfoldedHovered, extra: itemHover }">
-            <div class="category-item-container" v-for="categoryItem in categoryStore.categoryList"
-                :key="categoryItem.categoryNumber" @mouseenter="waitAndChange($event)"
-                @mouseleave="waitAndLeave($event)">
+            <div :class="['category-item-container', categoryStore.currentPCategory?.categoryNumber === categoryItem.categoryNumber ? 'active' : '']"
+                v-for="categoryItem in categoryStore.categoryList" :key="categoryItem.categoryNumber"
+                @mouseenter="waitAndChange($event)" @mouseleave="waitAndLeave($event)">
                 <RouterLink class="category-item" :to="`/c/${categoryItem.categoryNumber}`">
                     <span class="category-name">
                         {{ categoryItem.categoryName }}
@@ -95,7 +95,7 @@ const props = withDefaults(defineProps<{
     justify-content: space-around;
 
     &.unfolded {
-        border-bottom: rgb(227, 229, 231) solid 1px;
+        border-bottom: $color-border solid 1px;
 
         .popular {
             text-decoration: none;
@@ -105,7 +105,7 @@ const props = withDefaults(defineProps<{
             margin: 10px;
 
             .icon-hot {
-                background-color: #f07775;
+                background-color: $color-hot;
                 color: white;
                 border-radius: 50%;
                 height: 50px;
@@ -158,6 +158,14 @@ const props = withDefaults(defineProps<{
                     }
                 }
 
+                &.active {
+
+                    .category-item {
+                        color: $color-bilibili-blue;
+                        font-weight: 500;
+                    }
+                }
+
                 .category-item {
                     display: block;
                     text-decoration: none;
@@ -165,13 +173,13 @@ const props = withDefaults(defineProps<{
                     height: 30px;
                     line-height: 30px;
                     text-align: center;
-                    color: rgb(96, 95, 95);
-                    background-color: rgb(246, 247, 248);
+                    color: $color-text-secondary;
+                    background-color: $color-surface;
                     border-radius: 7px;
                     transition: background-color 0.3s;
 
                     &:hover {
-                        background-color: rgb(227, 229, 231);
+                        background-color: $color-surface-hover;
                     }
 
                     .category-name {
@@ -187,7 +195,7 @@ const props = withDefaults(defineProps<{
                     left: 50%;
 
                     background-color: white;
-                    border: 1px solid rgb(227, 229, 231);
+                    border: 1px solid $color-border;
                     border-radius: 7px;
                     padding: 10px 5px;
                     width: 100px;
@@ -215,12 +223,12 @@ const props = withDefaults(defineProps<{
 
                             padding: 5px 0;
                             text-decoration: none;
-                            color: rgb(54, 54, 54);
+                            color: $color-text-primary;
                             font-size: 14px;
 
                             &:hover {
-                                color: rgb(0, 174, 236);
-                                background-color: rgb(227, 229, 231);
+                                color: $color-bilibili-blue;
+                                background-color: $color-surface-hover;
                             }
                         }
                     }
@@ -235,7 +243,7 @@ const props = withDefaults(defineProps<{
             min-width: 180px;
 
             .online-user-count {
-                color: rgb(56, 56, 56);
+                color: $color-text-primary;
                 display: flex;
                 align-items: center;
 
@@ -260,7 +268,7 @@ const props = withDefaults(defineProps<{
                 height: 40px;
                 line-height: 30px;
                 text-align: center;
-                color: rgb(96, 95, 95);
+                color: $color-text-secondary;
                 border-radius: 7px;
                 text-decoration: none;
                 display: flex;
@@ -268,7 +276,7 @@ const props = withDefaults(defineProps<{
 
                 &:hover {
                     .read-text {
-                        color: rgb(0, 174, 236);
+                        color: $color-bilibili-blue;
                     }
                 }
 
@@ -285,12 +293,12 @@ const props = withDefaults(defineProps<{
 
     &.folded {
         position: fixed;
-        top: 64px;
+        top: $header-bar-height;
         margin: 0 auto;
         width: 100%;
         z-index: 100;
-        color: rgb(132, 132, 132);
-        border-bottom: rgb(227, 229, 231) solid 1px;
+        color: $color-text-muted;
+        border-bottom: $color-border solid 1px;
         padding: 10px 100px;
         background: white;
         justify-content: space-between;
@@ -306,16 +314,16 @@ const props = withDefaults(defineProps<{
 
             &:hover {
                 .icon-hot {
-                    color: rgb(0, 174, 236);
+                    color: $color-bilibili-blue;
                 }
 
                 .popular-info {
-                    color: rgb(0, 174, 236);
+                    color: $color-bilibili-blue;
                 }
             }
 
             .icon-hot {
-                color: rgb(132, 132, 132);
+                color: $color-text-muted;
                 border-radius: 50%;
                 height: 30px;
                 width: 30px;
@@ -325,7 +333,7 @@ const props = withDefaults(defineProps<{
             }
 
             .popular-info {
-                color: rgb(132, 132, 132);
+                color: $color-text-muted;
                 font-size: 16px;
             }
         }
@@ -344,7 +352,7 @@ const props = withDefaults(defineProps<{
             min-width: 800px;
             padding: 0 10px;
             margin: 0 10px;
-            border-left: rgb(227, 229, 231) solid 1px;
+            border-left: $color-border solid 1px;
             max-height: 30px; // 初始最大高度
             transition: max-height 0.2s ease-out;
 
@@ -360,12 +368,12 @@ const props = withDefaults(defineProps<{
                 height: 30px;
                 line-height: 30px;
                 text-align: center;
-                color: rgb(96, 95, 95);
-                background-color: rgb(246, 247, 248);
+                color: $color-text-secondary;
+                background-color: $color-surface;
                 border-radius: 7px;
 
                 &:hover {
-                    background-color: rgb(227, 229, 231);
+                    background-color: $color-surface-hover;
                 }
 
                 .category-name {

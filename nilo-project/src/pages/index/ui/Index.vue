@@ -15,7 +15,7 @@ import { useVideo } from '../composables/useVideo'
 const { bgImgUrl } = useBackgroundImg()
 const { startRouteWatching } = useCategory()
 const { videoList, isLoading, loadVideoList, } = useVideo()
-const { headerFixed, categoryFolded, hideFixedFolded, headerOpacity, scrollChecker } = useScroll(videoList, isLoading, loadVideoList)
+const { headerFixed, categoryFolded, subCategoryFolded, headerOpacity, scrollChecker } = useScroll(videoList, isLoading, loadVideoList)
 
 // 获取内容部分最大最小宽度
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
@@ -23,11 +23,11 @@ const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
 provide('videoList', videoList)
 provide('isLoading', isLoading)
+provide('subCategoryFolded', subCategoryFolded)
 
 onMounted(() => {
-    window.addEventListener('scroll', scrollChecker)
     startRouteWatching()
-    loadVideoList()
+    window.addEventListener('scroll', scrollChecker)
 })
 
 onUnmounted(() => {
@@ -58,8 +58,8 @@ onUnmounted(() => {
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
         }">
-            <Category :folded="categoryFolded && !hideFixedFolded" :max-width="mainContentMaxWidth"
-                :min-width="mainContentMinWidth"></Category>
+            <Category :folded="categoryFolded" :max-width="mainContentMaxWidth" :min-width="mainContentMinWidth">
+            </Category>
         </div>
         <div class="router-view" :style="{
             'margin-left': BODY_PADDING,
@@ -85,7 +85,7 @@ body {
 <style lang="scss" scoped>
 .page-content {
     position: relative;
-    min-height: 200vh;
+    min-height: 150vh;
     background-color: rgb(255, 255, 255);
     margin: 0 auto;
 
@@ -116,7 +116,7 @@ body {
 
     .router-view {
         margin-top: 110px;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
 }
 </style>

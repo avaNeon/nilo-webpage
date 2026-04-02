@@ -76,8 +76,20 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
 </template>
 
 <style lang="scss">
+// popover的内部类名
 .category-popper {
     width: max-content !important;
+
+    // 自定义渐变时长
+    &.el-popper {
+        transition: opacity 0.2s ease, transform 0.2s ease !important;
+    }
+}
+
+// 控制 Element Plus Popover 的渐变动画时长
+.el-fade-in-linear-enter-active,
+.el-fade-in-linear-leave-active {
+    transition: opacity 0.2s linear !important;
 }
 
 .popover-content {
@@ -107,7 +119,7 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
         cursor: pointer;
 
         &:hover {
-            background-color: #f1f2f3;
+            background-color: $color-neutral-1;
         }
 
         .router-link {
@@ -124,7 +136,7 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
         top: 0;
         width: 1px;
         height: calc(var(--category-rows) * var(--category-item-height) + (var(--category-rows) - 1) * var(--category-row-gap));
-        background-color: #e3e5e7;
+        background-color: $color-border;
         pointer-events: none;
     }
 }
@@ -132,7 +144,7 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
 
 <style lang="scss" scoped>
 .header-bar {
-    height: 64px;
+    height: $header-bar-height;
     padding: 0 20px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -167,7 +179,7 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #f1f2f3;
+            background-color: $color-neutral-1;
             opacity: 0.8;
             border-radius: 8px;
             padding: 0 8px;
@@ -184,12 +196,12 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
                 background: none;
                 outline: none;
                 height: 32px;
-                background-color: #f1f2f3;
+                background-color: $color-neutral-1;
                 opacity: inherit;
 
                 &:focus {
                     border-radius: 5px;
-                    background-color: #c6c6c6;
+                    background-color: $color-neutral-2;
                     z-index: 1000;
                 }
             }
@@ -233,8 +245,8 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
         .post {
             margin: 0 20px;
             border-radius: 8px;
-            background-color: #fb7299;
-            border-color: #fb7299;
+            background-color: $color-brand-pink;
+            border-color: $color-brand-pink;
 
             .iconfont {
                 margin-right: 7px;
@@ -261,8 +273,8 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
 .header-bar-dark {
     color: black;
     background-color: white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    border-bottom: rgb(227, 229, 231) solid 1px;
+    box-shadow: 0 2px 4px $color-header-shadow;
+    border-bottom: $color-border solid 1px;
 
     .icon-logo {
         color: black;

@@ -29,6 +29,7 @@ export function useInitCategories() {
         })
         categoryStore.setCategoryList(categoryList)
         categoryStore.setCategoryMap(categoryMap)
+        categoryStore.setInited(true)
     }
 
     return { loadAllCategories }

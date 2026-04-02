@@ -18,6 +18,8 @@ const useCategoryStore = defineStore('category', {
             currentPCategory: null as CategoryInfo | null,
             /** 当前分类编号 */
             currentCategoryNumber: null as string | null,
+            /** 初始化状态，只要加载过一次，这个值就是true，实际上是表示有没有初始化过 */
+            isInited: false,
         }
     },
     actions: {
@@ -48,11 +50,12 @@ const useCategoryStore = defineStore('category', {
         },
         setCurrentPCategory(data: string) {
             if (data) {
-                this.currentPCategory = this.categoryMap[data] || {} as CategoryInfo
+                this.currentPCategory = this.categoryMap[data] || null
                 this.currentCategoryNumber = data
             }
             else {
-                this.currentPCategory = {} as CategoryInfo
+                this.currentPCategory = null
+                this.currentCategoryNumber = null
             }
         },
         getParentCategory(subCategory: CategoryInfo) {
@@ -61,7 +64,15 @@ const useCategoryStore = defineStore('category', {
             )
         },
         setCategoryNumber(categoryNumber: string | null) {
-            this.currentCategoryNumber = categoryNumber
+            if (categoryNumber) {
+                this.currentCategoryNumber = categoryNumber
+            }
+            else {
+                this.currentCategoryNumber = null
+            }
+        },
+        setInited(inited: boolean) {
+            this.isInited = inited
         }
     }
 })
