@@ -180,6 +180,7 @@ const props = withDefaults(defineProps<{
 
                     &:hover {
                         background-color: $color-surface-hover;
+                        color: $color-bilibili-blue;
                     }
 
                     .category-name {
