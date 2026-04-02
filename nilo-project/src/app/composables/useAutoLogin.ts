@@ -17,9 +17,12 @@ export function useAutoLogin() {
             return
         }
         loginStateStore.setLoginState(true)
-        loginStateStore.setUserInfo(result.data)
+        loginStateStore.setUserInfo(result.data.userInfo)
+        loginStateStore.setFollowerCount(result.data.followerCount)
+        loginStateStore.setFollowingCount(result.data.followingCount)
+        loginStateStore.setCurrentCoin(result.data.currentCoin)
         loginStateStore.showPanel = false
-        message.success(`欢迎回来！ ${result.data.nickName}`)
+        message.success(`欢迎回来！ ${result.data.userInfo.nickName}`)
     }
 
     return { autoLogin }

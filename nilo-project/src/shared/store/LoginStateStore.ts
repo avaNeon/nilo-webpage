@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { type UserInfo } from '@/entities/model/UserInfo'
-import type { UserRelation } from '@/entities/model/UserRelation';
+import type { BriefUserInfo } from '../model/BriefUserInfo';
 
 export const useLoginStateStore = defineStore('loginState', {
     state() {
@@ -16,22 +15,30 @@ export const useLoginStateStore = defineStore('loginState', {
             /**
              * 用户信息
              */
-            userInfo: null as UserInfo | null,
+            userInfo: null as BriefUserInfo | null,
             /**
              * 用户的关注粉丝数量
              */
-            userRelation: null as UserRelation | null
+            followerCount: 0,
+            followingCount: 0,
+            currentCoin: 0,
         }
     },
     actions: {
         setLoginState(state: boolean) {
             this.loginState = state;
         },
-        setUserInfo(userInfo: UserInfo | null) {
+        setUserInfo(userInfo: BriefUserInfo | null) {
             this.userInfo = userInfo;
         },
-        setUserRelation(userRelation: UserRelation | null) {
-            this.userRelation = userRelation;
-        }
+        setFollowerCount(count: number) {
+            this.followerCount = count;
+        },
+        setFollowingCount(count: number) {
+            this.followingCount = count;
+        },
+        setCurrentCoin(count: number) {
+            this.currentCoin = count;
+        },
     }
 })
