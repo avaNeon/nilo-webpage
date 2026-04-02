@@ -29,7 +29,9 @@ async function getUserRelation() {
     if (!result?.data) {
         return
     }
-    loginStateStore.setUserRelation(result.data)
+    loginStateStore.setFollowerCount(result.data.followerCount)
+    loginStateStore.setFollowingCount(result.data.followingCount)
+    loginStateStore.setCurrentCoin(result.data.currentCoin)
 }
 
 // 登出
@@ -45,7 +47,9 @@ function logout() {
                 message.success("成功登出！")
                 loginStateStore.setLoginState(false)
                 loginStateStore.setUserInfo(null)
-                loginStateStore.setUserRelation(null)
+                loginStateStore.setFollowerCount(0)
+                loginStateStore.setFollowingCount(0)
+                loginStateStore.setCurrentCoin(0)
             }
         }
     })
@@ -65,15 +69,15 @@ function logout() {
             <div class="coin">
                 <img src="@/assets/coin.svg" alt="coin" style="width: 12px; margin-right: 5px;">
                 <span class="coin-text">硬币:</span>
-                <span class="amount">{{ loginStateStore.userInfo?.currentCoin }}</span>
+                <span class="amount">{{ loginStateStore.currentCoin }}</span>
             </div>
             <div class="user-relation">
                 <div class="relation-item">
-                    <span class="item-number">{{ loginStateStore.userRelation?.followingCount ?? 0 }}</span>
+                    <span class="item-number">{{ loginStateStore.followingCount ?? 0 }}</span>
                     <span>关注</span>
                 </div>
                 <div class="relation-item">
-                    <span class="item-number">{{ loginStateStore.userRelation?.followerCount ?? 0 }}</span>
+                    <span class="item-number">{{ loginStateStore.followerCount ?? 0 }}</span>
                     <span>粉丝</span>
                 </div>
             </div>

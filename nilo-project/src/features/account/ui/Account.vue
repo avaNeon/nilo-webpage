@@ -2,14 +2,13 @@
 import Dialog from '@/shared/ui/Dialog.vue';
 import { useAuthForm } from '../model/useAuthForm';
 
-const authForm = useAuthForm()
 const {
     captchaInfo, getCaptcha,
     inLogin, formData, rules,
     changeLogin, submit, closePanel,
     loginStateStore,
-} = authForm
-const bindFormRef = authForm.formDataRef
+} = useAuthForm()
+
 </script>
 
 <template>
@@ -17,9 +16,9 @@ const bindFormRef = authForm.formDataRef
         :handle-close="closePanel">
         <div class="dialog">
             <div class="background">
-                <img src="../../assets/login_background.jpg" alt="背景图" class="background-img" />
+                <img src="@/assets/login_background.jpg" alt="背景图" class="background-img" />
             </div>
-            <el-form class="form" :model="formData" :rules="rules" :ref="bindFormRef">
+            <el-form class="form" :model="formData" :rules="rules" ref="formDataRef">
                 <!-- 登录/注册切换 -->
                 <div class="login-items">
                     <div :class="{ active: inLogin, 'login-item': true }" @click="changeLogin(true)">登录</div>
@@ -31,7 +30,7 @@ const bindFormRef = authForm.formDataRef
                 <el-form-item class="form-email" prop="email">
                     <el-input v-model.trim="formData.email" placeholder="请输入邮箱" clearable maxlength="64" size="large">
                         <template #prefix>
-                            <img src="../../assets/icon/img/email.svg" alt="email" class="email" />
+                            <img src="@/assets/icon/img/email.svg" alt="email" class="email" />
                         </template>
                     </el-input>
                 </el-form-item>
@@ -41,7 +40,7 @@ const bindFormRef = authForm.formDataRef
                     <el-input v-model.trim="formData.password" placeholder="请输入密码" show-password clearable
                         maxlength="20" type="password" size="large">
                         <template #prefix>
-                            <img src="../../assets/icon/img/password.svg" alt="password" class="password" />
+                            <img src="@/assets/icon/img/password.svg" alt="password" class="password" />
                         </template>
                     </el-input>
                 </el-form-item>
@@ -53,7 +52,7 @@ const bindFormRef = authForm.formDataRef
                         <el-input v-model.trim="formData.nickName" placeholder="请输入昵称" clearable maxlength="20"
                             size="large">
                             <template #prefix>
-                                <img src="../../assets/icon/img/nickname.svg" alt="nickName" class="nickName" />
+                                <img src="@/assets/icon/img/nickname.svg" alt="nickName" class="nickName" />
                             </template>
                         </el-input>
                     </el-form-item>
@@ -62,7 +61,7 @@ const bindFormRef = authForm.formDataRef
                         <el-input v-model.trim="formData.registerPassword" placeholder="请输入密码" show-password clearable
                             maxlength="20" type="password" size="large">
                             <template #prefix>
-                                <img src="../../assets/icon/img/password.svg" alt="password" class="registerPassword" />
+                                <img src="@/assets/icon/img/password.svg" alt="password" class="registerPassword" />
                             </template>
                         </el-input>
                     </el-form-item>
@@ -71,7 +70,7 @@ const bindFormRef = authForm.formDataRef
                         <el-input v-model.trim="formData.reRegisterPassword" placeholder="请再次输入密码" show-password
                             clearable maxlength="20" type="password" size="large">
                             <template #prefix>
-                                <img src="../../assets/icon/img/re-password.svg" alt="password"
+                                <img src="@/assets/icon/img/re-password.svg" alt="password"
                                     class="reRegisterPassword" />
                             </template>
                         </el-input>
@@ -84,13 +83,13 @@ const bindFormRef = authForm.formDataRef
                         <el-input v-model.trim="formData.captcha" placeholder="请输入验证码" clearable maxlength="10"
                             size="large">
                             <template #prefix>
-                                <img src="../../assets/icon/img/captcha.svg" alt="captcha" class="captcha" />
+                                <img src="@/assets/icon/img/captcha.svg" alt="captcha" class="captcha" />
                             </template>
                         </el-input>
                         <img v-if="captchaInfo && captchaInfo.captchaImg"
                             :src="'data:image/png;base64,' + captchaInfo.captchaImg" alt="captcha" class="captcha-img"
                             @click="getCaptcha" />
-                        <img v-else src="../../assets/loading-bar.gif" alt="captcha" class="captcha-img" />
+                        <img v-else src="@/assets/loading-bar.gif" alt="captcha" class="captcha-img" />
                     </div>
                 </el-form-item>
 

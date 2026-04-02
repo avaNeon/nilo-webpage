@@ -1,9 +1,10 @@
-import { reactive, ref, nextTick, watch } from 'vue'
+import { reactive, ref, nextTick, watch, useTemplateRef } from 'vue'
 import { useCaptcha } from './useCaptcha'
 import { useLoginStateStore } from '@/shared/store/LoginStateStore'
 import { login, register } from '../api/accountApi'
 import { regs } from '@/shared/utils/VerifyUtil'
 import message from '@/shared/lib/message'
+import type { FormInstance } from 'element-plus'
 
 export function useAuthForm() {
     // --- 外部 Store ---
@@ -21,7 +22,7 @@ export function useAuthForm() {
         reRegisterPassword: ''
     })
     // el-form 的 ref，供 validate / resetFields 调用
-    const formDataRef = ref()
+    const formDataRef = useTemplateRef<FormInstance>('formDataRef')
     // 当前是登录模式还是注册模式
     const inLogin = ref(true)
 
@@ -102,7 +103,7 @@ export function useAuthForm() {
     // --- 业务操作 ---
     // 提交表单（登录或注册）
     function submit() {
-        formDataRef.value.validate(async (valid: boolean) => {
+        formDataRef.value?.validate(async (valid: boolean) => {
             if (!valid) {
                 message.error('请检查输入是否正确')
                 return
