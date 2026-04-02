@@ -40,12 +40,11 @@ onUnmounted(() => {
         'max-width': mainContentMaxWidth + 'px',
         'min-width': mainContentMinWidth + 'px',
     }">
-        <header>
-            <div class="header" :style="{
-                'background-image': bgImgUrl ? `url(${bgImgUrl})` : `url(${defaultBg})`
-            }">
-                <IndexHeader />
-            </div>
+        <!-- 顶部锚点 -->
+        <div class="fixed-header-anchor" :style="{
+            'max-width': mainContentMaxWidth + 'px',
+            'min-width': mainContentMinWidth + 'px',
+        }">
             <div class="fixed-header" v-if="headerFixed" :style="{
                 opacity: headerOpacity,
                 'max-width': mainContentMaxWidth + 'px',
@@ -53,12 +52,23 @@ onUnmounted(() => {
             }">
                 <IndexHeader theme="dark" />
             </div>
+            <Category v-if="categoryFolded" :folded="true" :max-width="mainContentMaxWidth"
+                :min-width="mainContentMinWidth">
+            </Category>
+        </div>
+
+        <header>
+            <div class="header" :style="{
+                'background-image': bgImgUrl ? `url(${bgImgUrl})` : `url(${defaultBg})`
+            }">
+                <IndexHeader />
+            </div>
         </header>
         <div class="category" :style="{
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
         }">
-            <Category :folded="categoryFolded" :max-width="mainContentMaxWidth" :min-width="mainContentMinWidth">
+            <Category :folded="false" :max-width="mainContentMaxWidth" :min-width="mainContentMinWidth">
             </Category>
         </div>
         <div class="router-view" :style="{
@@ -100,12 +110,21 @@ body {
 
         }
 
-        .fixed-header {
-            width: 100%;
-            position: fixed;
-            top: 0;
-            z-index: 200;
-        }
+    }
+
+    .fixed-header-anchor {
+        position: sticky;
+        top: 0;
+        height: 0;
+        z-index: 200;
+        overflow: visible;
+    }
+
+    .fixed-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
     }
 
     .category {
