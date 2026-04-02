@@ -54,19 +54,17 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-$grid-gap: 12px;
-$recommend-item-h: 204px;
 
 .recommend-panel {
     padding-top: 10px;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: $grid-gap;
+    gap: $video-item-gap;
 
     .carousel-panel {
         grid-column: span 2;
         // 两行卡片高度 + 一条行间隙，保证左右视觉等高
-        height: calc(#{$recommend-item-h} * 2 + #{$grid-gap});
+        height: calc(#{$video-item-height} * 2 + #{$video-item-gap});
         position: relative;
         overflow: hidden;
         border-radius: 6px;
@@ -100,7 +98,7 @@ $recommend-item-h: 204px;
             bottom: 0px;
             width: 100%;
             height: 80px;
-            background-color: rgba(0, 0, 0, 0.4);
+            background-color: $color-mask-40;
             padding: 10px 20px 10px;
 
             // 子元素位置
@@ -129,7 +127,7 @@ $recommend-item-h: 204px;
                     text-overflow: ellipsis;
 
                     &:hover {
-                        color: #00AEEC;
+                        color: $color-bilibili-blue;
                     }
                 }
 
@@ -141,7 +139,7 @@ $recommend-item-h: 204px;
                         width: 10px;
                         height: 10px;
                         border-radius: 50%;
-                        background-color: rgba(255, 255, 255, 0.5);
+                        background-color: $color-overlay-50;
                         cursor: pointer;
                         transition: all 0.2s ease;
 
@@ -170,7 +168,7 @@ $recommend-item-h: 204px;
                     line-height: 30px;
                     text-align: center;
                     font-size: 20px;
-                    background-color: rgba(0, 0, 0, 0.4);
+                    background-color: $color-mask-40;
                     border-radius: 5px;
 
                     transition: all 0.1s ease;
@@ -189,8 +187,8 @@ $recommend-item-h: 204px;
 
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        grid-template-rows: repeat(2, $recommend-item-h);
-        gap: $grid-gap;
+        grid-template-rows: repeat(2, $video-item-height);
+        gap: $video-item-gap;
 
         .video-item {
             height: 100%;
@@ -202,7 +200,7 @@ $recommend-item-h: 204px;
 
 
 .el-carousel__item h3 {
-    color: #475669;
+    color: $color-carousel-text;
     opacity: 0.75;
     line-height: 200px;
     margin: 0;
@@ -210,11 +208,11 @@ $recommend-item-h: 204px;
 }
 
 .el-carousel__item:nth-child(2n) {
-    background-color: #99a9bf;
+    background-color: $color-carousel-bg-1;
 }
 
 .el-carousel__item:nth-child(2n + 1) {
-    background-color: #d3dce6;
+    background-color: $color-carousel-bg-2;
 }
 </style>
 
