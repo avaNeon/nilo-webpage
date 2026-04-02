@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Index from '@/pages/index/ui/Index.vue'
 import RecommendVideo from '@/widgets/recommendVideo/ui/RecommendVideo.vue';
+import SubCategoryBanner from '@/widgets/subCategoryBanner/ui/SubCategoryBanner.vue';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -21,7 +22,7 @@ const router = createRouter({
                 // 分类页
                 {
                     path: "c/:categoryNumber?/:subCategoryNumber?",
-                    component: RecommendVideo
+                    component: SubCategoryBanner
                 }
             ]
         },
