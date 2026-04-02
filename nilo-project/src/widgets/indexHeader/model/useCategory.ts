@@ -1,9 +1,8 @@
 import { ServicePrefixMap, Api } from "@/shared/config/Api";
 import useCategoryStore from "@/shared/store/CategoryStore";
-import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 
 export function useCategory() {
-    const loginStateStore = useLoginStateStore();
+    
     const categoryStore = useCategoryStore();
 
     // 请求图标的完整url
@@ -17,7 +16,6 @@ export function useCategory() {
     }
 
     return {
-        loginStateStore,
         categoryStore,
         getIcon
     }

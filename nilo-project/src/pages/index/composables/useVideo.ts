@@ -38,7 +38,7 @@ export function useVideo() {
         isLoading.value = true
         const result = await request({
             method: "get",
-            url: Api.loadVideo,
+            url: Api.loadVideoInfo,
             params,
         })
         isLoading.value = false

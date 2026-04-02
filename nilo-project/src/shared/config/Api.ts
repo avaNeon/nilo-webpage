@@ -34,7 +34,7 @@ const Api = {
     ucDeleteVideo: "/creativeCenter/deleteVideo",
     //获取视频列表
     loadRecommendVideo: "/video/recommend",
-    loadVideo: "/video/video",
+    loadVideoInfo: "/video/video",
     loadVideoPList: "/video/loadVideoPList",
     getVideoResource: "/api/file/videoResource",
     getVideoInfo: "/video/getVideoInfo",
@@ -66,11 +66,11 @@ const Api = {
     uHomeLoadVideo: "/uhome/loadVideoList",
     uHomeGetUsesrInfo: "/uhome/getUserInfo",
     //关注
-    uHomeFocus: "/uhome/focus",
+    follow: "/follow",
     //取消关注
-    uHomeCancelFocus: "/uhome/cancelFocus",
+    cancelFollow: "/cancelFollow",
     //关注列表
-    uHomeFocusList: "/uhome/loadFocusList",
+    followList: "/loadFollowList",
     //粉丝列表
     uHomeFansList: "/uhome/loadFansList",
     //视频系列

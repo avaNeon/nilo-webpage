@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import Avatar from '@/entities/ui/Avatar.vue';
 import { useCategory } from '../model/useCategory';
+import { imgRequestUrl } from '@/shared/utils/ImgUtil';
+import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 const props = withDefaults(defineProps<{ theme?: string }>(), {
     theme: "light"
 }) // theme属性，可以是light或dark，默认为light
 
-const { loginStateStore, categoryStore, getIcon } = useCategory();
-
+const { categoryStore, getIcon } = useCategory();
+const loginStateStore = useLoginStateStore();
 </script>
 
 <template>
@@ -44,8 +46,7 @@ const { loginStateStore, categoryStore, getIcon } = useCategory();
         </div>
         <div class="user">
             <div class="user-avatar">
-                <Avatar
-                    :src="loginStateStore.loginState && loginStateStore.userInfo && loginStateStore.userInfo.avatar ? loginStateStore.userInfo.avatar : ''"
+                <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar) : ''"
                     :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
                     :width="48">
                 </Avatar>

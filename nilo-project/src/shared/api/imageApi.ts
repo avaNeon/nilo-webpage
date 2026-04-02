@@ -25,5 +25,5 @@ export const imageApi = {
             return;
         }
         return result.data;
-    }
+    },
 }

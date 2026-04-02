@@ -5,8 +5,12 @@ const BODY_PADDING: string = '150px'
 // 首页推荐的视频（走马灯）数量
 const CAROUSEL_VIDEO_COUNT = 5
 
+// 视频界面左右两侧的内边距
+const VIDEO_PAGE_SIDE_PADDING = '200px'
+
 export {
     THUMBNAIL_SUFFIX,
     BODY_PADDING,
-    CAROUSEL_VIDEO_COUNT
+    CAROUSEL_VIDEO_COUNT,
+    VIDEO_PAGE_SIDE_PADDING
 }
