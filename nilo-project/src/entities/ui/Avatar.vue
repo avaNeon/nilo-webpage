@@ -61,7 +61,7 @@ function logout() {
     <div class="onLogin" v-if="loginStateStore.loginState">
         <RouterLink class="avatar" :to="`/user/${userId}`" target="_blank">
             <Cover :src="src" :lazy="lazy" :default-src="userSvg" :width="width" :scale="1" fit="cover"
-                border-radius="50%" border="2px white solid">
+                border-radius="50%" border="1px #bfbfbf solid">
             </Cover>
         </RouterLink>
         <div class="user-panel">

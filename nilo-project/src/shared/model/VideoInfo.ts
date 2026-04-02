@@ -1,10 +1,13 @@
+
 import type { BriefUserInfo } from "@/shared/model/BriefUserInfo";
+import type { PublicUserInfo } from "./PublicUserInfo";
 
 export interface VideoInfo {
     videoId: string | null;
     videoCover: string | null;
     videoName: string | null;
-    briefUserInfo: BriefUserInfo | null; // 引用 UserInfo.ts 中的定义
+    briefUserInfo: BriefUserInfo | null; // 引用 BriefUserInfo.ts 中的定义
+    userInfo: PublicUserInfo | null; // 引用 PublicUserInfo.ts 中的定义
     createTime: string | null;
     lastUpdateTime: string | null;
     pCategoryId: number | null;
