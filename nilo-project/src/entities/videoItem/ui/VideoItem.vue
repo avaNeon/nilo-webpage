@@ -3,6 +3,9 @@ import type { VideoInfo } from '@/shared/model/VideoInfo';
 import { calculateDuration, calculateRelativeTime } from '@/shared/utils/DateUtil';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { routerToNewPage } from '@/shared/utils/RouteUtil';
+import { useVideoItemRipple } from '../model/useVideoItemRipple';
+
+const { getRippleStyle } = useVideoItemRipple()
 
 const props = withDefaults(defineProps<{
     videoInfo: VideoInfo,
@@ -18,12 +21,12 @@ const props = withDefaults(defineProps<{
 }>(), {
     margin: '0'
 })
-
 </script>
 
 <template>
     <div :class="['video', props.type]" :style="{
-        margin: props.margin
+        margin: props.margin,
+        ...getRippleStyle(props.videoInfo),
     }">
         <RouterLink class="img-section" :to="`/video/${props.videoInfo.videoId}`"
             style="color: inherit; text-decoration: none;" target="_blank">
@@ -43,7 +46,6 @@ const props = withDefaults(defineProps<{
                 <span :title="props.videoInfo.videoName || ''">
                     {{ props.videoInfo.videoName }}
                 </span>
-
             </div>
             <div class="other-info"
                 :title="`${props.videoInfo.briefUserInfo?.nickName} · ${calculateRelativeTime(props.videoInfo.lastUpdateTime)}`">
@@ -54,22 +56,53 @@ const props = withDefaults(defineProps<{
             </div>
         </div>
     </div>
-
 </template>
 
 <style lang="scss" scoped>
+/* ─── 共用 ripple 伪元素 ─────────────────────────────────────────── */
+%ripple-base {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 0;
+        background-color: var(--ripple-color, #A29BFE);
+
+        /* 离开时：scale 缩回 0，先慢后快（ease-in） */
+        transform: scale(0);
+        opacity: 0;
+        transition:
+            transform 0.4s cubic-bezier(0, .82, .68, 1),
+            opacity 0.4s ease;
+    }
+
+    &:hover::before {
+        /* 进入时：scale 扩展到 1，先快后慢（ease-out），颜色速出 */
+        transform: scale(1);
+        opacity: 0.25;
+        transition:
+            transform 0.4s cubic-bezier(0, .82, .68, 1),
+            opacity 0.4s ease;
+    }
+}
+
+/* ─── horizontal ────────────────────────────────────────────────── */
 .video.horizontal {
+    @extend %ripple-base;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-
     height: 100%;
-
-    padding: 5px;
+    padding: 10px;
     border-radius: 5px;
-
-    transition: all 0.2s ease;
-
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
 
     &:hover {
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
@@ -82,9 +115,9 @@ const props = withDefaults(defineProps<{
         height: 75%;
         border-radius: 5px;
         cursor: pointer;
-
         position: relative;
         overflow: hidden;
+        z-index: 1;
 
         .cover {
             display: block;
@@ -92,8 +125,6 @@ const props = withDefaults(defineProps<{
             height: 100%;
             border-radius: 5px;
 
-
-            /* 底部渐变覆盖层：从透明到半透明黑，位于图片之上 */
             &::after {
                 content: '';
                 position: absolute;
@@ -101,7 +132,6 @@ const props = withDefaults(defineProps<{
                 right: 0;
                 bottom: 0;
                 height: 20%;
-                /* 覆盖底部 20% 高度 */
                 background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, $color-mask-60 100%);
                 pointer-events: none;
             }
@@ -117,13 +147,10 @@ const props = withDefaults(defineProps<{
         .video-detail {
             width: 100%;
             padding: 5px 10px;
-
             color: white;
             font-size: 14px;
-
             position: absolute;
             bottom: 0;
-
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -141,7 +168,6 @@ const props = withDefaults(defineProps<{
                 }
             }
         }
-
     }
 
     .video-info {
@@ -149,26 +175,25 @@ const props = withDefaults(defineProps<{
         display: flex;
         flex-direction: column;
         justify-content: end;
+        z-index: 1;
 
         .video-name {
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
             cursor: pointer;
-
             text-wrap: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
 
             &:hover {
-                color: $color-bilibili-blue;
+                font-size: 16px;
             }
         }
 
         .other-info {
             height: 20px;
             line-height: 20px;
-
             text-wrap: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -179,7 +204,7 @@ const props = withDefaults(defineProps<{
                 cursor: pointer;
 
                 &:hover {
-                    color: $color-bilibili-blue;
+                    font-size: 16px;
                 }
 
                 &::before {
@@ -196,19 +221,17 @@ const props = withDefaults(defineProps<{
     }
 }
 
+/* ─── vertical ──────────────────────────────────────────────────── */
 .video.vertical {
-    flex: 1 1 0;
+    @extend %ripple-base;
 
+    flex: 1 1 0;
     display: flex;
     justify-content: space-between;
-
     height: 100%;
-
     padding: 5px;
     border-radius: 5px;
-
-    transition: all 0.2s ease;
-
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
 
     &:hover {
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
@@ -221,9 +244,9 @@ const props = withDefaults(defineProps<{
         height: 100%;
         border-radius: 5px;
         cursor: pointer;
-
         position: relative;
         overflow: hidden;
+        z-index: 1;
 
         .cover {
             display: block;
@@ -231,8 +254,6 @@ const props = withDefaults(defineProps<{
             height: 100%;
             border-radius: 5px;
 
-
-            /* 底部渐变覆盖层：从透明到半透明黑，位于图片之上 */
             &::after {
                 content: '';
                 position: absolute;
@@ -240,7 +261,6 @@ const props = withDefaults(defineProps<{
                 right: 0;
                 bottom: 0;
                 height: 20%;
-                /* 覆盖底部 20% 高度 */
                 background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, $color-mask-60 100%);
                 pointer-events: none;
             }
@@ -256,13 +276,10 @@ const props = withDefaults(defineProps<{
         .video-detail {
             width: 100%;
             padding: 5px 10px;
-
             color: white;
             font-size: 14px;
-
             position: absolute;
             bottom: 0;
-
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -280,10 +297,11 @@ const props = withDefaults(defineProps<{
                 }
             }
         }
-
     }
 
     .video-info {
+        z-index: 1;
+
         .video-name {
             font-weight: 500;
             transition: all 0.2s ease;
@@ -301,7 +319,6 @@ const props = withDefaults(defineProps<{
             .author-name {
                 font-size: 14px;
                 color: $color-text-muted;
-
                 font-weight: 500;
                 transition: all 0.2s ease;
                 cursor: pointer;

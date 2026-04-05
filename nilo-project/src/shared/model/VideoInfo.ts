@@ -10,8 +10,8 @@ export interface VideoInfo {
     userInfo: PublicUserInfo | null; // 引用 PublicUserInfo.ts 中的定义
     createTime: string | null;
     lastUpdateTime: string | null;
-    pCategoryId: number | null;
-    categoryId: number | null;
+    pCategoryNumber: string | null;
+    categoryNumber: string | null;
     postType: number | null;
     originInfo: string | null;
     tags: string | null;
