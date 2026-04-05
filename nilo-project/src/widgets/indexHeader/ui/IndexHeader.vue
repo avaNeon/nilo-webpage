@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Avatar from '@/entities/ui/Avatar.vue';
+import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { useCategory } from '../model/useCategory';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';

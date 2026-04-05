@@ -1,4 +1,4 @@
-import type { CaptchaInfo } from "@/entities/model/CaptchaInfo"
+import type { CaptchaInfo } from "@/shared/model/CaptchaInfo"
 import { Api } from "@/shared/config/Api"
 import request from "@/shared/lib/request"
 import { ref } from "vue"

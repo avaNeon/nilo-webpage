@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import VideoItem from '@/entities/ui/VideoItem.vue';
+import VideoItem from '@/entities/videoItem/ui/VideoItem.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useVideo } from '../model/useVideo';
 import { useCarousel } from '../model/useCarousel';

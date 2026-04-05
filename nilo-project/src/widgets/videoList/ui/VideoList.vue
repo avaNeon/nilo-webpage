@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VideoList } from '@/shared/model/VideoList';
 import VideoLayout from '@/entities/videoLayout/ui/VideoLayout.vue';
-import VideoItem from '@/entities/ui/VideoItem.vue';
+import VideoItem from '@/entities/videoItem/ui/VideoItem.vue';
 import NoData from '@/entities/noData/ui/NoData.vue';
 import { inject } from 'vue';
 
