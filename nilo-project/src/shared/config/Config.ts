@@ -6,7 +6,7 @@ const BODY_PADDING: string = '150px'
 const CAROUSEL_VIDEO_COUNT = 5
 
 // 视频界面左右两侧的内边距
-const VIDEO_PAGE_SIDE_PADDING = '200px'
+const VIDEO_PAGE_SIDE_PADDING: number = 200
 
 export {
     THUMBNAIL_SUFFIX,
