@@ -128,13 +128,10 @@ body {
     }
 
     .category {
-        position: absolute;
         width: 100%;
-        z-index: 100;
     }
 
     .router-view {
-        margin-top: 110px;
         margin-bottom: 10px;
     }
 }
