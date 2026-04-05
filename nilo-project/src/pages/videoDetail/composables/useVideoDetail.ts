@@ -17,8 +17,6 @@ export function useVideoDetail() {
         }
         videoInfo.value = result.data
         avatarUrl.value = videoInfo.value?.userInfo?.avatar ? videoInfo.value.userInfo.avatar : ''
-
-        console.log(avatarUrl.value)
     }
 
     return { videoInfo, avatarUrl, loadVideoInfo }
