@@ -4,12 +4,12 @@ import { useVideoDetail } from '../composables/useVideoDetail';
 import { VIDEO_PAGE_SIDE_PADDING } from '@/shared/config/Config';
 import { inject, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import Avatar from '@/entities/ui/Avatar.vue';
+import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import Account from '@/features/account/ui/Account.vue';
-import request from '@/shared/lib/request';
-import { Api } from '@/shared/config/Api';
+import Player from '@/features/player/ui/Player.vue';
+import useVideoStateStore from '../store/VideoStateStore';
 
 const { videoInfo, avatarUrl, loadVideoInfo } = useVideoDetail();
 const route = useRoute();
@@ -25,7 +25,6 @@ const avatarSize = 60
 //TODO 关注状态
 const haveFollowed = ref(false)
 const followerCount = ref(0)
-const followingCount = ref(0)
 
 //TODO follow
 function subscribe() {
@@ -68,6 +67,8 @@ function unsubscribe() {
     haveFollowed.value = false
 }
 
+const videoStateStore = useVideoStateStore()
+
 onMounted(() => {
     if (route.params.videoId) {
         loadVideoInfo(route.params.videoId as string)
@@ -78,7 +79,7 @@ onMounted(() => {
 
 <template>
     <Account />
-    <div class="page-content" :style="{
+    <div :class="['page-content', videoStateStore.displayMode]" :style="{
         'max-width': mainContentMaxWidth + 'px',
         'min-width': mainContentMinWidth + 'px',
     }">
@@ -89,8 +90,8 @@ onMounted(() => {
             <IndexHeader theme="dark" />
         </header>
         <div class="video-content" :style="{
-            'paddingLeft': VIDEO_PAGE_SIDE_PADDING,
-            'paddingRight': VIDEO_PAGE_SIDE_PADDING,
+            'paddingLeft': VIDEO_PAGE_SIDE_PADDING + 'px',
+            'paddingRight': VIDEO_PAGE_SIDE_PADDING + 'px',
         }">
             <div class="top-content">
                 <div class="left">
@@ -141,7 +142,9 @@ onMounted(() => {
                 </div>
             </div>
 
-
+            <div class="main-content">
+                <Player></Player>
+            </div>
         </div>
     </div>
 </template>
@@ -164,14 +167,21 @@ $info-font-size: 16px;
     }
 
     .video-content {
-        margin-top: 30px;
+        margin-top: 20px;
 
         .top-content {
             display: flex;
             justify-content: space-between;
 
+            .left,
+            .right {
+                flex: 1;
+
+                transition: all 0.4s ease;
+            }
+
             .left {
-                width: 70%;
+                max-width: 70%;
 
                 .video-title {
                     font-size: $title-font-size;
@@ -197,7 +207,7 @@ $info-font-size: 16px;
             }
 
             .right {
-                width: 25%;
+                max-width: 25%;
 
                 .user-info {
                     display: flex;
@@ -264,6 +274,20 @@ $info-font-size: 16px;
 
         }
 
+        .main-content {
+            margin: 20px 0;
+        }
+    }
+
+    &.theater>.video-content {
+
+        .top-content {
+            column-gap: 20px;
+
+            .right {
+                max-width: 30%;
+            }
+        }
     }
 }
 </style>
