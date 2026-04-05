@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import useCategoryStore from '@/shared/store/CategoryStore';
 import { BODY_PADDING } from '@/shared/config/Config';
 import { useTimer } from '../model/useTimer';
+import { useRipple } from '../model/useRipple';
 
 const categoryStore = useCategoryStore();
 const { isUnfoldedHovered, isFoldedHovered, itemHover, subItemsDalayAndTransition, waitAndChange, waitAndLeave } = useTimer();
+const rippleLayerRef = ref<HTMLElement | null>(null)
+const { onItemMousedown } = useRipple(rippleLayerRef)
 
 const props = withDefaults(defineProps<{
     folded?: boolean
@@ -13,6 +17,7 @@ const props = withDefaults(defineProps<{
 }>(), {
     folded: false,
 })
+
 
 </script>
 
@@ -30,7 +35,10 @@ const props = withDefaults(defineProps<{
             <div :class="['category-item-container', categoryStore.currentPCategory?.categoryNumber === categoryItem.categoryNumber ? 'active' : '']"
                 v-for="categoryItem in categoryStore.categoryList" :key="categoryItem.categoryNumber"
                 @mouseenter="waitAndChange($event)" @mouseleave="waitAndLeave($event)">
-                <RouterLink class="category-item" :to="`/c/${categoryItem.categoryNumber}`">
+                <RouterLink draggable="false" class="category-item" :to="`/c/${categoryItem.categoryNumber}`"
+                    @mousedown="(e) => onItemMousedown(e, categoryItem.color)" :style="{
+                        background: categoryStore.currentPCategory?.categoryNumber === categoryItem.categoryNumber ? categoryItem.color + '50' : '',
+                    }">
                     <span class="category-name">
                         {{ categoryItem.categoryName }}
                     </span>
@@ -75,24 +83,29 @@ const props = withDefaults(defineProps<{
         </RouterLink>
         <div class="category-items" :class="{ expanded: isFoldedHovered }">
             <RouterLink class="category-item" v-for="categoryItem in categoryStore.categoryList"
-                :key="categoryItem.categoryNumber" :to="`/c/${categoryItem.categoryNumber}`">
-                <span class="category-name">
-                    {{ categoryItem.categoryName }}
+                :key="categoryItem.categoryNumber" :to="`/c/${categoryItem.categoryNumber}`"">
+                <span class=" category-name">
+                {{ categoryItem.categoryName }}
                 </span>
             </RouterLink>
         </div>
         <img class="down-arrow" :class="{ rotated: isFoldedHovered }" src="@/assets/down_arrow.svg" alt="展开箭头" />
     </div>
 
+    <Teleport to="body">
+        <div class="category-page-ripple-layer" ref="rippleLayerRef"></div>
+    </Teleport>
 </template>
 
 <style lang="scss" scoped>
 .category-bar {
+
     display: flex;
     padding-top: 5px;
     padding-bottom: 5px;
     background-color: white;
     justify-content: space-around;
+    position: relative;
 
     &.unfolded {
         border-bottom: $color-border solid 1px;
@@ -123,6 +136,7 @@ const props = withDefaults(defineProps<{
         }
 
         .category-items {
+
             display: flex;
             flex-wrap: wrap;
             flex: 1;
@@ -161,7 +175,6 @@ const props = withDefaults(defineProps<{
                 &.active {
 
                     .category-item {
-                        color: $color-bilibili-blue;
                         font-weight: 500;
                     }
                 }
@@ -180,7 +193,6 @@ const props = withDefaults(defineProps<{
 
                     &:hover {
                         background-color: $color-surface-hover;
-                        color: $color-bilibili-blue;
                     }
 
                     .category-name {
@@ -398,5 +410,43 @@ const props = withDefaults(defineProps<{
 
     }
 
+}
+</style>
+
+<style lang="scss">
+.category-page-ripple-layer {
+    position: fixed;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 201;
+    /* top 和 height 由 useRipple 在每次 mousedown 时动态设置 */
+}
+
+.category-ripple-press {
+    position: absolute;
+    border-radius: 50%;
+    /* background-color 由 useRipple 内联设置，支持自定义颜色 */
+    pointer-events: none;
+    transform: scale(0);
+    animation: category-ripple-press 0.8s ease-out forwards;
+}
+
+@keyframes category-ripple-press {
+    0% {
+        transform: scale(0);
+        opacity: 0.2;
+    }
+
+    60% {
+        transform: scale(1);
+        opacity: 0.12;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
 }
 </style>

@@ -19,4 +19,6 @@ export interface CategoryInfo {
 
     /** 子分类 */
     children?: CategoryInfo[];
+
+    color?: string;
 }
