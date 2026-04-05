@@ -2,11 +2,7 @@
 import Cover from '@/shared/ui/Cover.vue';
 import userSvg from '@/assets/user.svg';
 import loginSvg from '@/assets/login.svg';
-import { useLoginStateStore } from '@/shared/store/LoginStateStore';
-import request from '@/shared/lib/request';
-import { Api } from '@/shared/config/Api';
-import message from '@/shared/lib/message';
-import confirm from '@/shared/lib/confirm';
+import { useAvatar } from '../model/useAvatar';
 
 const props = withDefaults(defineProps<{
     userId: string | null,
@@ -16,44 +12,8 @@ const props = withDefaults(defineProps<{
 }>(), {
     userId: null
 })
-// 用户基本信息
-const loginStateStore = useLoginStateStore();
-// 未登录时点击头像可以打开登录面板
-function clickLogin() {
-    loginStateStore.showPanel = true;
-}
 
-// TODO 获取用户关系信息，后端接口还没写，之后需要在登陆成功后调用这个函数获取用户关系信息
-async function getUserRelation() {
-    const result = await request({ method: 'get', url: Api.getUserRelation })
-    if (!result?.data) {
-        return
-    }
-    loginStateStore.setFollowerCount(result.data.followerCount)
-    loginStateStore.setFollowingCount(result.data.followingCount)
-    loginStateStore.setCurrentCoin(result.data.currentCoin)
-}
-
-// 登出
-function logout() {
-    confirm({
-        message: "确定要退出登录吗？",
-        async confirmFun() {
-            const result = await request({ method: 'get', url: Api.logout })
-            if (!result?.data) {
-                return
-            }
-            if (result.data) {
-                message.success("成功登出！")
-                loginStateStore.setLoginState(false)
-                loginStateStore.setUserInfo(null)
-                loginStateStore.setFollowerCount(0)
-                loginStateStore.setFollowingCount(0)
-                loginStateStore.setCurrentCoin(0)
-            }
-        }
-    })
-}
+const { loginStateStore, clickLogin, logout } = useAvatar()
 </script>
 
 <template>
@@ -120,7 +80,7 @@ function logout() {
                计算逻辑：
                1. 基础位移：left: 50%, top: 50%, translateX(-50%) 让面板顶部中点对齐头像中心。
                2. 同步移动：加上和头像一样的 translate(-30px, 30px)。
-               3. 保持相对位置：因为缩放中心默认是中心，而我们希望“顶部中点”对齐“头像中心”，
+               3. 保持相对位置：因为缩放中心默认是中心，而我们希望"顶部中点"对齐"头像中心"，
                   所以通过 transform-origin: top center 将缩放原点固定在面板顶部中点。
                   这样放大时面板会向四周扩散，但顶部中点依然死死钉在头像中心。
             */
