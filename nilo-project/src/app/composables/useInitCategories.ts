@@ -2,7 +2,6 @@ import useCategoryStore from '@/shared/store/CategoryStore'
 import { Api } from '@/shared/config/Api'
 import request from '@/shared/lib/request'
 import type { CategoryInfo } from '@/shared/model/CategoryInfo'
-import { ServiceType } from '@/shared/model/ServiceType'
 
 /**
  * 初始化分类信息
@@ -15,7 +14,7 @@ export function useInitCategories() {
      * 将全部分类信息加载到 CategoryStore 中，包含 categoryList 和 categoryMap
      */
     async function loadAllCategories() {
-        const result = await request({ method: 'get', url: Api.loadAllCategories, serviceType: ServiceType.admin })
+        const result = await request({ method: 'get', url: Api.loadAllCategories })
         if (!result?.data) {
             return
         }
