@@ -1,8 +1,7 @@
 import Artplayer from "artplayer"
 import Hls from 'hls.js'
-import { shallowRef, reactive, useTemplateRef } from "vue"
-import videoSrc from '@/assets/sample/index.m3u8?url'
-import posterSrc from '@/assets/sample/poster.jpg'
+import { shallowRef, reactive, useTemplateRef, ref, watch, computed } from "vue"
+// video source will be provided by backend at runtime
 import stateSrc from '@/assets/player/play.svg'
 import rollingLoadingSrc from '@/assets/player/rolling-loading.svg'
 import indicatorSrc from '@/assets/player/indicator.svg'
@@ -12,33 +11,55 @@ import theaterModeSrc from '@/assets/player/theater-mode.svg'
 import artplayerPluginDanmuku, { type Danmu } from "artplayer-plugin-danmuku"
 import message from "@/shared/lib/message"
 import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore"
+import { useRoute } from "vue-router"
+import request from "@/shared/lib/request"
+import { Api, ServicePrefixMap } from "@/shared/config/Api"
+import { ServiceType } from "@/shared/model/ServiceType"
+import { imgRequestUrl } from "@/shared/utils/ImgUtil"
+import router from "@/app/router"
 
 
 export function usePlayer() {
-    const $container = useTemplateRef<HTMLDivElement>('$container')
+    const route = useRoute()
+    const videoStateStore = useVideoStateStore()
 
+    const $container = useTemplateRef<HTMLDivElement>('$container')
     const art = shallowRef<Artplayer | null>()
 
+    const playerHeight = ref(500)
     const style = reactive({
         width: '100%',
-        height: '500px',
+        height: '100%',
+        minWidth: '0',
     })
 
-    const videoStateStore = useVideoStateStore()
+    let playlistBlobUrl = ''
+
+    const coverSrc = ref<string>('')
+
+    function loadCover(videoCover: string | null) {
+        coverSrc.value = imgRequestUrl(videoCover)
+
+        if (art.value) {
+            art.value.poster = coverSrc.value
+        }
+    }
 
     function enableTheaterMode() {
         videoStateStore.setDisplayMode('theater')
-        style.height = '550px'
+        playerHeight.value = 550
     }
 
     function disableTheaterMode() {
         videoStateStore.setDisplayMode('normal')
-        style.height = '500px'
+        playerHeight.value = 500
     }
+
+    const videoId = computed(() => route.params.videoId as string)
 
     //TODO waiting for backend API
     // save danmaku to database
-    function postDanmu(_danmaku: any) {
+    function postDanmaku(_danmaku: any) {
         return new Promise(resolve => {
             setTimeout(() => {
                 resolve(true)
@@ -48,13 +69,114 @@ export function usePlayer() {
 
     //TODO waiting for backend API
     async function loadDanmakuList(): Promise<Danmu[]> {
-        return new Promise(_resolve => { })
+        // if (!videoInfoFile.value || !videoInfoFile.value.fileName || !videoInfoFile.value.fileIndex) {
+        //     return []
+        // }
+        // const result = await request({
+        //     method: 'get',
+        //     url: Api.loadDanmaku,
+        //     params: {
+        //         videoId: videoId.value,
+        //         fileIndex: videoInfoFile.value.fileIndex,
+        //     }
+        // })
+        // if (!result) {
+        //     return []
+        // }
+        // danmakuList.value = result.data
+        // return danmakuList.value
+        return []
+    }
+
+    /**
+     * Build the browser-reachable backend prefix for video resources.
+     * Must be an absolute URL so Hls.js can fetch TS segments without resolving
+     * them relative to the blob playlist URL (which would mangle the URL).
+     */
+    function getVideoResourceBaseUrl() {
+        return `${window.location.origin}${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap[ServiceType.web] || ''}`
+    }
+
+    /**
+     * Build a playable TS URL that matches the backend controller signature.
+     */
+    function buildTsUrl(tsPathStr: string, index: number) {
+        return `${getVideoResourceBaseUrl()}${Api.downloadTsResource}/${videoId.value}?index=${index}&tsPathStr=${encodeURIComponent(tsPathStr)}`
+    }
+
+    /**
+     * Rewrite a raw m3u8 playlist so every relative TS file name becomes a reachable backend URL.
+     */
+    function rewriteRawM3U8(rawM3U8: string, index: number) {
+        return rawM3U8
+            .split(/\r?\n/)
+            .map((line) => {
+                const trimmed = line.trim()
+                if (!trimmed || trimmed.startsWith('#')) {
+                    return line
+                }
+                return buildTsUrl(trimmed, index)
+            })
+            .join('\n')
+    }
+
+    /**
+     * Turn rewritten playlist text into a blob URL that Artplayer/Hls.js can consume.
+     */
+    function createPlaylistBlobUrl(rawM3U8: string, index: number) {
+        if (playlistBlobUrl) {
+            URL.revokeObjectURL(playlistBlobUrl)
+            playlistBlobUrl = ''
+        }
+
+        const rewrittenM3U8 = rewriteRawM3U8(rawM3U8, index)
+        const blob = new Blob([rewrittenM3U8], { type: 'application/vnd.apple.mpegurl' })
+        playlistBlobUrl = URL.createObjectURL(blob)
+        return playlistBlobUrl
+    }
+
+    /**
+     * Load a remote HLS source into Artplayer.
+     * Artplayer's built-in switchUrl keeps playback state aligned with the new source.
+     */
+    async function loadRemote(url: string) {
+        if (!art.value) return
+        await art.value.switchUrl(url)
+    }
+
+    /**
+     * Ask the backend for the raw m3u8 text, rewrite TS lines into backend URLs,
+     * then hand the generated playlist blob to Artplayer.
+     */
+    async function loadVideoFileByIndex(index: number) {
+        if (index <= 0) {
+            index = 1
+        }
+        const rawM3U8 = await request({
+            method: 'get',
+            url: Api.getVideoResource + "/" + videoId.value,
+            params: {
+                index,
+            },
+            responseType: 'text',
+            showLoading: true,
+        })
+
+        if (!rawM3U8 || typeof rawM3U8 !== 'string') {
+            message.error('获取资源失败')
+            return
+        }
+
+        const playlistUrl = createPlaylistBlobUrl(rawM3U8, index)
+        await loadRemote(playlistUrl)
     }
 
     function initArt() {
+        // Create the player shell first; the real HLS source is loaded from the backend.
+        // initalize Artplayer
         art.value = new Artplayer({
             container: $container.value as HTMLDivElement,
-            url: videoSrc,
+            url: '',
             type: 'm3u8',
             customType: {
                 m3u8: function (video, url, art) {
@@ -72,13 +194,13 @@ export function usePlayer() {
                     }
                 },
             },
-            poster: posterSrc,
+            poster: coverSrc.value,
             volume: 0.6,
             isLive: false,
             muted: false,
-            autoplay: false,
+            autoplay: videoStateStore.autoPlay,
             pip: true,
-            autoSize: true,
+            autoSize: false,
             autoMini: true,
             screenshot: true,
             setting: true,
@@ -249,7 +371,7 @@ export function usePlayer() {
                     async beforeEmit(danmaku: Danmu) {
                         const isDirty = (/fuck/i).test(danmaku.text)
                         if (isDirty) return false
-                        const result = await postDanmu(danmaku)
+                        const result = await postDanmaku(danmaku)
                         loadDanmakuList()
                         if (!result) {
                             return false
@@ -339,6 +461,29 @@ export function usePlayer() {
             // ],
         })
 
+        // Load the initial route selection immediately after the player is created.
+        if (videoId.value) {
+            void loadVideoFileByIndex(Number(route.params.index))
+        }
+
+        art.value.on('video:ended', () => {
+            if (videoStateStore.autoPlay && videoStateStore.videoFileList.length > 1 && Number(route.params.index) < videoStateStore.videoFileList.length) {
+                router.push({
+                    name: "video",
+                    params: {
+                        videoId: route.params.videoId,
+                        index: Number(route.params.index) + 1
+                    }
+                })
+            }
+        })
+
+        art.value.on('destroy', () => {
+            if (playlistBlobUrl) {
+                URL.revokeObjectURL(playlistBlobUrl)
+                playlistBlobUrl = ''
+            }
+        })
     }
 
     /** print the current Artplayer instance */
@@ -346,12 +491,37 @@ export function usePlayer() {
         console.log(art.value)
     }
 
+    // watch for detecting video file changes to load new source from backend
+    watch(
+        () => [route.params.videoId, route.params.index],
+        ([nextVideoId, nextIndex]) => {
+            if (!nextVideoId || !art.value) {
+                return
+            }
+            void loadVideoFileByIndex(Number(nextIndex))
+        }
+    )
+
+    // watch for loading video cover
+    watch(
+        () => videoStateStore.videoInfo.videoCover,
+        (videoCover) => {
+            loadCover(videoCover)
+        },
+        { immediate: true }
+    )
+
+
+
     return {
         art,
+        playerHeight,
         style,
         $container,
         videoStateStore,
         initArt,
         getInstance,
+        loadRemote,
+        loadVideoFileByIndex,
     }
 }
