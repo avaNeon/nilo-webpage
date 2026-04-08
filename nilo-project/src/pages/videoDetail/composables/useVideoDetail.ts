@@ -1,10 +1,10 @@
 import { Api } from "@/shared/config/Api";
 import request from "@/shared/lib/request";
-import type { VideoInfo } from "@/shared/model/VideoInfo";
 import { ref } from "vue";
+import useVideoStateStore from "../store/VideoStateStore";
 
 export function useVideoDetail() {
-    const videoInfo = ref<VideoInfo | null>(null)
+    const videoStateStore = useVideoStateStore()
     const avatarUrl = ref<string>('')
 
     async function loadVideoInfo(videoId: string) {
@@ -15,9 +15,9 @@ export function useVideoDetail() {
         if(!result) {
             return
         }
-        videoInfo.value = result.data
-        avatarUrl.value = videoInfo.value?.userInfo?.avatar ? videoInfo.value.userInfo.avatar : ''
+        videoStateStore.setVideoInfo(result.data)
+        avatarUrl.value = videoStateStore.videoInfo.userInfo?.avatar ? videoStateStore.videoInfo.userInfo.avatar : ''
     }
 
-    return { videoInfo, avatarUrl, loadVideoInfo }
+    return { avatarUrl, loadVideoInfo }
 }
