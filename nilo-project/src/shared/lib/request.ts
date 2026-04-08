@@ -48,7 +48,7 @@ instance.interceptors.response.use(
             loading.close()
         }
         const responseData = response.data;
-        if (responseType == "arraybuffer" || responseType == "blob") {
+        if (responseType == "arraybuffer" || responseType == "blob" || responseType == "text") {
             return responseData;
         }
         //正常请求
@@ -136,6 +136,7 @@ const request = (config: RequestConfig) => {
         return instance.get(realUrl, {
             params,
             headers,
+            responseType,
             errorCallback,
             showLoading,
             showError,

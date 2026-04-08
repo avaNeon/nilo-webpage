@@ -27,16 +27,17 @@ const Api = {
     ucLoadAllVideo: "/creativeCenter/loadAllVideo",
     ucLoadComment: "/creativeCenter/loadComment",
     ucDelComment: "/creativeCenter/delComment",
-    ucLoadDanmu: "/creativeCenter/loadDanmu",
-    ucDelDanmu: "/creativeCenter/delDanmu",
+    ucLoadDanmaku: "/creativeCenter/loadDanmaku",
+    ucDelDanmaku: "/creativeCenter/delDanmaku",
     ucGetActualTimeStatisticsInfo: "/creativeCenter/getActualTimeStatisticsInfo",
     getWeekStatisticsInfo: "/creativeCenter/getWeekStatisticsInfo",
     ucDeleteVideo: "/creativeCenter/deleteVideo",
     //获取视频列表
     loadRecommendVideo: "/video/recommend",
     loadVideoInfo: "/video/video",
-    loadVideoPList: "/video/loadVideoPList",
-    getVideoResource: "/api/file/videoResource",
+    loadVideoFileList: "/video/file",
+    getVideoResource: "/file/video/resource",
+    downloadTsResource: "/file/video/ts",
     getVideoInfo: "/video/getVideoInfo",
     //评论
     loadComment: "/comment/loadComment",
@@ -45,8 +46,8 @@ const Api = {
     userTopComment: "/comment/topComment",
     userCancelTopComment: "/comment/cancelTopComment",
     //弹幕
-    loadDanmu: "/danmu/loadDanmu",
-    postDanmu: "/danmu/postDanmu",
+    loadDanmaku: "/danmaku/danmaku",
+    postDanmaku: "/danmaku/danmaku",
     //上报在线人数
     reportVideoPlayOnline: "/video/reportVideoPlayOnline",
     //点赞，评论，投币，评论，收藏
