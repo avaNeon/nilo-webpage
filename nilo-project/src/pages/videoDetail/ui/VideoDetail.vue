@@ -108,17 +108,18 @@ onMounted(() => {
                     <div class="user-info">
                         <Avatar class="avatar" :style="{
                             'height': avatarSize + 'px',
-                        }" :user-id="videoStateStore.videoInfo?.userInfo?.userId || null" :src="imgRequestUrl(avatarUrl)"
-                            :width="avatarSize" :lazy="true">
+                        }" :user-id="videoStateStore.videoInfo?.userInfo?.userId || null"
+                            :src="imgRequestUrl(avatarUrl)" :width="avatarSize" :lazy="true">
                         </Avatar>
                         <div class="user-detail">
-                            <RouterLink class="user-name-router-link" :to="`/user/${videoStateStore.videoInfo?.userInfo?.userId}`"
-                                target="_blank">
+                            <RouterLink class="user-name-router-link"
+                                :to="`/user/${videoStateStore.videoInfo?.userInfo?.userId}`" target="_blank">
                                 <span class="user-name" :title="videoStateStore.videoInfo?.userInfo?.nickName ?? ''">
                                     {{ videoStateStore.videoInfo?.userInfo?.nickName }}
                                 </span>
                             </RouterLink>
-                            <span class="user-bio" :title="videoStateStore.videoInfo?.userInfo?.personalIntroduction ?? 'no bio now'">
+                            <span class="user-bio"
+                                :title="videoStateStore.videoInfo?.userInfo?.personalIntroduction ?? 'no bio now'">
                                 {{ videoStateStore.videoInfo?.userInfo?.personalIntroduction || 'no bio now' }}
                             </span>
                             <div class="follow">
@@ -147,6 +148,15 @@ onMounted(() => {
             <div class="main-content">
                 <div class="left">
                     <Player></Player>
+                </div>
+                <div class="right">
+                    <VideoPartitionList></VideoPartitionList>
+                </div>
+            </div>
+
+            <div class="bottom-content">
+                <div class="left">
+
                 </div>
                 <div class="right">
                     <VideoPartitionList></VideoPartitionList>
@@ -305,6 +315,33 @@ $right-content-max-width: 25%;
             }
 
         }
+
+        .bottom-content {
+            margin-top: 50px;
+
+            display: flex;
+            justify-content: space-between;
+
+            .left {
+                flex: 1;
+
+                max-width: $left-content-max-width;
+                transition: all 0.4s ease;
+            }
+
+            .right {
+                flex: 1;
+
+                display: flex;
+                flex-direction: column;
+
+                max-width: $right-content-max-width;
+                max-height: 0;
+                overflow: hidden;
+                opacity: 0;
+                transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
+            }
+        }
     }
 
     &.theater>.video-content {
@@ -326,6 +363,14 @@ $right-content-max-width: 25%;
             .right {
                 max-width: 0%;
                 opacity: 0;
+            }
+        }
+
+        .bottom-content {
+            .right {
+                max-height: 600px;
+                opacity: 1;
+                margin-top: 20px;
             }
         }
     }

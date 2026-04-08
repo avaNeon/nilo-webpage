@@ -33,7 +33,7 @@ onBeforeUnmount(() => {
                 <div id="danmaku" class="danmaku" v-show="showDanmaku"></div>
             </div>
             <div id="play" class="play">
-                <img class="play-icon" src="@/assets/pause.svg" alt="pause" />
+                <img class="play-icon" src="@/assets/play.svg" alt="pause" />
             </div>
         </div>
     </div>
@@ -67,8 +67,8 @@ onBeforeUnmount(() => {
         .play {
 
             .play-icon {
-                width: 48px;
-                height: 48px;
+                width: 80px;
+                height: 80px;
             }
         }
     }
