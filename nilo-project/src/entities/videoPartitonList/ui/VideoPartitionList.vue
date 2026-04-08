@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import pulseLoading from '@/assets/pulse_loading.svg';
-import { onMounted, ref } from 'vue';
+import { onMounted } from 'vue';
 import { useVideoFile } from '../model/useVideoFile';
 import { calculateDuration } from '@/shared/utils/DateUtil';
 import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
@@ -51,6 +51,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .video-list-panel {
     width: 100%;
+    max-height: 100%;
     background-color: #f0eded;
     border-radius: 10px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);

@@ -48,11 +48,31 @@ export function usePlayer() {
     function enableTheaterMode() {
         videoStateStore.setDisplayMode('theater')
         playerHeight.value = 550
+        const theaterMode = art.value?.controls?.['theater-mode']
+        const closeTheaterMode = art.value?.controls?.['close-theater-mode']
+
+        if (theaterMode && 'style' in theaterMode) {
+            theaterMode.style.display = 'none'
+        }
+
+        if (closeTheaterMode && 'style' in closeTheaterMode) {
+            closeTheaterMode.style.display = 'flex'
+        }
     }
 
     function disableTheaterMode() {
         videoStateStore.setDisplayMode('normal')
         playerHeight.value = 500
+        const theaterMode = art.value?.controls?.['theater-mode']
+        const closeTheaterMode = art.value?.controls?.['close-theater-mode']
+
+        if (theaterMode && 'style' in theaterMode) {
+            theaterMode.style.display = 'flex'
+        }
+
+        if (closeTheaterMode && 'style' in closeTheaterMode) {
+            closeTheaterMode.style.display = 'none'
+        }
     }
 
     const videoId = computed(() => route.params.videoId as string)
@@ -325,6 +345,7 @@ export function usePlayer() {
                     index: 2,
                     tooltip: 'close theater mode',
                     style: {
+                        display: 'none',
                     },
                     click() {
                         disableTheaterMode()
