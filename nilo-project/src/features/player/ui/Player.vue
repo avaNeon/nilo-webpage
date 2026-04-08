@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { usePlayer } from '../model/usePlayer';
 
-const { art, style, videoStateStore, initArt } = usePlayer()
+const { art, playerHeight, style, videoStateStore, initArt } = usePlayer()
 
 const watcher = ref(0)
 const danmakuNumber = ref(0)
@@ -21,7 +21,8 @@ onBeforeUnmount(() => {
 
 <template>
     <div :class="['player-panel', videoStateStore.displayMode]">
-        <div class="left" :style="{
+        <div class="content" :style="{
+            height: playerHeight + 'px',
             width: style.width
         }">
             <div ref="$container" :style="style" />
@@ -41,10 +42,7 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .player-panel {
 
-    .left {
-        max-width: 70%;
-        flex: 1;
-
+    .content {
         border-radius: 10px;
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
         transition: all 0.4s ease;
@@ -68,17 +66,10 @@ onBeforeUnmount(() => {
 
         .play {
 
-
             .play-icon {
                 width: 48px;
                 height: 48px;
             }
-        }
-    }
-
-    &.theater {
-        .left {
-            max-width: 100%;
         }
     }
 }
