@@ -10,8 +10,10 @@ import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import Account from '@/features/account/ui/Account.vue';
 import Player from '@/features/player/ui/Player.vue';
 import useVideoStateStore from '../store/VideoStateStore';
+import VideoPartitionList from '@/entities/videoPartitonList/ui/VideoPartitionList.vue';
 
-const { videoInfo, avatarUrl, loadVideoInfo } = useVideoDetail();
+const { avatarUrl, loadVideoInfo } = useVideoDetail();
+const videoStateStore = useVideoStateStore()
 const route = useRoute();
 
 // 获取内容部分最大最小宽度
@@ -67,7 +69,7 @@ function unsubscribe() {
     haveFollowed.value = false
 }
 
-const videoStateStore = useVideoStateStore()
+
 
 onMounted(() => {
     if (route.params.videoId) {
@@ -95,29 +97,29 @@ onMounted(() => {
         }">
             <div class="top-content">
                 <div class="left">
-                    <div class="video-title">{{ videoInfo?.videoName }}</div>
+                    <div class="video-title">{{ videoStateStore.videoInfo?.videoName }}</div>
                     <div class="video-info">
-                        <div class="iconfont icon-play2">{{ videoInfo?.playCount }}</div>
-                        <div class="iconfont icon-danmu">{{ videoInfo?.danmakuCount }}</div>
-                        <div class="iconfont">{{ videoInfo?.createTime }}</div>
+                        <div class="iconfont icon-play2">{{ videoStateStore.videoInfo?.playCount }}</div>
+                        <div class="iconfont icon-danmu">{{ videoStateStore.videoInfo?.danmakuCount }}</div>
+                        <div class="iconfont">{{ videoStateStore.videoInfo?.createTime }}</div>
                     </div>
                 </div>
                 <div class="right">
                     <div class="user-info">
                         <Avatar class="avatar" :style="{
                             'height': avatarSize + 'px',
-                        }" :user-id="videoInfo?.userInfo?.userId || null" :src="imgRequestUrl(avatarUrl)"
+                        }" :user-id="videoStateStore.videoInfo?.userInfo?.userId || null" :src="imgRequestUrl(avatarUrl)"
                             :width="avatarSize" :lazy="true">
                         </Avatar>
                         <div class="user-detail">
-                            <RouterLink class="user-name-router-link" :to="`/user/${videoInfo?.userInfo?.userId}`"
+                            <RouterLink class="user-name-router-link" :to="`/user/${videoStateStore.videoInfo?.userInfo?.userId}`"
                                 target="_blank">
-                                <span class="user-name" :title="videoInfo?.userInfo?.nickName ?? ''">
-                                    {{ videoInfo?.userInfo?.nickName }}
+                                <span class="user-name" :title="videoStateStore.videoInfo?.userInfo?.nickName ?? ''">
+                                    {{ videoStateStore.videoInfo?.userInfo?.nickName }}
                                 </span>
                             </RouterLink>
-                            <span class="user-bio" :title="videoInfo?.userInfo?.personalIntroduction ?? 'no bio now'">
-                                {{ videoInfo?.userInfo?.personalIntroduction || 'no bio now' }}
+                            <span class="user-bio" :title="videoStateStore.videoInfo?.userInfo?.personalIntroduction ?? 'no bio now'">
+                                {{ videoStateStore.videoInfo?.userInfo?.personalIntroduction || 'no bio now' }}
                             </span>
                             <div class="follow">
                                 <el-dropdown class="follow-panel" v-if="haveFollowed">
@@ -143,7 +145,12 @@ onMounted(() => {
             </div>
 
             <div class="main-content">
-                <Player></Player>
+                <div class="left">
+                    <Player></Player>
+                </div>
+                <div class="right">
+                    <VideoPartitionList></VideoPartitionList>
+                </div>
             </div>
         </div>
     </div>
@@ -152,6 +159,9 @@ onMounted(() => {
 <style lang="scss" scoped>
 $title-font-size: 26px;
 $info-font-size: 16px;
+
+$left-content-max-width: 70%;
+$right-content-max-width: 25%;
 
 .page-content {
     min-height: 150vh;
@@ -181,7 +191,7 @@ $info-font-size: 16px;
             }
 
             .left {
-                max-width: 70%;
+                max-width: $left-content-max-width;
 
                 .video-title {
                     font-size: $title-font-size;
@@ -207,7 +217,7 @@ $info-font-size: 16px;
             }
 
             .right {
-                max-width: 25%;
+                max-width: $right-content-max-width;
 
                 .user-info {
                     display: flex;
@@ -276,6 +286,24 @@ $info-font-size: 16px;
 
         .main-content {
             margin: 20px 0;
+
+            display: flex;
+            justify-content: space-between;
+
+            .left {
+                flex: 1;
+
+                max-width: $left-content-max-width;
+                transition: all 0.4s ease;
+            }
+
+            .right {
+                flex: 1;
+
+                max-width: $right-content-max-width;
+                transition: all 0.4s ease;
+            }
+
         }
     }
 
@@ -286,6 +314,18 @@ $info-font-size: 16px;
 
             .right {
                 max-width: 30%;
+            }
+        }
+
+        .main-content {
+
+            .left {
+                max-width: 100%;
+            }
+
+            .right {
+                max-width: 0%;
+                opacity: 0;
             }
         }
     }
