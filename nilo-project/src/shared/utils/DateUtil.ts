@@ -1,17 +1,17 @@
 import dayjs, { Dayjs } from 'dayjs';
 
 /**
- * 格式化视频发布/更新时间
- * 逻辑：
- * - 超过1年显示：X年前
- * - 不到1年但超过1个月：X个月前
- * - 1个月之内但超过1天：X天前
- * - 1天之内但超过1小时：X小时前
- * - 1小时之内但超过1分钟：X分钟前
- * - 小于1分钟：刚刚
+ * Format date strings to relative time.
+ * Logic:
+ * - More than 1 year ago: X years ago (X年前)
+ * - Less than 1 year but more than 1 month: X months ago (X个月前)
+ * - Less than 1 month but more than 1 day: X days ago (X天前)
+ * - Less than 1 day but more than 1 hour: X hours ago (X小时前)
+ * - Less than 1 hour but more than 1 minute: X minutes ago (X分钟前)
+ * - Less than 1 minute: Just now (刚刚)
  * 
- * @param date 后端返回的时间字符串 (yyyy-MM-dd HH:mm:ss) 或 null
- * @returns 格式化后的字符串
+ * @param date Date string returned by the backend (yyyy-MM-dd HH:mm:ss) or null
+ * @returns Formatted string
  */
 export function calculateRelativeTime(date: string | null | undefined): string {
     if (!date) {
@@ -55,8 +55,8 @@ export function calculateRelativeTime(date: string | null | undefined): string {
 }
 
 /**
- * 将视频时长（单位：秒）转换为最大单位为小时的字符串格式
- * @param duration 时间（单位：秒）
+ * Transforms a duration in seconds into a human-readable format. The highest display unit is hours.
+ * @param duration Duration in seconds
  */
 export function calculateDuration(duration: number | null): string {
     if (duration === null) {

@@ -30,7 +30,7 @@ const router = createRouter({
         },
         /** 视频详情页 */
         {
-            path: "/video/:videoId",
+            path: "/video/:videoId/:index?",
             name: "video",
             component: VideoDetail
         }
