@@ -1,5 +1,5 @@
-// 图片缩略图的后缀
-const THUMBNAIL_SUFFIX = '_thumb.jpg'
+// 图片缩略图的后缀（不含扩展名，用于插入到文件名与扩展名之间）
+const THUMBNAIL_SUFFIX = '_thumb'
 // 首页主体内容的左右内边距
 const BODY_PADDING: string = '150px'
 // 首页推荐的视频（走马灯）数量
