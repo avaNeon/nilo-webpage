@@ -9,8 +9,12 @@ const props = withDefaults(defineProps<{
     src: string,
     width: number,
     lazy: boolean,
+    userPanel?: boolean,
+    mobile?: boolean,
 }>(), {
-    userId: null
+    userId: null,
+    userPanel: true,
+    mobile: true,
 })
 
 const { loginStateStore, clickLogin, logout } = useAvatar()
@@ -19,12 +23,12 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
 <template>
     <!-- 如果用户已登录，则显示用户头像，如果找不到用户头像则显示默认头像 -->
     <div class="onLogin" v-if="loginStateStore.loginState">
-        <RouterLink class="avatar" :to="`/user/${userId}`" target="_blank">
+        <RouterLink :class="{ 'avatar': true, 'mobile': mobile }" :to="`/user/${userId}`" target="_blank">
             <Cover :src="src" :lazy="lazy" :default-src="userSvg" :width="width" :scale="1" fit="cover"
                 border-radius="50%" border="1px #bfbfbf solid">
             </Cover>
         </RouterLink>
-        <div class="user-panel">
+        <div class="user-panel" v-if="userPanel">
             <span class="nickName">{{ loginStateStore.userInfo?.nickName }}</span>
             <div class="coin">
                 <img src="@/assets/coin.svg" alt="coin" style="width: 12px; margin-right: 5px;">
@@ -68,9 +72,9 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
     z-index: 200;
 
     &:hover {
-        .avatar {
+        .avatar.mobile {
             transform: translate(-20px, 20px) scale(1.6);
-            transition:all 0.2s 0s ease;
+            transition: all 0.2s 0s ease;
         }
 
         .user-panel {
@@ -86,7 +90,7 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
             */
             transform-origin: top center;
             transform: translate(calc(-50% - 20px), 20px) scale(1.3);
-            transition:all 0.2s 0s ease;
+            transition: all 0.2s 0s ease;
         }
     }
 

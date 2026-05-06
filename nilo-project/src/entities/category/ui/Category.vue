@@ -61,8 +61,8 @@ const props = withDefaults(defineProps<{
         <div class="others">
             <div class="online-user-count">
                 <img class="user-count-img" src="@/assets/bilibili_tv.jpg" alt="bilibili"><!-- 以后可以在这里设计个图片 -->
-                <span class="count-text">在线人数：</span>
-                <span class="count-number">0</span><!-- 这个数字后端还没做，暂时写死为0 -->
+                <!-- <span class="count-text">在线人数：</span> -->
+                <!-- <span class="count-number">0</span> --><!-- 这个数字后端还没做，暂时写死为0 -->
             </div>
             <RouterLink class="read" to="/read">
                 <img class="read-img" src="@/assets/document.svg" alt="document">

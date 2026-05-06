@@ -14,7 +14,7 @@ export interface VideoInfo {
     categoryNumber: string | null;
     postType: number | null;
     originInfo: string | null;
-    tags: string | null;
+    tags: string[] | null;
     introduction: string | null;
     interaction: string | null;
     duration: number | null;

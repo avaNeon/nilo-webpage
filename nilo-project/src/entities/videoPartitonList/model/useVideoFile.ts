@@ -1,21 +1,12 @@
 import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
 import { Api } from "@/shared/config/Api";
 import request from "@/shared/lib/request";
-import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 export function useVideoFile() {
     const route = useRoute()
     const router = useRouter()
     const videoStateStore = useVideoStateStore()
-    const currentPartitionIndex = computed(() => {
-        const index = route.params.index
-        if (!index) {
-            return 1
-        }
-        return parseInt(index as string)
-    })
-
 
     async function loadVideoFileList() {
         const result = await request({
@@ -39,7 +30,6 @@ export function useVideoFile() {
     }
 
     return {
-        currentPartitionIndex,
         loadVideoFileList,
         selectVideo,
     }

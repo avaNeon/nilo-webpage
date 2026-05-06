@@ -178,6 +178,8 @@ const props = withDefaults(defineProps<{
         z-index: 1;
 
         .video-name {
+            margin: 5px 0 3px;
+
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
