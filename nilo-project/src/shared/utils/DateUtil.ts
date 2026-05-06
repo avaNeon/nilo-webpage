@@ -72,3 +72,4 @@ export function calculateDuration(duration: number | null): string {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 }
+
