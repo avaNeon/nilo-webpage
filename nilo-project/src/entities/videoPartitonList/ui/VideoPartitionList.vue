@@ -4,10 +4,12 @@ import { onMounted } from 'vue';
 import { useVideoFile } from '../model/useVideoFile';
 import { calculateDuration } from '@/shared/utils/DateUtil';
 import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
+import { useRoute } from 'vue-router';
 
-const { currentPartitionIndex, loadVideoFileList, selectVideo } = useVideoFile();
+const { loadVideoFileList, selectVideo } = useVideoFile();
 
 const videoStateStore = useVideoStateStore()
+const route = useRoute()
 
 onMounted(() => {
     loadVideoFileList()
@@ -19,7 +21,7 @@ onMounted(() => {
         <div class="top-bar">
             <div class="top-left">
                 <span class="description-text">视频选集</span>
-                <span class="list-count">{{ currentPartitionIndex }}/{{ videoStateStore.videoFileList?.length }}</span>
+                <span class="list-count">{{ Number(route.params.index) || 1 }}/{{ videoStateStore.videoFileList?.length }}</span>
             </div>
             <div class="top-right">
                 <el-switch v-model="videoStateStore.autoPlay" inactive-text="自动连播" />
@@ -27,10 +29,10 @@ onMounted(() => {
         </div>
         <div class="partition-list">
             <el-scrollbar class="scroll-list" :max-height="600">
-                <div :class="['video-item', index === currentPartitionIndex - 1 ? 'active' : '']"
+                <div :class="['video-item', index === (Number(route.params.index) || 1) - 1 ? 'active' : '']"
                     v-for="(item, index) in videoStateStore.videoFileList" @click="selectVideo(index + 1)">
                     <div class="inline-left">
-                        <div class="playing-icon" v-if="index === currentPartitionIndex - 1">
+                        <div class="playing-icon" v-if="index === (Number(route.params.index) || 1) - 1">
                             <img class="icon" :src="pulseLoading" alt="playing" />
                         </div>
                         <div class="title" :title="item.fileName">
