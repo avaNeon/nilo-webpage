@@ -23,7 +23,7 @@ const useVideoStateStore = defineStore('videoState', {
         },
         setAutoPlay(auto: boolean) {
             this.autoPlay = auto
-        }
+        },
     }
 })
 

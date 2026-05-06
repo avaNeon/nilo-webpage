@@ -3,16 +3,39 @@ import IndexHeader from '@/widgets/indexHeader/ui/IndexHeader.vue';
 import { useVideoDetail } from '../composables/useVideoDetail';
 import { VIDEO_PAGE_SIDE_PADDING } from '@/shared/config/Config';
 import { inject, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import Account from '@/features/account/ui/Account.vue';
 import Player from '@/features/player/ui/Player.vue';
 import useVideoStateStore from '../store/VideoStateStore';
 import VideoPartitionList from '@/entities/videoPartitonList/ui/VideoPartitionList.vue';
+import DanmakuList from '@/entities/danmakuList/ui/DanmakuList.vue';
+import VideoActionItem from '@/features/videoAction/ui/VideoActionItem.vue';
+import CoinDialog from '@/features/videoAction/ui/CoinDialog.vue';
+import VideoIntroduction from '@/entities/videoIntroduction/ui/VideoIntroduction.vue';
+import VideoComment from '@/widgets/videoComment/ui/VideoComment.vue';
+import { useRoute } from 'vue-router';
 
-const { avatarUrl, loadVideoInfo } = useVideoDetail();
+const {
+    avatarUrl,
+    comments,
+    firstLevelCommentCount,
+    haveFollowed,
+    followerCount,
+    currentPage,
+    PAGE_SIZE,
+    loadVideoInfo,
+    loadMoreChildren,
+    loadCommentsBySortType,
+    subscribe,
+    unsubscribe,
+    afterCoinAction,
+    pageChange,
+    isCommentAvailable,
+    isDanmakuAvailable,
+    initLoad,
+} = useVideoDetail();
+
 const videoStateStore = useVideoStateStore()
 const route = useRoute();
 
@@ -20,67 +43,18 @@ const route = useRoute();
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
-const loginStateStore = useLoginStateStore()
-
 const avatarSize = 60
 
-//TODO 关注状态
-const haveFollowed = ref(false)
-const followerCount = ref(0)
-
-//TODO follow
-function subscribe() {
-    if (haveFollowed.value || !loginStateStore.loginState) {
-        loginStateStore.showPanel = true
-        return
-    }
-    //TODO Let's do it later
-    // const result = request({
-    //     method: 'get',
-    //     url: Api.follow,
-    //     params: {
-    //         userId: videoInfo.value?.userInfo?.userId
-    //     }
-    // })
-    // if (!result) {
-    //     return
-    // }
-    followerCount.value++
-    haveFollowed.value = true
-}
-//TODO cancel follow
-function unsubscribe() {
-    // it won't happen in normal case
-    if (!haveFollowed.value || !loginStateStore.loginState) {
-        return
-    }
-    //TODO Let's do it later
-    // const result = request({
-    //     method: 'get',
-    //     url: Api.cancelFollow,
-    //     params: {
-    //         userId: videoInfo.value?.userInfo?.userId
-    //     }
-    // })
-    // if (!result) {
-    //     return
-    // }
-    followerCount.value--
-    haveFollowed.value = false
-}
-
-
-
-onMounted(() => {
-    if (route.params.videoId) {
-        loadVideoInfo(route.params.videoId as string)
-    }
+onMounted(() =>
+{
+    initLoad()
 })
 
 </script>
 
 <template>
     <Account />
+    <CoinDialog @action-done="afterCoinAction()" />
     <div :class="['page-content', videoStateStore.displayMode]" :style="{
         'max-width': mainContentMaxWidth + 'px',
         'min-width': mainContentMinWidth + 'px',
@@ -109,7 +83,8 @@ onMounted(() => {
                         <Avatar class="avatar" :style="{
                             'height': avatarSize + 'px',
                         }" :user-id="videoStateStore.videoInfo?.userInfo?.userId || null"
-                            :src="imgRequestUrl(avatarUrl)" :width="avatarSize" :lazy="true">
+                            :src="imgRequestUrl(avatarUrl)" :width="avatarSize" :lazy="true" :user-panel="false"
+                            :mobile="false">
                         </Avatar>
                         <div class="user-detail">
                             <RouterLink class="user-name-router-link"
@@ -147,18 +122,33 @@ onMounted(() => {
 
             <div class="main-content">
                 <div class="left">
-                    <Player></Player>
+                    <Player :danmaku-available="isDanmakuAvailable()"></Player>
                 </div>
                 <div class="right">
+                    <DanmakuList v-if="isCommentAvailable()" class="danmaku-list"></DanmakuList>
                     <VideoPartitionList></VideoPartitionList>
                 </div>
             </div>
 
+            <!-- only display in theater mode -->
             <div class="bottom-content">
                 <div class="left">
-
+                    <VideoActionItem @action-done="() => loadVideoInfo(route.params.videoId as string)" />
+                    <VideoIntroduction :introduction="videoStateStore.videoInfo?.introduction || ''"
+                        :tags="videoStateStore.videoInfo.tags || []" />
+                    <div class="comment-list">
+                        <VideoComment class="video-comment" :video-comments="comments" :available="isCommentAvailable()"
+                            @load-more="loadMoreChildren" @load-by-sort-type="async (sortType) =>
+                            {
+                                await loadCommentsBySortType(sortType)
+                            }" :comment-number="videoStateStore.videoInfo.commentCount ?? 0" />
+                        <el-pagination v-if="isCommentAvailable()" class="pagination" v-model:current-page="currentPage"
+                            :page-size="PAGE_SIZE" background @current-change="pageChange"
+                            :total="firstLevelCommentCount" />
+                    </div>
                 </div>
                 <div class="right">
+                    <DanmakuList class="danmaku-list"></DanmakuList>
                     <VideoPartitionList></VideoPartitionList>
                 </div>
             </div>
@@ -171,7 +161,7 @@ $title-font-size: 26px;
 $info-font-size: 16px;
 
 $left-content-max-width: 70%;
-$right-content-max-width: 25%;
+$right-content-max-width: 28%;
 
 .page-content {
     min-height: 150vh;
@@ -249,8 +239,8 @@ $right-content-max-width: 25%;
                             text-decoration: none;
 
                             .user-name {
-                                font-size: 20px;
-                                line-height: 20px;
+                                font-size: 18px;
+                                line-height: 18px;
                                 font-weight: 500;
                                 color: black;
 
@@ -261,8 +251,8 @@ $right-content-max-width: 25%;
                         }
 
                         .user-bio {
-                            font-size: 15px;
-                            line-height: 15px;
+                            font-size: 14px;
+                            line-height: 14px;
                         }
 
                         .follow {
@@ -295,7 +285,7 @@ $right-content-max-width: 25%;
         }
 
         .main-content {
-            margin: 20px 0;
+            margin: 10px 0;
 
             display: flex;
             justify-content: space-between;
@@ -312,21 +302,38 @@ $right-content-max-width: 25%;
 
                 max-width: $right-content-max-width;
                 transition: all 0.4s ease;
+
+                .danmaku-list {
+                    margin-bottom: 10px;
+                }
             }
 
         }
 
         .bottom-content {
-            margin-top: 50px;
+            margin-top: 40px;
 
             display: flex;
             justify-content: space-between;
 
             .left {
+                margin-top: 15px;
                 flex: 1;
 
                 max-width: $left-content-max-width;
                 transition: all 0.4s ease;
+
+                .comment-list {
+                    margin: 40px 0;
+
+                    .video-comment {
+                        margin: 20px 0;
+                    }
+
+                    .pagination {
+                        margin-top: 30px;
+                    }
+                }
             }
 
             .right {
@@ -334,6 +341,7 @@ $right-content-max-width: 25%;
 
                 display: flex;
                 flex-direction: column;
+                row-gap: 10px;
 
                 max-width: $right-content-max-width;
                 max-height: 0;
