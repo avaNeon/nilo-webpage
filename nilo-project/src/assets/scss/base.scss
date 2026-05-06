@@ -29,6 +29,16 @@
     --blue2: #{$color-link};
     --blue3: #{$color-link-strong};
     --bodyPadding: 150px;
+
+    // ========== Element Plus 主题色覆盖 ==========
+    // 将 Element Plus 默认蓝色 #409EFF 替换为项目品牌色 #00AEEC
+    --el-color-primary: #{$color-bilibili-blue};
+    --el-color-primary-light-3: #{mix($color-bilibili-blue, #ffffff, 70%)};
+    --el-color-primary-light-5: #{mix($color-bilibili-blue, #ffffff, 50%)};
+    --el-color-primary-light-7: #{mix($color-bilibili-blue, #ffffff, 30%)};
+    --el-color-primary-light-8: #{mix($color-bilibili-blue, #ffffff, 20%)};
+    --el-color-primary-light-9: #{mix($color-bilibili-blue, #ffffff, 10%)};
+    --el-color-primary-dark-2: #{mix($color-bilibili-blue, #000000, 80%)};
 }
 
 /* @media (min-width: 1560px) and (max-width: 2059.9px) {

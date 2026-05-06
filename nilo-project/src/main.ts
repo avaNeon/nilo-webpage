@@ -6,6 +6,7 @@ import router from '@/app/router'
 
 import '@/assets/scss/base.scss'
 import '@/assets/icon/iconfont.css'
+import '@/assets/icon/iconfont-v2.css'
 import { createPinia } from 'pinia'
 
 const pinia = createPinia()

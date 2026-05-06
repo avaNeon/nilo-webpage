@@ -132,8 +132,9 @@ export function useAuthForm() {
                 changeLogin(true)
             } else {
                 message.success('登录成功！')
+                const userInfo = (result.data as any)?.userInfo ?? result.data
                 loginStateStore.setLoginState(true)
-                loginStateStore.setUserInfo(result.data)
+                loginStateStore.setUserInfo(userInfo)
                 loginStateStore.showPanel = false
                 nextTick(() => {
                     formDataRef.value?.resetFields()
