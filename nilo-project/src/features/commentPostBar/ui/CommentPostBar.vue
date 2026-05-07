@@ -1,13 +1,16 @@
 <script lang="ts" setup>
 import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
+import { useSystemConfigStore } from '@/shared/store/SystemConfigStore';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import imageIconSrc from '@/assets/icon/img/image.svg';
 import Cover from '@/shared/ui/Cover.vue';
 import { Delete } from '@element-plus/icons-vue';
-import { useImageUpload } from '@/shared/composables/useImageUpload';
+import { useFileUpload } from '@/shared/composables/useFileUpload';
+import { imageApi } from '@/shared/api/ImageApi';
 import message from '@/shared/lib/message';
+import type { AxiosProgressEvent } from 'axios';
 import { CommentPostApi } from '../api/CommentPostApi';
 import { useRoute } from 'vue-router';
 import type { VideoComment } from '@/shared/model/VideoComment';
@@ -42,17 +45,26 @@ const route = useRoute()
 
 
 // ========== 图片上传 ==========
+const systemConfigStore = useSystemConfigStore();
+// 从系统配置获取图片大小限制（单位 MB），转为字节传给 useFileUpload
+const imageMaxSize = computed(() =>
+{
+    const mb = systemConfigStore.imageMaxSize;
+    return mb > 0 ? mb * 1024 * 1024 : 10 * 1024 * 1024;
+})
+
 const {
     uploadItems,
     isUploading,
     selectFile,
     onFilesSelected,
     removeItem,
-} = useImageUpload({
+} = useFileUpload({
     accept: 'image/*',
-    maxSize: 10 * 1024 * 1024, // 10MB
-    createThumbnail: true,
+    maxSize: imageMaxSize.value,
     autoUpload: true,
+    uploadFn: (file: File, onProgress?: (event: AxiosProgressEvent) => void) =>
+        imageApi.uploadImage(file, true, onProgress),
 })
 
 // ========== Emoji 选择 ==========
@@ -188,7 +200,8 @@ async function postComment()
             :user-panel="false" :mobile="false" />
         <div class="comment-section">
             <el-input class="textarea" v-model="userCommentText" :maxlength="MAX_COMMENT_LENGTH"
-                :placeholder="available ? props.placeholder : '评论区已关闭'" show-word-limit type="textarea" :rows="3" :disabled="!available"/>
+                :placeholder="available ? props.placeholder : '评论区已关闭'" show-word-limit type="textarea" :rows="3"
+                :disabled="!available" />
             <div class="tool-bar">
                 <div class="tool" v-if="available">
                     <!-- 点击图片图标 → 打开文件选择器 -->
@@ -230,8 +243,6 @@ async function postComment()
                             </div>
                         </Transition>
                     </div>
-                    <!-- 隐藏的 file input，只接受图片 -->
-                    <input ref="inputRef" type="file" accept="image/*" multiple hidden @change="onFilesSelected" />
                 </div>
                 <div class="submit">
                     <el-button type="primary" round @click="postComment" :disabled="!available">发布</el-button>
