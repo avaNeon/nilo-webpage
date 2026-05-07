@@ -11,6 +11,7 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
       maxPartitionDuration: 0,
       maxResolutionRatio: "",
       maxBitRate: 0,
+      imageMaxSize: 0,
     } as SystemConfig;
   },
   actions: {
@@ -35,6 +36,9 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     setMaxBitRate(bitRate: number) {
       this.maxBitRate = bitRate;
     },
+    setImageMaxSize(size: number) {
+      this.imageMaxSize = size;
+    },
     /**
      * 批量设置系统配置
      */
@@ -46,6 +50,7 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
       this.maxPartitionDuration = config.maxPartitionDuration;
       this.maxResolutionRatio = config.maxResolutionRatio;
       this.maxBitRate = config.maxBitRate;
+      this.imageMaxSize = config.imageMaxSize;
     },
   },
 });

@@ -27,4 +27,8 @@ export interface SystemConfig {
    * max bit rate support，unit:fps
    */
   maxBitRate: number;
+  /**
+   * max image size，unit:MB
+   */
+  imageMaxSize: number;
 }
