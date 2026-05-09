@@ -1,4 +1,4 @@
-import { Api } from "@/shared/config/Api"
+import { Api, getWebBaseUrl } from "@/shared/config/Api"
 import { type Danmaku } from "@/shared/model/Danmaku"
 import request from "@/shared/lib/request"
 
@@ -40,25 +40,15 @@ async function loadDanmakuList(videoId: string, fileIndex: number): Promise<Danm
 }
 
 /**
- * Get raw m3u8 playlist text for one video file.
+ * Get the absolute URL of the HLS master playlist (master.m3u8) for a video file.
+ * Hls.js will use this URL to discover variant streams and TS segments natively.
  * @param videoId video id
  * @param index file index
- * @returns raw playlist text
+ * @returns absolute URL to the master playlist
  */
-async function getVideoResource(videoId: string, index: number): Promise<string | null> {
-    const result = await request({
-        method: 'get',
-        url: `${Api.getVideoResource}/${videoId}`,
-        params: {
-            index,
-        },
-        responseType: 'text',
-        showLoading: true,
-    })
-    if (!result || typeof result !== 'string') {
-        return null
-    }
-    return result
+function getVideoResource(videoId: string, index: number): string {
+    const baseUrl = getWebBaseUrl();
+    return `${baseUrl}${Api.hlsMasterPlaylist}/${videoId}/${index}/master.m3u8`;
 }
 
 export { getVideoResource, loadDanmakuList, postDanmaku }

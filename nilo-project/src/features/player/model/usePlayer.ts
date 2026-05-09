@@ -1,5 +1,6 @@
-import Artplayer from "artplayer";
-import Hls from "hls.js";
+// ============================================================
+// Vue core
+// ============================================================
 import {
   shallowRef,
   reactive,
@@ -8,54 +9,93 @@ import {
   watch,
   computed,
 } from "vue";
-// video source will be provided by backend at runtime
-import stateSrc from "@/assets/player/play.svg";
-import rollingLoadingSrc from "@/assets/player/rolling-loading.svg";
-import indicatorSrc from "@/assets/player/indicator.svg";
+import { useRoute } from "vue-router";
+
+// ============================================================
+// Third-party libraries
+// ============================================================
+import Artplayer from "artplayer";
+import Hls from "hls.js";
 import artplayerPluginHlsControl from "artplayer-plugin-hls-control";
-import closeTheaterModeSrc from "@/assets/player/close-theater-mode.svg";
-import theaterModeSrc from "@/assets/player/theater-mode.svg";
 import artplayerPluginDanmuku, {
   type Danmu as ArtplayerDanmu,
 } from "artplayer-plugin-danmuku";
+
+// ============================================================
+// Assets
+// ============================================================
+import stateSrc from "@/assets/player/play.svg";
+import rollingLoadingSrc from "@/assets/player/rolling-loading.svg";
+import indicatorSrc from "@/assets/player/indicator.svg";
+import closeTheaterModeSrc from "@/assets/player/close-theater-mode.svg";
+import theaterModeSrc from "@/assets/player/theater-mode.svg";
+
+// ============================================================
+// Local modules
+// ============================================================
+import router from "@/app/router";
 import message from "@/shared/lib/message";
-import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
-import { useRoute } from "vue-router";
-import { Api, ServicePrefixMap } from "@/shared/config/Api";
-import { ServiceType } from "@/shared/model/ServiceType";
 import { imgRequestUrl } from "@/shared/utils/ImgUtil";
+import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import {
   type Danmaku,
   fromArtplayerDanmu,
   toArtplayerDanmu,
 } from "@/shared/model/Danmaku";
-import router from "@/app/router";
-import { useLoginStateStore } from "@/shared/store/LoginStateStore";
+import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
+import { useDanmakuStore } from "@/features/player/store/DanmakuStore";
 import * as videoApi from "@/features/player/api/VideoApi";
 import * as videoOnlineApi from "@/features/player/api/VideoOnlineApi";
-import { useDanmakuStore } from "@/features/player/store/DanmakuStore";
 
+// ============================================================
+// Module-level constants
+// ============================================================
+
+const HLS_CONFIG = {
+  maxFragLookUpTolerance: 0.5,
+  // fast fail
+  fragLoadingTimeOut: 5000,
+  fragLoadingMaxRetry: 2,
+  fragLoadingRetryDelay: 500,
+  manifestLoadingMaxRetry: 2,
+  startLevel: -1,
+};
+
+const VIDEO_ONLINE_SESSION_ID_KEY = "video-online-session-id";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// ============================================================
+// usePlayer composable
+// ============================================================
 export function usePlayer() {
+  // ──────────────────────────────────────────────────────────
+  // Stores & router
+  // ──────────────────────────────────────────────────────────
   const route = useRoute();
   const videoStateStore = useVideoStateStore();
   const loginStateStore = useLoginStateStore();
-
   const danmakuStore = useDanmakuStore();
 
+  // ──────────────────────────────────────────────────────────
+  // Reactive state
+  // ──────────────────────────────────────────────────────────
   const $container = useTemplateRef<HTMLDivElement>("$container");
   const art = shallowRef<Artplayer | null>();
-
   const playerHeight = ref(500);
   const style = reactive({
     width: "100%",
     height: "100%",
     minWidth: "0",
   });
-
-  let playlistBlobUrl = "";
-
   const coverSrc = ref<string>("");
+  const watcherCount = ref("1");
+  const timer = ref(0);
+  const interval = 5_000;
 
+  // ──────────────────────────────────────────────────────────
+  // Non-reactive module state
+  // ──────────────────────────────────────────────────────────
   let toggleButtonListener: (() => void) | null = null;
   let toggleButtonSetupTimer: number | null = null;
 
@@ -66,14 +106,24 @@ export function usePlayer() {
   // 记录是否从网页全屏进入原生全屏，以便退出时恢复
   let restoreWebFullscreen = false;
 
+  // ──────────────────────────────────────────────────────────
+  // Computed
+  // ──────────────────────────────────────────────────────────
+  const videoId = computed(() => route.params.videoId as string);
+
+  // ──────────────────────────────────────────────────────────
+  // Cover
+  // ──────────────────────────────────────────────────────────
   function loadCover(videoCover: string | null) {
     coverSrc.value = imgRequestUrl(videoCover);
-
     if (art.value) {
       art.value.poster = coverSrc.value;
     }
   }
 
+  // ──────────────────────────────────────────────────────────
+  // Theater mode
+  // ──────────────────────────────────────────────────────────
   function enableTheaterMode() {
     videoStateStore.setDisplayMode("theater");
     playerHeight.value = 560;
@@ -83,7 +133,6 @@ export function usePlayer() {
     if (theaterMode && "style" in theaterMode) {
       theaterMode.style.display = "none";
     }
-
     if (closeTheaterMode && "style" in closeTheaterMode) {
       closeTheaterMode.style.display = "flex";
     }
@@ -98,15 +147,14 @@ export function usePlayer() {
     if (theaterMode && "style" in theaterMode) {
       theaterMode.style.display = "flex";
     }
-
     if (closeTheaterMode && "style" in closeTheaterMode) {
       closeTheaterMode.style.display = "none";
     }
   }
 
-  const videoId = computed(() => route.params.videoId as string);
-
-  // save danmaku to database
+  // ──────────────────────────────────────────────────────────
+  // Danmaku
+  // ──────────────────────────────────────────────────────────
   async function postDanmaku(danmaku: Danmaku): Promise<boolean> {
     if (!loginStateStore.loginState) {
       message.error("请先登录");
@@ -116,13 +164,8 @@ export function usePlayer() {
     return Boolean(result);
   }
 
-  /**
-   * load danmaku list from backend and update the danmakuList ref
-   */
   async function loadDanmakuList(): Promise<void> {
-    if (!videoId.value) {
-      return;
-    }
+    if (!videoId.value) return;
     const loadedDanmakuList = await videoApi.loadDanmakuList(
       videoId.value,
       Number(route.params.index) || 1,
@@ -132,53 +175,154 @@ export function usePlayer() {
     );
   }
 
-  /**
-   * Build the browser-reachable backend prefix for video resources.
-   * Must be an absolute URL so Hls.js can fetch TS segments without resolving
-   * them relative to the blob playlist URL (which would mangle the URL).
-   */
-  function getVideoResourceBaseUrl() {
-    return `${window.location.origin}${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap[ServiceType.web] || ""}`;
+  // ──────────────────────────────────────────────────────────
+  // HLS quality helpers
+  // ──────────────────────────────────────────────────────────
+  function getQualityName(level: any) {
+    switch (level.height) {
+      case 480:
+        return "标清 480P";
+      case 720:
+        return "高清 720P";
+      default:
+        return `${level.height}P`;
+    }
   }
 
-  /**
-   * Build a playable TS URL that matches the backend controller signature.
-   */
-  function buildTsUrl(tsPathStr: string, index: number) {
-    return `${getVideoResourceBaseUrl()}${Api.downloadTsResource}/${videoId.value}?index=${index}&tsPathStr=${encodeURIComponent(tsPathStr)}`;
-  }
-
-  /**
-   * Rewrite a raw m3u8 playlist so every relative TS file name becomes a reachable backend URL.
-   */
-  function rewriteRawM3U8(rawM3U8: string, index: number) {
-    return rawM3U8
-      .split(/\r?\n/)
-      .map(line => {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith("#")) {
-          return line;
-        }
-        return buildTsUrl(trimmed, index);
+  function buildQualitySelector(hls: Hls) {
+    const seen = new Set<string>();
+    const selector = hls.levels
+      .map((level, index) => ({
+        html: getQualityName(level),
+        value: index,
+        default: hls.currentLevel === index,
+      }))
+      .filter(item => {
+        if (seen.has(item.html)) return false;
+        seen.add(item.html);
+        return true;
       })
-      .join("\n");
+      .sort((a, b) => b.value - a.value);
+
+    selector.push({
+      html: "自动",
+      value: -1,
+      default: hls.currentLevel === -1,
+    });
+    return selector;
   }
 
-  /**
-   * Turn rewritten playlist text into a blob URL that Artplayer/Hls.js can consume.
-   */
-  function createPlaylistBlobUrl(rawM3U8: string, index: number) {
-    if (playlistBlobUrl) {
-      URL.revokeObjectURL(playlistBlobUrl);
-      playlistBlobUrl = "";
+  function setupSmoothQualitySwitch(art: Artplayer, hls: Hls) {
+    let pendingLevel: number | null = null;
+    let pendingLabel = "";
+
+    const updateQualityUi = () => {
+      if (!hls.levels.length) return;
+      const currentLevel = hls.levels[hls.currentLevel];
+      const tooltip = currentLevel ? getQualityName(currentLevel) : "自动";
+      const selector = buildQualitySelector(hls);
+
+      const onSelect = (item: any) => {
+        const selectedLevel =
+          typeof item?.value === "number" ? item.value : Number(item?.value);
+        const selectedLabel = String(item?.html ?? "");
+
+        if (selectedLevel === -1) {
+          hls.nextLevel = -1;
+          pendingLevel = null;
+          pendingLabel = "";
+          art.notice.show = `画质: ${selectedLabel || "自动"}`;
+          return selectedLabel;
+        }
+
+        hls.nextLevel = selectedLevel;
+        pendingLevel = selectedLevel;
+        pendingLabel = selectedLabel;
+        art.notice.show = `画质: ${selectedLabel}（切换中）`;
+        return selectedLabel;
+      };
+
+      art.controls.update({
+        name: "hls-quality",
+        position: "right",
+        html: tooltip,
+        style: { padding: "0 10px" },
+        selector,
+        onSelect,
+      } as any);
+
+      art.setting.update({
+        name: "hls-quality",
+        tooltip,
+        html: "画质",
+        width: 200,
+        selector,
+        onSelect,
+      } as any);
+    };
+
+    const onManifestParsed = () => {
+      updateQualityUi();
+    };
+
+    const onLevelSwitched = (_event: string, data: { level: number }) => {
+      updateQualityUi();
+      if (data.level === -1) return;
+      const label = getQualityName(hls.levels[data.level]);
+
+      if (pendingLevel !== null && data.level === pendingLevel) {
+        // 手动切换成功
+        art.notice.show = `已切换到：${label}`;
+        pendingLevel = null;
+        pendingLabel = "";
+      } else if (pendingLevel === null) {
+        // ABR 自动切换
+        art.notice.show = `自动切换到：${label}`;
+      }
+    };
+
+    hls.on(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+    hls.on(Hls.Events.LEVEL_SWITCHED, onLevelSwitched);
+
+    const onDestroy = () => {
+      hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+      hls.off(Hls.Events.LEVEL_SWITCHED, onLevelSwitched);
+      art.off("destroy", onDestroy);
+    };
+    art.on("destroy", onDestroy);
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // HLS instance & video loading
+  // ──────────────────────────────────────────────────────────
+  function createHls(video: HTMLVideoElement, url: string, art: Artplayer) {
+    // Destroy previous instance if one exists (e.g. on switchUrl).
+    if ((art as any).hls) {
+      (art as any).hls.destroy();
+      delete (art as any).hls;
     }
 
-    const rewrittenM3U8 = rewriteRawM3U8(rawM3U8, index);
-    const blob = new Blob([rewrittenM3U8], {
-      type: "application/vnd.apple.mpegurl",
-    });
-    playlistBlobUrl = URL.createObjectURL(blob);
-    return playlistBlobUrl;
+    if (!Hls.isSupported()) {
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = url;
+      } else {
+        art.notice.show = "浏览器不支持该播放格式";
+      }
+      return;
+    }
+
+    const hls = new Hls(HLS_CONFIG);
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    (art as any).hls = hls;
+    setupSmoothQualitySwitch(art, hls);
+
+    // Clean up on destroy so the instance doesn't outlive the player.
+    const onDestroy = () => {
+      hls.destroy();
+      art.off("destroy", onDestroy);
+    };
+    art.on("destroy", onDestroy);
   }
 
   /**
@@ -191,24 +335,42 @@ export function usePlayer() {
   }
 
   /**
-   * Ask the backend for the raw m3u8 text, rewrite TS lines into backend URLs,
-   * then hand the generated playlist blob to Artplayer.
+   * Load a video file by index using the HLS master playlist URL.
+   * Hls.js natively handles variant stream discovery and TS segment fetching.
    */
-  async function loadVideoFileByIndex(index: number) {
-    if (index <= 0) {
-      index = 1;
-    }
-    const rawM3U8 = await videoApi.getVideoResource(videoId.value, index);
-
-    if (!rawM3U8 || typeof rawM3U8 !== "string") {
-      message.error("获取资源失败");
-      return;
-    }
-
-    const playlistUrl = createPlaylistBlobUrl(rawM3U8, index);
-    await loadRemote(playlistUrl);
+  function loadVideoFileByIndex(index: number) {
+    if (index <= 0) index = 1;
+    const masterPlaylistUrl = videoApi.getVideoResource(videoId.value, index);
+    loadRemote(masterPlaylistUrl);
   }
 
+  // ──────────────────────────────────────────────────────────
+  // Internal cleanup helpers
+  // (shared between art.destroy handler & top-level cleanup())
+  // ──────────────────────────────────────────────────────────
+  function cleanupToggleButton() {
+    if (toggleButtonListener) {
+      const toggleButton = document.querySelector(".apd-toggle");
+      if (toggleButton) {
+        toggleButton.removeEventListener("click", toggleButtonListener);
+      }
+      toggleButtonListener = null;
+    }
+    if (toggleButtonSetupTimer !== null) {
+      clearTimeout(toggleButtonSetupTimer);
+      toggleButtonSetupTimer = null;
+    }
+  }
+
+  function cleanupFullscreenButton() {
+    fullscreenButtonCleanup?.();
+    fullscreenButtonCleanup = null;
+    restoreWebFullscreen = false;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Artplayer initialization
+  // ──────────────────────────────────────────────────────────
   function initArt() {
     // 防止重复初始化
     if (art.value) {
@@ -219,28 +381,13 @@ export function usePlayer() {
     }
 
     // Create the player shell first; the real HLS source is loaded from the backend.
-    // initalize Artplayer
     art.value = new Artplayer({
       container: $container.value as HTMLDivElement,
       url: "",
       type: "m3u8",
       customType: {
         m3u8: function (video, url, art) {
-          if (Hls.isSupported()) {
-            if ((art as any).hls) (art as any).hls.destroy();
-            const hls = new Hls();
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            (art as any).hls = hls;
-            art.on("destroy", () => hls.destroy());
-          } else if (
-            video.canPlayType &&
-            video.canPlayType("application/vnd.apple.mpegurl")
-          ) {
-            (video as HTMLVideoElement).src = url;
-          } else {
-            art.notice.show = "浏览器不支持该播放格式";
-          }
+          createHls(video, url, art);
         },
       },
       poster: coverSrc.value,
@@ -383,24 +530,16 @@ export function usePlayer() {
       plugins: [
         artplayerPluginHlsControl({
           quality: {
-            // Show qualitys in control
-            control: true,
-            // Show qualitys in setting
-            setting: true,
-            // Get the quality name from level
-            getName: (level: any) => `${level.height}P`,
-            // I18n
-            title: "Quality",
-            auto: "Auto",
+            control: false,
+            setting: false,
+            getName: (level: any) => getQualityName(level),
+            title: "画质",
+            auto: "自动",
           },
           audio: {
-            // Show audios in control
             control: true,
-            // Show audios in setting
             setting: true,
-            // Get the audio name from track
             getName: (track: any) => track.name,
-            // I18n
             title: "Audio",
             auto: "Auto",
           },
@@ -430,9 +569,8 @@ export function usePlayer() {
                 fileIndex: Number(route.params.index) || 1,
               }),
             );
-            if (!result) {
-              return false;
-            }
+            if (!result) return false;
+
             // notify that danmaku has been send successfully
             message.success("弹幕发送成功");
             // let's wait 2s for the new danmaku to be put in the database
@@ -459,57 +597,6 @@ export function usePlayer() {
           },
         }),
       ],
-      // layers: [
-      //     {
-      //         html: '<img width="100" src="/assets/sample/layer.png">',
-      //         click() {
-      //             window.open('https://aimu.app')
-      //             console.info('You clicked on the custom layer')
-      //         },
-      //         style: {
-      //             position: 'absolute',
-      //             top: '20px',
-      //             right: '20px',
-      //             opacity: '.9',
-      //         },
-      //     },
-      // ],
-      // quality: [
-      //     {
-      //         default: true,
-      //         html: 'SD 480P',
-      //         url: '/assets/sample/video.mp4?q=480',
-      //     },
-      //     {
-      //         html: 'HD 720P',
-      //         url: '/assets/sample/video.mp4?q=720',
-      //     },
-      // ],
-      // thumbnails: {
-      //     url: '/assets/sample/thumbnails.png',
-      //     number: 60,
-      //     column: 10,
-      //     scale: 0.85,
-      // },
-      // subtitle: {
-      //     url: '/assets/sample/subtitle.srt',
-      //     type: 'srt',
-      //     style: {
-      //         color: '#fe9200',
-      //         fontSize: '20px',
-      //     },
-      //     encoding: 'utf-8',
-      // },
-      // highlight: [
-      //     {
-      //         time: 15,
-      //         text: 'One more chance',
-      //     },
-      //     {
-      //         time: 30,
-      //         text: '谁でもいいはずなのに',
-      //     },
-      // ],
     });
 
     // Load the initial route selection immediately after the player is created.
@@ -602,27 +689,8 @@ export function usePlayer() {
     });
 
     art.value.on("destroy", () => {
-      if (playlistBlobUrl) {
-        URL.revokeObjectURL(playlistBlobUrl);
-        playlistBlobUrl = "";
-      }
-      // 清理弹幕 toggle 按钮监听器
-      if (toggleButtonListener) {
-        const toggleButton = document.querySelector(".apd-toggle");
-        if (toggleButton) {
-          toggleButton.removeEventListener("click", toggleButtonListener);
-        }
-        toggleButtonListener = null;
-      }
-      // 清理 setTimeout
-      if (toggleButtonSetupTimer !== null) {
-        clearTimeout(toggleButtonSetupTimer);
-        toggleButtonSetupTimer = null;
-      }
-      // 清理全屏按钮捕获监听器和 fullscreenchange 恢复监听
-      fullscreenButtonCleanup?.();
-      fullscreenButtonCleanup = null;
-      restoreWebFullscreen = false;
+      cleanupToggleButton();
+      cleanupFullscreenButton();
     });
 
     // 监听弹幕 toggle 按钮点击，每次点击翻转 danmakuEnabled 状态
@@ -638,36 +706,18 @@ export function usePlayer() {
     }, 500);
   }
 
-  /** print the current Artplayer instance */
+  // ──────────────────────────────────────────────────────────
+  // Debug helper
+  // ──────────────────────────────────────────────────────────
   function getInstance() {
     console.log(art.value);
   }
 
-  // watch for detecting video file changes to load new source from backend
-  watch(
-    () => [route.params.videoId, route.params.index],
-    ([nextVideoId, nextIndex]) => {
-      if (!nextVideoId || !art.value) {
-        return;
-      }
-      void loadVideoFileByIndex(Number(nextIndex));
-      void loadDanmakuList();
-    },
-  );
-
-  // watch for loading video cover
-  watch(
-    () => videoStateStore.videoInfo.videoCover,
-    videoCover => {
-      loadCover(videoCover);
-    },
-    { immediate: true },
-  );
-
-  const VIDEO_ONLINE_SESSION_ID_KEY = "video-online-session-id";
-  const UUID_PATTERN =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  // ──────────────────────────────────────────────────────────
+  // Session ID
+  // ──────────────────────────────────────────────────────────
   let memorySessionId: string | null = null;
+
   /**
    * Create a UUID v4 session id with far low collision probability.
    */
@@ -735,8 +785,9 @@ export function usePlayer() {
     }
   }
 
-  let watcherCount = ref("1");
-
+  // ──────────────────────────────────────────────────────────
+  // Online heartbeat & counter
+  // ──────────────────────────────────────────────────────────
   function sendHeartbeat() {
     videoOnlineApi.sendHeartbeat(
       videoId.value,
@@ -756,53 +807,27 @@ export function usePlayer() {
     }
   }
 
-  let timer = ref(0);
-  const interval: number = 5_000;
   function startTimer() {
     timer.value = setInterval(() => {
       sendHeartbeat();
       getOnlineCount();
     }, interval);
   }
+
   function cleanTimer() {
     if (timer.value) {
       clearInterval(timer.value);
       timer.value = 0;
     }
   }
-  /**
-   * 清理所有资源，防止内存泄漏
-   * 应该在组件 onBeforeUnmount 时调用
-   */
+
+  // ──────────────────────────────────────────────────────────
+  // Cleanup (should be called in onBeforeUnmount)
+  // ──────────────────────────────────────────────────────────
   function cleanup() {
-    // 清理定时器
     cleanTimer();
-
-    // 清理弹幕 toggle 按钮的 setTimeout
-    if (toggleButtonSetupTimer !== null) {
-      clearTimeout(toggleButtonSetupTimer);
-      toggleButtonSetupTimer = null;
-    }
-
-    // 清理弹幕 toggle 按钮监听器
-    if (toggleButtonListener) {
-      const toggleButton = document.querySelector(".apd-toggle");
-      if (toggleButton) {
-        toggleButton.removeEventListener("click", toggleButtonListener);
-      }
-      toggleButtonListener = null;
-    }
-
-    // 清理全屏按钮捕获监听器和 fullscreenchange 恢复监听
-    fullscreenButtonCleanup?.();
-    fullscreenButtonCleanup = null;
-    restoreWebFullscreen = false;
-
-    // 清理 blob URL
-    if (playlistBlobUrl) {
-      URL.revokeObjectURL(playlistBlobUrl);
-      playlistBlobUrl = "";
-    }
+    cleanupToggleButton();
+    cleanupFullscreenButton();
 
     // 销毁播放器实例
     if (art.value) {
@@ -810,6 +835,32 @@ export function usePlayer() {
       art.value = null;
     }
   }
+
+  // ──────────────────────────────────────────────────────────
+  // Watchers
+  // ──────────────────────────────────────────────────────────
+  // watch for detecting video file changes to load new source from backend
+  watch(
+    () => [route.params.videoId, route.params.index],
+    ([nextVideoId, nextIndex]) => {
+      if (!nextVideoId || !art.value) return;
+      void loadVideoFileByIndex(Number(nextIndex));
+      void loadDanmakuList();
+    },
+  );
+
+  // watch for loading video cover
+  watch(
+    () => videoStateStore.videoInfo.videoCover,
+    videoCover => {
+      loadCover(videoCover);
+    },
+    { immediate: true },
+  );
+
+  // ──────────────────────────────────────────────────────────
+  // Public API
+  // ──────────────────────────────────────────────────────────
   return {
     art,
     playerHeight,
