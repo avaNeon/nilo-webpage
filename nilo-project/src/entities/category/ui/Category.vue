@@ -250,10 +250,10 @@ const props = withDefaults(defineProps<{
         }
 
         .others {
-            width: 300px;
+            width: 180px;
             padding: 5px;
 
-            min-width: 180px;
+            min-width: 150px;
 
             .online-user-count {
                 color: $color-text-primary;
