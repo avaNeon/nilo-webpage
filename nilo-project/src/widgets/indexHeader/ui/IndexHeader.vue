@@ -3,12 +3,15 @@ import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { useCategory } from '../model/useCategory';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
+import { useRouter } from 'vue-router';
 const props = withDefaults(defineProps<{ theme?: string }>(), {
     theme: "light"
 }) // theme属性，可以是light或dark，默认为light
 
 const { categoryStore, getIcon } = useCategory();
 const loginStateStore = useLoginStateStore();
+
+const router = useRouter()
 </script>
 
 <template>
@@ -63,7 +66,7 @@ const loginStateStore = useLoginStateStore();
                 <div class="iconfont icon-history"></div>
                 <div class="description">历史</div>
             </nav>
-            <nav>
+            <nav @click="router.push('/cc')">
                 <div class="iconfont icon-light"></div>
                 <div class="description">创作中心</div>
             </nav>

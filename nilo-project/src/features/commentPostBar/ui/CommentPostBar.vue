@@ -57,7 +57,6 @@ const {
     uploadItems,
     isUploading,
     selectFile,
-    onFilesSelected,
     removeItem,
 } = useFileUpload({
     accept: 'image/*',

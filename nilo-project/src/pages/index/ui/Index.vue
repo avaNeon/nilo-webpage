@@ -25,12 +25,14 @@ provide('videoList', videoList)
 provide('isLoading', isLoading)
 provide('subCategoryFolded', subCategoryFolded)
 
-onMounted(() => {
+onMounted(() =>
+{
     startRouteWatching()
     window.addEventListener('scroll', scrollChecker)
 })
 
-onUnmounted(() => {
+onUnmounted(() =>
+{
     window.removeEventListener('scroll', scrollChecker)
 })
 </script>
