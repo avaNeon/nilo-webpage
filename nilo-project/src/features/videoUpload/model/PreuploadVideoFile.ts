@@ -3,7 +3,7 @@ export interface PreuploadVideoFile {
   /** Unique identifier for vuedraggable item-key */
   uid: string;
   /** Original File object */
-  file: File;
+  file: File | null;
   /** Editable video filename (display only, without extension) */
   filename: string;
   /** Total file size in bytes */
@@ -17,11 +17,18 @@ export interface PreuploadVideoFile {
   /** Bytes already uploaded */
   uploadedBytes: number;
   /** Upload status */
-  status: 'pending' | 'preuploading' | 'uploading' | 'done' | 'error';
+  status: "pending" | "preuploading" | "uploading" | "done" | "error";
   /** Error message when status is 'error' */
   errorMsg?: string;
   /** AbortController to cancel ongoing upload */
   abortController?: AbortController;
+  /** Existing file from published video (edit mode) */
+  isExisting?: boolean;
+  /**
+   * 转码状态，仅对已发布视频的旧文件有效：
+   * 0 = 转码中, 1 = 转码成功, 2 = 转码失败
+   */
+  transferResult?: 0 | 1 | 2;
 }
 
 /** Represents a single chunk of a video file */
