@@ -6,6 +6,9 @@ import VideoDetail from "@/pages/videoDetail/ui/VideoDetail.vue";
 import CreativeCenter from "@/pages/creativeCenter/ui/CreativeCenter.vue";
 import CreativeCenterHome from "@/widgets/creativeCenterHome/ui/CreativeCenterHome.vue";
 import VideoUploadEdit from "@/features/videoUpload/ui/VideoUploadEdit.vue";
+import VideoManagement from "@/widgets/VideoManagement/ui/VideoManagement.vue";
+import DanmakuManagement from "@/widgets/DanmakuManagement/ui/DanmakuManagement.vue";
+import VideoCommentManagement from "@/widgets/VideoCommentManagement/ui/VideoCommentManagement.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -51,6 +54,21 @@ const router = createRouter({
           path: "upload",
           name: "videoUpload",
           component: VideoUploadEdit,
+        },
+        {
+          path: "video",
+          name: "videoManagement",
+          component: VideoManagement,
+        },
+        {
+          path: "danmaku/:videoId?/:fileIndex?",
+          name: "danmakuManagement",
+          component: DanmakuManagement,
+        },
+        {
+          path: "comment/:videoId?",
+          name: "videoCommentManagement",
+          component: VideoCommentManagement,
         },
       ],
     },
