@@ -20,21 +20,33 @@ const Api = {
   preUploadVideo: "/file/videoTag",
   uploadVideo: "/file/video",
   delUploadVideo: "/file/video",
-  postVideo: "/creativeCenter/postVideo",
+  postVideo: "/creativeCenter/video",
   saveVideoInteraction: "/creativeCenter/saveVideoInteraction",
   getVideoByVideoId: "/creativeCenter/getVideoByVideoId",
   loadCreativeCenterVideoList: "/creativeCenter/video/list",
   getCreativeCenterVideoCountInfo: "/creativeCenter/getVideoCountInfo",
   uploadImage: "/file/image",
-  //个人中心
-  ucLoadAllVideo: "/creativeCenter/loadAllVideo",
+  //创作中心
+  ccLoadVideoList: "/creativeCenter/video/list",
+  ccLoadVideoCount: "/creativeCenter/video/count",
+  ccLoadVideoInfoFileUploadList:"/creativeCenter/file",
   ucLoadComment: "/creativeCenter/loadComment",
   ucDelComment: "/creativeCenter/delComment",
+  //创作中心 - 评论管理
+  ccCommentCount: "/creativeCenter/comment/count",
+  ccCommentList: "/creativeCenter/comment",
   ucLoadDanmaku: "/creativeCenter/loadDanmaku",
   ucDelDanmaku: "/creativeCenter/delDanmaku",
+  //创作中心 - 弹幕管理
+  ccDanmakuCount: "/creativeCenter/danmaku",
+  ccDanmakuList: "/creativeCenter/danmaku",
+  //弹幕 - 删除
+  delDanmaku: "/danmaku/danmaku",
   ucGetActualTimeStatisticsInfo: "/creativeCenter/getActualTimeStatisticsInfo",
   getWeekStatisticsInfo: "/creativeCenter/getWeekStatisticsInfo",
   ucDeleteVideo: "/creativeCenter/deleteVideo",
+  ccDeleteVideo: "/creativeCenter/video/",
+  ccVideoInteraction: "/creativeCenter/video/interaction/",
   //获取视频列表
   getFirstLevelCommentCount: "/comment/count",
   loadRecommendVideo: "/video/recommend",
