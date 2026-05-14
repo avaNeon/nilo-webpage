@@ -1,41 +1,53 @@
-import { ref, reactive, computed } from "vue";
-import { onBeforeRouteLeave } from "vue-router";
+import { ref, reactive, computed, onMounted, watch } from "vue";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import type { PreuploadVideoFile } from "./PreuploadVideoFile";
 import type { VideoUpload as VideoUploadType } from "./VideoUpload";
-import { VideoFileUploadApi } from "../api/VideoFileUploadApi";
+import { videoUploadApi } from "@/shared/api/VideoUploadApi";
 import { imageApi } from "@/shared/api/ImageApi";
 import type { AxiosProgressEvent } from "axios";
 import message from "@/shared/lib/message";
 import confirm from "@/shared/lib/confirm";
-import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
-import useCategoryStore from "@/shared/store/CategoryStore";
+import { FileUtil } from "@/shared/utils/FileUtil";
+import { UploadUtil } from "@/shared/utils/UploadUtil";
+import { StringUtil } from "@/shared/utils/StringUtil";
+import { useVideoUploadEditFlow } from "./useVideoUploadEditFlow";
+import { useVideoUploadConfig } from "./useVideoUploadConfig";
+import { useCategoryTag } from "./useCategoryTag";
+import { useFileValidation } from "./useFileValidation";
 
-// ==================== constants ====================
-
-/** Default chunk size: 5MB */
-const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024;
-const MAX_TAG_STRING_LENGTH = 300;
-
-// ==================== category option types ====================
-
-export interface CategoryOption {
-  value: string;
-  label: string;
-}
-
-export interface ParentCategoryOption extends CategoryOption {
-  children: CategoryOption[];
-}
-
-// ==================== composable ====================
-
+/**
+ * @name useVideoUpload
+ * @description this hook saved all state and function that the layout need, layout should not respectively import modules by its own
+ */
 export function useVideoUpload() {
+  const { DEFAULT_CHUNK_SIZE, MAX_TAG_STRING_LENGTH, MAX_INTRODUCTION_LENGTH } =
+    useVideoUploadConfig();
+
+  const {
+    categoryOptions,
+    selectedParentNumber,
+    selectedChildNumber,
+    childCategoryOptions,
+    onParentCategoryChange,
+    onChildCategoryChange,
+    syncCategorySelectionByCategoryNumber,
+  } = useCategoryTag();
+
+  const { validateVideoFile } = useFileValidation();
+
+  const route = useRoute();
+  const router = useRouter();
   // ==================== state ====================
 
   /** one-off variable, only get modified by once */
   const hasFileSelected = ref(false);
+
   /** preupload video file list */
   const preuploadList = ref<PreuploadVideoFile[]>([]);
+  const modifiedVideoId = ref<string | null>(null);
+  const isEditMode = computed(() => !!modifiedVideoId.value);
+  const tagList = ref<string[]>([]);
+  const submitState = ref(false);
 
   let uidCounter = 0;
 
@@ -46,11 +58,6 @@ export function useVideoUpload() {
    * 用户每次更换 / 裁剪封面时都会更新。
    */
   const coverBlob = ref<Blob | null>(null);
-
-  // ==================== stores ====================
-
-  const systemConfigStore = useSystemConfigStore();
-  const categoryStore = useCategoryStore();
 
   // ==================== form state ====================
 
@@ -66,181 +73,37 @@ export function useVideoUpload() {
     videoFileUploadList: [],
   });
 
-  // ==================== category select ====================
-
-  /** 所有「子分类」的 categoryNumber 集合，用于从扁列表中筛掉子级 */
-  const childNumberSet = computed<Set<string>>(() => {
-    const set = new Set<string>();
-    for (const item of categoryStore.categoryList) {
-      if (item.children) {
-        for (const child of item.children) {
-          set.add(child.categoryNumber);
-        }
-      }
-    }
-    return set;
-  });
-
-  /** 父分类选项（仅包含真正的父级，并预转换 children） */
-  const parentCategoryOptions = computed<ParentCategoryOption[]>(() =>
-    categoryStore.categoryList
-      .filter(c => !childNumberSet.value.has(c.categoryNumber))
-      .map(c => ({
-        value: c.categoryNumber,
-        label: c.categoryName,
-        children: (c.children ?? []).map(child => ({
-          value: child.categoryNumber,
-          label: child.categoryName,
-        })),
-      })),
-  );
-
-  /** 当前下拉栏选中的父分类 number（纯本地状态） */
-  const selectedParentNumber = ref("");
-
-  /** 当前下拉栏选中的子分类 number（纯本地状态，空串表示未选子级） */
-  const selectedChildNumber = ref("");
-
-  /** 当前选中的父分类选项 */
-  const selectedParent = computed<ParentCategoryOption | undefined>(() =>
-    parentCategoryOptions.value.find(
-      c => c.value === selectedParentNumber.value,
-    ),
-  );
-
-  /** 子分类选项（首项为「不选子分类」的空选项） */
-  const childCategoryOptions = computed<CategoryOption[]>(() => {
-    const children = selectedParent.value?.children ?? [];
-    return [{ value: "", label: "不指定二级分类" }, ...children];
-  });
-
-  /** 将下拉栏选择同步到 form.categoryNumber（子级优先） */
-  function syncCategoryNumber() {
-    form.categoryNumber =
-      selectedChildNumber.value || selectedParentNumber.value;
-  }
-
-  /** 父分类变更时：清空子分类，重新同步 */
-  function onParentCategoryChange() {
-    selectedChildNumber.value = "";
-    syncCategoryNumber();
-  }
-
-  /** 子分类变更时：重新同步 */
-  function onChildCategoryChange() {
-    syncCategoryNumber();
-  }
-
   // ==================== interaction checkboxes ====================
 
   const closeDanmaku = ref(false);
   const closeComment = ref(false);
 
   function syncInteraction() {
-    const parts: string[] = [];
-    if (closeDanmaku.value) parts.push("1");
-    if (closeComment.value) parts.push("2");
-    form.interaction = parts.join(",");
+    form.interaction = UploadUtil.buildInteractionValue(
+      closeDanmaku.value,
+      closeComment.value,
+    );
   }
 
-  // ==================== helper functions ====================
-
-  /** Strip file extension from filename, e.g. "video.mp4" → "video" */
-  function stripExtension(filename: string): string {
-    const lastDot = filename.lastIndexOf(".");
-    return lastDot > 0 ? filename.substring(0, lastDot) : filename;
-  }
-
-  function formatMB(bytes: number): string {
-    return (bytes / 1024 / 1024).toFixed(2);
-  }
-
-  function uploadProgress(item: PreuploadVideoFile): number {
-    if (item.fileSize === 0) return 0;
-    return Math.round((item.uploadedBytes / item.fileSize) * 100);
-  }
-
-  /**
-   * Extract video duration (in seconds) from a File object.
-   * Returns 0 if unable to read duration (e.g. unsupported format, load error).
-   */
-  function getVideoDuration(file: File): Promise<number> {
-    return new Promise(resolve => {
-      const url = URL.createObjectURL(file);
-      const video = document.createElement("video");
-      video.preload = "metadata";
-
-      video.onloadedmetadata = () => {
-        URL.revokeObjectURL(url);
-        resolve(video.duration || 0);
-      };
-
-      video.onerror = () => {
-        URL.revokeObjectURL(url);
-        resolve(0);
-      };
-
-      video.src = url;
-    });
-  }
-
-  // ==================== validation ====================
-
-  /**
-   * Validate a video file against system config limits.
-   * Returns true if the file passes all checks, false otherwise
-   * (an error message will already have been shown to the user).
-   */
-  async function validateVideoFile(file: File): Promise<boolean> {
-    // 1. Empty file check
-    if (!file || file.size === 0) {
-      message.error(`"${file.name}" 文件为空，无法上传`);
-      return false;
-    }
-
-    // 2. File size limit (config is in MB)
-    const maxSizeBytes = systemConfigStore.videoFileMaxSize * 1024 * 1024;
-    if (systemConfigStore.videoFileMaxSize > 0 && file.size > maxSizeBytes) {
-      message.error(
-        `"${file.name}" 文件过大（${formatMB(file.size)}MB），` +
-          `最大允许 ${systemConfigStore.videoFileMaxSize}MB`,
-      );
-      return false;
-    }
-
-    // 3. Duration limit (config is in minutes)
-    const maxDurationSeconds = systemConfigStore.maxPartitionDuration * 60;
-    if (systemConfigStore.maxPartitionDuration > 0) {
-      const durationSec = await getVideoDuration(file);
-      if (durationSec > 0 && durationSec > maxDurationSeconds) {
-        const durationMin = Math.round(durationSec / 60);
-        message.error(
-          `"${file.name}" 时长过长（${durationMin}分钟），` +
-            `最大允许 ${systemConfigStore.maxPartitionDuration}分钟`,
-        );
-        return false;
-      }
-    }
-
-    return true;
-  }
+  const { loadEditVideo } = useVideoUploadEditFlow(
+    form,
+    preuploadList,
+    hasFileSelected,
+    closeDanmaku,
+    closeComment,
+    tagList,
+    syncCategorySelectionByCategoryNumber,
+    DEFAULT_CHUNK_SIZE,
+  );
 
   // ==================== build item ====================
 
   function buildPreuploadFile(file: File): PreuploadVideoFile {
-    const totalChunks = Math.ceil(file.size / DEFAULT_CHUNK_SIZE);
-    return {
-      uid: `preupload_${Date.now()}_${++uidCounter}`,
+    return UploadUtil.buildPreuploadFile(
       file,
-      filename: stripExtension(file.name),
-      fileSize: file.size,
-      chunkSize: DEFAULT_CHUNK_SIZE,
-      totalChunks,
-      uploadId: null,
-      uploadedBytes: 0,
-      status: "pending",
-      abortController: new AbortController(),
-    };
+      DEFAULT_CHUNK_SIZE,
+      `preupload_${Date.now()}_${++uidCounter}`,
+    );
   }
 
   // ==================== file selection ====================
@@ -270,15 +133,17 @@ export function useVideoUpload() {
 
     // Always call deleteVideo if we have an uploadId (fire-and-forget)
     if (item.uploadId) {
-      VideoFileUploadApi.deleteVideo(item.uploadId);
+      if (!item.isExisting) {
+        videoUploadApi.deleteVideo(item.uploadId);
+      }
     }
 
     preuploadList.value.splice(index, 1);
+  }
 
-    // If list becomes empty, go back to upload panel
-    if (preuploadList.value.length === 0) {
-      hasFileSelected.value = false;
-    }
+  function returnToUploadPanel() {
+    hasFileSelected.value = false;
+    cleanupAll();
   }
 
   // ==================== upload logic ====================
@@ -298,7 +163,7 @@ export function useVideoUpload() {
     // Step 1: pre-upload to get uploadId
     reactiveItem.status = "preuploading";
     try {
-      const uploadId = await VideoFileUploadApi.preUploadVideo(
+      const uploadId = await videoUploadApi.preUploadVideo(
         reactiveItem.totalChunks,
         signal,
       );
@@ -322,18 +187,24 @@ export function useVideoUpload() {
     const totalChunks = reactiveItem.totalChunks;
     const chunkSize = reactiveItem.chunkSize;
     const uploadId = reactiveItem.uploadId;
+    const sourceFile = reactiveItem.file;
+    if (!uploadId || !sourceFile) {
+      reactiveItem.status = "error";
+      reactiveItem.errorMsg = "missing uploadId or file";
+      return;
+    }
 
     for (let i = 0; i < totalChunks; i++) {
       const chunkIndex = i + 1;
       const start = i * chunkSize;
       const end = Math.min(start + chunkSize, reactiveItem.fileSize);
-      const blob = reactiveItem.file.slice(start, end);
+      const blob = sourceFile.slice(start, end);
       // Convert Blob to File (backend expects MultipartFile)
       const chunkFile = new File(
         [blob],
-        `${reactiveItem.file.name}.part${chunkIndex}`,
+        `${sourceFile.name}.part${chunkIndex}`,
         {
-          type: reactiveItem.file.type,
+          type: sourceFile.type,
         },
       );
 
@@ -341,7 +212,7 @@ export function useVideoUpload() {
       const offsetBeforeChunk = i * chunkSize;
 
       try {
-        const success = await VideoFileUploadApi.uploadVideo(
+        const success = await videoUploadApi.uploadVideo(
           chunkFile,
           chunkIndex,
           uploadId,
@@ -383,25 +254,65 @@ export function useVideoUpload() {
   // ==================== ready uploadId list ====================
 
   /** 从 preuploadList 中提取所有已上传完成的 VideoFileUploadItem */
-  const readyUploadIdList = computed(() =>
+  const readyUploadFileList = computed(() =>
     preuploadList.value
-      .filter(item => item.status === "done" && item.uploadId !== null)
+      .filter(
+        item =>
+          item.status === "done" &&
+          item.uploadId !== null &&
+          // 转码失败的旧文件不参与提交
+          !(item.isExisting && item.transferResult === 2),
+      )
       .map(item => ({
         uploadId: item.uploadId!,
         filename: item.filename,
       })),
   );
 
+  const hasMissingExistingUploadId = computed(() =>
+    preuploadList.value.some(
+      item =>
+        item.isExisting && item.status === "done" && item.uploadId === null,
+    ),
+  );
+
   // ==================== form validation ====================
+
+  /**
+   * 简介有效字符数：将每个真实换行符 \n 计为 2 个字符（对应转义后 \\n），
+   * 与提交时发送给后端的实际长度一致。
+   */
+  const introductionCharCount = computed(() => {
+    return StringUtil.getEscapedNewlineLength(form.introduction);
+  });
 
   /** 表单是否通过前端校验（必填项非空、字符串非空白） */
   const isFormValid = computed(() => {
+    // 封面 - 必填
+    if (coverBlob.value === null) {
+      console.log("等待上传封面");
+      return false;
+    }
     // 视频标题 - 必填且不能为空白
-    if (!form.videoTitle.trim()) return false;
+    if (!form.videoTitle.trim()) {
+      console.log("视频标题不能为空");
+      return false;
+    }
     // 分类 - 必填（至少选择一级分类）
-    if (!form.categoryNumber) return false;
+    if (!form.categoryNumber) {
+      console.log("请选择分区");
+      return false;
+    }
     // 类型 - 如果是转载，必须填写来源说明
-    if (form.postType === 2 && !form.originInfo?.trim()) return false;
+    if (form.postType === 2 && !form.originInfo?.trim()) {
+      console.log("转载视频请填写原资源说明");
+      return false;
+    }
+    // 简介长度（计入换行符转义后的等效长度）
+    if (introductionCharCount.value > MAX_INTRODUCTION_LENGTH) {
+      console.log("简介长度超出限制");
+      return false;
+    }
     return true;
   });
 
@@ -409,28 +320,38 @@ export function useVideoUpload() {
 
   const submitting = ref(false);
 
-  async function submitVideo() {
-    // 基础校验
+  function validateSubmit(): boolean {
     if (!form.videoTitle.trim()) {
       message.error("请输入视频标题");
-      return;
+      return false;
     }
     if (!form.categoryNumber) {
       message.error("请选择分区");
-      return;
+      return false;
     }
     if (form.postType === 2 && !form.originInfo?.trim()) {
       message.error("转载视频请填写原资源说明");
-      return;
+      return false;
     }
-    if (readyUploadIdList.value.length === 0) {
+    if (readyUploadFileList.value.length === 0) {
       message.error("请等待视频文件上传完成后再提交");
-      return;
+      return false;
     }
-    if (form.tags?.length && form.tags?.length > MAX_TAG_STRING_LENGTH) {
+    if (isEditMode.value && hasMissingExistingUploadId.value) {
+      message.error(
+        "存在旧分P缺少 uploadId，暂无法提交编辑，请联系后端确认接口返回",
+      );
+      return false;
+    }
+    if ((form.tags?.length ?? 0) > MAX_TAG_STRING_LENGTH) {
       message.error("标签太长啦，请缩短标签长度");
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function submitVideo() {
+    if (!validateSubmit()) return;
 
     // 同步互动设置
     syncInteraction();
@@ -455,14 +376,22 @@ export function useVideoUpload() {
       }
     }
 
+    // 将简介中的真实换行符 \n（1个字符）转为转义字面 \\n（2个字符），便于后端保存
+    const introductionEscaped = StringUtil.escapeNewline(form.introduction);
+
     // 组装 videoFileUploadList（uploadId + 用户自定义 filename）
-    form.videoFileUploadList = readyUploadIdList.value;
+    form.videoFileUploadList = readyUploadFileList.value;
 
     submitting.value = true;
     try {
-      const success = await VideoFileUploadApi.postVideo(form);
+      const success = await videoUploadApi.postVideo({
+        ...form,
+        videoId: modifiedVideoId.value ?? undefined,
+        introduction: introductionEscaped,
+      });
       if (success) {
-        message.success("视频发布成功！");
+        message.success(isEditMode.value ? "视频修改成功！" : "视频发布成功！");
+        submitState.value = true;
       }
     } finally {
       submitting.value = false;
@@ -482,8 +411,8 @@ export function useVideoUpload() {
         item.abortController?.abort();
       }
       // Fire-and-forget deleteVideo API
-      if (item.uploadId) {
-        VideoFileUploadApi.deleteVideo(item.uploadId);
+      if (item.uploadId && !item.isExisting) {
+        videoUploadApi.deleteVideo(item.uploadId);
       }
     }
     preuploadList.value = [];
@@ -494,6 +423,17 @@ export function useVideoUpload() {
   function hasPendingData(): boolean {
     return preuploadList.value.length > 0;
   }
+
+  // ==================== sync category selection to form ====================
+
+  /** 当 selectedParentNumber / selectedChildNumber 变化时，同步到 form.categoryNumber */
+  watch(
+    [selectedParentNumber, selectedChildNumber],
+    ([parent, child]) => {
+      form.categoryNumber = child || parent;
+    },
+    { immediate: true },
+  );
 
   // ==================== route leave guard ====================
 
@@ -513,37 +453,55 @@ export function useVideoUpload() {
     });
   });
 
+  onMounted(async () => {
+    // update initialization
+    if (route.query.mode === "edit") {
+      const videoId = String(route.query.videoId ?? "");
+      if (!videoId) return;
+      modifiedVideoId.value = videoId;
+      if (!(await loadEditVideo(videoId))) {
+        router.replace({ query: {} });
+      }
+    }
+  });
+
   // ==================== return ====================
 
   return {
     // state — upload
     hasFileSelected,
     preuploadList,
+    submitState,
+    isEditMode,
+    tagList,
     // state — form
     form,
-    // state — category
-    parentCategoryOptions,
-    selectedParentNumber,
-    selectedChildNumber,
-    childCategoryOptions,
-    onParentCategoryChange,
-    onChildCategoryChange,
     // state — interaction
     closeDanmaku,
     closeComment,
     // state — derived
-    readyUploadIdList,
+    readyUploadFileList,
+    hasMissingExistingUploadId,
     isFormValid,
+    introductionCharCount,
     // state — submit
     submitting,
     submitVideo,
     // state — cover
     coverBlob,
+    // category
+    categoryOptions,
+    selectedParentNumber,
+    selectedChildNumber,
+    childCategoryOptions,
+    onParentCategoryChange,
+    onChildCategoryChange,
     // methods — upload
     onFileSelected,
-    formatMB,
-    uploadProgress,
+    formatMB: FileUtil.formatMB,
+    uploadProgress: UploadUtil.calcProgressPercent,
     removeItem,
+    returnToUploadPanel,
     cleanupAll,
     hasPendingData,
   };
