@@ -108,6 +108,21 @@ export function useCoverUpload() {
 
   // ==================== 公共方法 ====================
 
+  async function setCoverFromRemote(url: string) {
+    if (!url) return;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Failed to fetch cover");
+    }
+    const blob = await response.blob();
+    clearOriginalImgObj();
+    clearImgObj();
+    originalCoverBlob.value = blob;
+    originalCoverUrl.value = URL.createObjectURL(blob);
+    currentCoverBlob.value = blob;
+    currentCoverUrl.value = URL.createObjectURL(blob);
+  }
+
   /**
    * 裁剪确认后，用裁剪结果替换当前预览封面。
    * 注意：不影响 originalCoverBlob（原始图片），下次打开裁剪面板仍用原图。
@@ -183,5 +198,6 @@ export function useCoverUpload() {
     selectFile,
     updateImgUrl,
     openCropper,
+    setCoverFromRemote,
   };
 }
