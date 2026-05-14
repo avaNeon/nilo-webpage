@@ -3,9 +3,18 @@ import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useCreativeCenter } from '../composables/useCreativeCenter';
 import { useRoute } from 'vue-router';
+import { computed } from 'vue';
 
 const { router, loginStateStore, cancelActive } = useCreativeCenter()
 const route = useRoute()
+
+const activeMenuIndex = computed(() =>
+{
+    if (route.path.startsWith('/cc/upload')) return '/cc/upload'
+    if (route.path.startsWith('/cc/video')) return '/cc/video'
+    if (route.path.startsWith('/cc/home')) return '/cc/home'
+    return route.path
+})
 </script>
 
 <template>
@@ -13,7 +22,7 @@ const route = useRoute()
         <div class="header">
             <div class="left">
                 <nav class="index" @click="router.push('/')">
-                    <span class="iconfont icon-logo">首页</span>
+                    <span class="index-text iconfont icon-logo">首页</span>
                 </nav>
             </div>
             <div class="right">
@@ -34,25 +43,25 @@ const route = useRoute()
                     cancelActive()
                 }">投稿</el-button>
                 <el-menu class="menu-vertical" text-color="#363636" active-text-color="#00AEEC"
-                    background-color="#ffffff" :default-active="route.name === 'videoUpload' ? '0' : '1'"
-                    :default-openeds="['2', '3']">
+                    background-color="#ffffff" :default-active="activeMenuIndex" :default-openeds="['2', '3']"
+                    :router="true">
                     <!-- fake item, it's for clear active style below-->
-                    <el-menu-item id="hidden-element" index="0" style="height: 0;" />
-                    <el-menu-item index="1" @click="router.push('/cc/home')">
+                    <el-menu-item id="hidden-element" index="/cc/upload" style="height: 0;" />
+                    <el-menu-item index="/cc/home">
                         <span class="iconfont icon-home">首页</span>
                     </el-menu-item>
                     <el-sub-menu index="2">
                         <template #title>
                             <span class="iconfont icon-file-management">内容管理</span>
                         </template>
-                        <el-menu-item index="2-1">稿件管理</el-menu-item>
+                        <el-menu-item index="/cc/video">稿件管理</el-menu-item>
                     </el-sub-menu>
                     <el-sub-menu index="3">
                         <template #title>
                             <span class="iconfont icon-zhuanqu_huabanfuben">互动管理</span>
                         </template>
-                        <el-menu-item index="3-1">评论管理</el-menu-item>
-                        <el-menu-item index="3-2">弹幕管理</el-menu-item>
+                        <el-menu-item index="/cc/comment">评论管理</el-menu-item>
+                        <el-menu-item index="/cc/danmaku">弹幕管理</el-menu-item>
                     </el-sub-menu>
                 </el-menu>
 
@@ -70,7 +79,7 @@ const route = useRoute()
 <style lang="scss" scoped>
 .content {
     background-color: white;
-    min-height: 90.5vh;
+    min-height: 100vh;
 
     .header {
         display: flex;
@@ -85,6 +94,10 @@ const route = useRoute()
 
             .index {
                 cursor: pointer;
+
+                .index-text::before {
+                    margin-right: 6px;
+                }
             }
         }
     }
