@@ -16,7 +16,9 @@ async function postDanmaku(danmaku: Danmaku): Promise<boolean | null> {
     if (!result) {
         return null
     }
-    return result.data
+    // request 拦截器已保证 code===200 才会返回 result
+    // 这里不能再依赖 result.data 是否为真，因为后端可能返回空 data
+    return true
 }
 
 /**
