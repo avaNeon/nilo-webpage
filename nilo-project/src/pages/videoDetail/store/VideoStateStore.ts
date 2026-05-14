@@ -1,4 +1,4 @@
-import type { VideoInfoFile } from "@/features/player/model/VideoInfoFIle";
+import type { VideoInfoFile } from "@/shared/model/VideoInfoFIle";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
 import { defineStore } from "pinia";
 
