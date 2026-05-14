@@ -2,9 +2,13 @@
 import { useCoverUpload } from '../model/useCoverUpload'
 import CoverEdit from './CoverEdit.vue'
 import { watch } from 'vue'
+import { imgRequestUrl } from '@/shared/utils/ImgUtil'
 
 const emit = defineEmits<{
   (e: 'update:coverBlob', blob: Blob | null): void
+}>()
+const props = defineProps<{
+  initialCoverPath?: string
 }>()
 
 const {
@@ -15,12 +19,22 @@ const {
     selectFile,
     updateImgUrl,
     openCropper,
+    setCoverFromRemote,
 } = useCoverUpload()
 
 // 每次 currentCoverBlob 变化（选择新文件 / 裁剪确认）时同步到父组件
 watch(currentCoverBlob, (blob) => {
   emit('update:coverBlob', blob)
 })
+
+watch(() => props.initialCoverPath, async (coverPath) => {
+  if (!coverPath || currentCoverBlob.value) return
+  try {
+    await setCoverFromRemote(imgRequestUrl(coverPath))
+  } catch {
+    // ignore preload failure, user can still reselect cover manually
+  }
+}, { immediate: true })
 </script>
 
 <template>
