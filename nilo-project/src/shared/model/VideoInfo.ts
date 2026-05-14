@@ -24,4 +24,6 @@ export interface VideoInfo {
     commentCount: number | null;
     coinCount: number | null;
     collectCount: number | null;
+    /** 0:转码中 1:转码失败 2:待审核 3:审核成功 4:审核失败 */
+    status: 0 | 1 | 2 | 3 | 4 | null;
 }
