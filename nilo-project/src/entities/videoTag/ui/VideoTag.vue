@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 interface Props
 {
@@ -15,7 +15,12 @@ const emit = defineEmits<{
 
 const MAX_TAG_NUMBER = 10
 
-const tagList = ref()
+const tagList = ref<string[]>(props.tags ?? [])
+
+watch(() => props.tags, (next) => {
+    if (!next) return
+    tagList.value = [...next]
+}, { immediate: true })
 
 </script>
 

@@ -1,6 +1,5 @@
 import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
-import { Api } from "@/shared/config/Api";
-import request from "@/shared/lib/request";
+import { videoFileApi } from "@/shared/api/VideoFileApi";
 import { useRoute, useRouter } from "vue-router";
 
 export function useVideoFile() {
@@ -9,14 +8,13 @@ export function useVideoFile() {
     const videoStateStore = useVideoStateStore()
 
     async function loadVideoFileList() {
-        const result = await request({
-            method: 'get',
-            url: Api.loadVideoFileList + "/" + route.params.videoId,
-        })
-        if (!result) {
+        const videoId = String(route.params.videoId ?? "")
+        if (!videoId) {
             return
         }
-        videoStateStore.setVideoFileList(result.data)
+        const result = await videoFileApi.loadVideoFileList(videoId)
+        if (!result) return
+        videoStateStore.setVideoFileList(result)
     }
 
     function selectVideo(index: number) {

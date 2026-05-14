@@ -18,27 +18,32 @@ const animatingActions = ref(new Set<number>())
 /** 动画持续时间（ms），需 ≥ CSS 动画时长以保证动画完整播放 */
 const ANIMATION_DURATION = 1200
 
-function startAnimation(actionType: number) {
+function startAnimation(actionType: number)
+{
     const next = new Set(animatingActions.value)
     next.add(actionType)
     animatingActions.value = next
-    setTimeout(() => {
+    setTimeout(() =>
+    {
         const next2 = new Set(animatingActions.value)
         next2.delete(actionType)
         animatingActions.value = next2
     }, ANIMATION_DURATION)
 }
 
-function isAnimating(actionType: number): boolean {
+function isAnimating(actionType: number): boolean
+{
     return animatingActions.value.has(actionType)
 }
 
 // 监听投币动画触发器（由 CoinDialog 在投币成功后调用）
-watch(() => videoActionUiStore.coinAnimationTrigger, () => {
+watch(() => videoActionUiStore.coinAnimationTrigger, () =>
+{
     startAnimation(UserVideoAction.coin)
 })
 
-async function handleAction(actionType: number, coinAmount?: number) {
+async function handleAction(actionType: number, coinAmount?: number)
+{
     if (isAnimating(actionType)) return
     if (!checkLogin()) return
 
@@ -47,7 +52,8 @@ async function handleAction(actionType: number, coinAmount?: number) {
         (actionType === UserVideoAction.like && !videoActionState.liked) ||
         (actionType === UserVideoAction.collect && !videoActionState.collected)
 
-    if (isToggleOn) {
+    if (isToggleOn)
+    {
         startAnimation(actionType)
     }
 
@@ -56,12 +62,14 @@ async function handleAction(actionType: number, coinAmount?: number) {
 }
 
 /** 投币按钮点击：动画播放期间阻止打开投币弹窗 */
-function handleCoinClick() {
+function handleCoinClick()
+{
     if (isAnimating(UserVideoAction.coin)) return
     openCoinDialog()
 }
 
-onMounted(() => {
+onMounted(() =>
+{
     getVideoAction()
 })
 </script>

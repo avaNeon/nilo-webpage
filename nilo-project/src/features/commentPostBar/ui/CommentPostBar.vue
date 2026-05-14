@@ -69,6 +69,7 @@ const {
 // ========== Emoji 选择 ==========
 const emojiPanelVisible = ref(false)
 const emojiContainerRef = ref<HTMLElement | null>(null)
+const commentPostBarRef = ref<HTMLElement | null>(null)
 
 function toggleEmojiPanel()
 {
@@ -107,7 +108,7 @@ function scrollCategories(direction: 'left' | 'right')
 
 function insertEmoji(emoji: string)
 {
-    const textarea = document.querySelector('.comment-post-bar .textarea textarea') as HTMLTextAreaElement | null
+    const textarea = commentPostBarRef.value?.querySelector('.textarea textarea') as HTMLTextAreaElement | null
     if (textarea)
     {
         const start = textarea.selectionStart
@@ -117,7 +118,6 @@ function insertEmoji(emoji: string)
         nextTick(() =>
         {
             textarea.selectionStart = textarea.selectionEnd = start + emoji.length
-            textarea.focus()
         })
     } else
     {
@@ -193,7 +193,7 @@ async function postComment()
 </script>
 
 <template>
-    <div class="comment-post-bar">
+    <div class="comment-post-bar" ref="commentPostBarRef">
         <Avatar class="user-avatar" :user-id="loginStateStore.userInfo?.userId ?? null"
             :src="imgRequestUrl(loginStateStore.userInfo?.avatar ?? '')" :width="AVATAR_WIDTH" :lazy="true"
             :user-panel="false" :mobile="false" />
