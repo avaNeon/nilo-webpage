@@ -167,6 +167,11 @@ export function useVideoDetail() {
         if (route.params.videoId) {
             comments.value = await loadComments('0', page, currentSortType.value)
         }
+        // 回到评论区锚点
+        const el = document.getElementById("video-comment-section");
+        if (el) {
+            el.scrollIntoView(true);
+        }
     }
 
     // 按排序类型加载评论

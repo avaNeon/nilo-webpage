@@ -33,7 +33,7 @@ const commentNumberRef = computed(() =>
 </script>
 
 <template>
-    <div class="comment-section">
+    <div id="video-comment-section" class="comment-section">
         <div class="title">
             <span class="title-text">评论</span>
             <span class="comment-number">{{ commentNumberRef }}</span>
