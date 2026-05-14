@@ -175,6 +175,12 @@ export function usePlayer() {
     );
   }
 
+  function getDanmakuPlugin() {
+    return art.value?.plugins?.artplayerPluginDanmuku as
+      | { load?: (target?: unknown) => void; reset?: () => void }
+      | undefined;
+  }
+
   // ──────────────────────────────────────────────────────────
   // HLS quality helpers
   // ──────────────────────────────────────────────────────────
@@ -688,6 +694,10 @@ export function usePlayer() {
       }
     });
 
+    art.value.on("seek", () => {
+      getDanmakuPlugin()?.reset?.();
+    });
+
     art.value.on("destroy", () => {
       cleanupToggleButton();
       cleanupFullscreenButton();
@@ -845,7 +855,11 @@ export function usePlayer() {
     ([nextVideoId, nextIndex]) => {
       if (!nextVideoId || !art.value) return;
       void loadVideoFileByIndex(Number(nextIndex));
-      void loadDanmakuList();
+      void loadDanmakuList().then(() => {
+        // 通知 ArtPlayer 弹幕插件重新拉取弹幕数据，
+        // 否则插件内部仍持有旧分P的弹幕
+        getDanmakuPlugin()?.load?.();
+      });
     },
   );
 
