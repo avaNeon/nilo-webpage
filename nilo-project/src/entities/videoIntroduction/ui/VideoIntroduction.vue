@@ -4,7 +4,7 @@ import { useWindowSize } from '@/shared/composables/useWindowSize'
 
 const props = withDefaults(defineProps<{
     introduction: string,
-    tags: string[]
+    tags: string[],
 }>(), {
     introduction: '',
     tags: () => []
@@ -23,7 +23,8 @@ const isTransitioning = ref(false)
 // ── 文本格式化：转义 → 换行 → 链接 ──
 const URL_RE = /(https?:\/\/[^\s<>"]+)/g
 
-function escapeHtml(s: string) {
+function escapeHtml(s: string)
+{
     const amp = '&' + 'amp;'
     const lt = '&' + 'lt;'
     const gt = '&' + 'gt;'
@@ -31,7 +32,8 @@ function escapeHtml(s: string) {
     return s.replace(/&/g, amp).replace(/</g, lt).replace(/>/g, gt).replace(/"/g, quot)
 }
 
-const formattedIntroduction = computed(() => {
+const formattedIntroduction = computed(() =>
+{
     let html = escapeHtml(props.introduction)
     html = html.replace(/\\n/g, '<br>')
     html = html.replace(URL_RE, '<a class="inline-link" href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
@@ -39,7 +41,8 @@ const formattedIntroduction = computed(() => {
 })
 
 // ── 高度测量（同步，无闪烁） ──
-function measureFullHeight(el: HTMLElement) {
+function measureFullHeight(el: HTMLElement)
+{
     const prev = el.style.maxHeight
     el.style.maxHeight = 'none'
     const h = el.scrollHeight
@@ -47,7 +50,8 @@ function measureFullHeight(el: HTMLElement) {
     return h
 }
 
-async function checkOverflow() {
+async function checkOverflow()
+{
     await nextTick()
     const el = textRef.value
     if (!el) return
@@ -55,19 +59,22 @@ async function checkOverflow() {
 }
 
 // ── 展开 / 收起 ──
-function expand() {
+function expand()
+{
     if (isTransitioning.value) return
     isTransitioning.value = true
     const el = textRef.value!
     dynamicMaxHeight.value = measureFullHeight(el) + 'px'
     isExpanded.value = true
-    setTimeout(() => {
+    setTimeout(() =>
+    {
         dynamicMaxHeight.value = 'none'
         isTransitioning.value = false
     }, 400)
 }
 
-function collapse() {
+function collapse()
+{
     if (isTransitioning.value) return
     isTransitioning.value = true
     const el = textRef.value!
@@ -81,19 +88,22 @@ function collapse() {
 // ── 生命周期 ──
 onMounted(checkOverflow)
 
-watch(() => props.introduction, () => {
+watch(() => props.introduction, () =>
+{
     isExpanded.value = false
     dynamicMaxHeight.value = COLLAPSED_HEIGHT + 'px'
     checkOverflow()
 })
 
-watch(windowWidth, () => {
+watch(windowWidth, () =>
+{
     if (!isExpanded.value) checkOverflow()
 })
 </script>
 
 <template>
     <div class="introduction-bar">
+
         <div class="introduction-text-wrapper">
             <p ref="textRef" class="introduction-text" :style="{ maxHeight: dynamicMaxHeight }"
                 v-html="formattedIntroduction" />
