@@ -76,6 +76,9 @@ onMounted(() =>
                         <div class="iconfont icon-play2">{{ videoStateStore.videoInfo?.playCount }}</div>
                         <div class="iconfont icon-danmu">{{ videoStateStore.videoInfo?.danmakuCount }}</div>
                         <div class="iconfont">{{ videoStateStore.videoInfo?.createTime }}</div>
+                        <div class="post-type">
+                            {{ videoStateStore.videoInfo.postType === 1 ? '原创' : '转载' }}
+                        </div>
                     </div>
                 </div>
                 <div class="right">
@@ -140,6 +143,7 @@ onMounted(() =>
                         <VideoComment class="video-comment" :video-comments="comments" :available="isCommentAvailable()"
                             @load-more="loadMoreChildren" @load-by-sort-type="async (sortType) =>
                             {
+                                currentPage = 1
                                 await loadCommentsBySortType(sortType)
                             }" :comment-number="videoStateStore.videoInfo.commentCount ?? 0" />
                         <el-pagination v-if="isCommentAvailable()" class="pagination" v-model:current-page="currentPage"
@@ -187,7 +191,7 @@ $right-content-max-width: 28%;
             .right {
                 flex: 1;
 
-                transition: all 0.4s ease;
+                transition: max-width 0.2s ease, opacity 0.2s ease;
             }
 
             .left {
@@ -212,6 +216,17 @@ $right-content-max-width: 28%;
                                 margin-right: 4px;
                             }
                         }
+                    }
+
+                    .post-type {
+                        display: inline-block;
+                        font-size: 14px;
+                        font-weight: 500;
+                        color: $color-text-secondary;
+
+                        padding: 3px 9px;
+                        background-color: $color-shadow-sm;
+                        border-radius: 25px;
                     }
                 }
             }
@@ -294,14 +309,12 @@ $right-content-max-width: 28%;
                 flex: 1;
 
                 max-width: $left-content-max-width;
-                transition: all 0.4s ease;
             }
 
             .right {
                 flex: 1;
 
                 max-width: $right-content-max-width;
-                transition: all 0.4s ease;
 
                 .danmaku-list {
                     margin-bottom: 10px;
@@ -321,7 +334,7 @@ $right-content-max-width: 28%;
                 flex: 1;
 
                 max-width: $left-content-max-width;
-                transition: all 0.4s ease;
+                transition: height 0.2s ease;
 
                 .comment-list {
                     margin: 40px 0;
@@ -347,7 +360,7 @@ $right-content-max-width: 28%;
                 max-height: 0;
                 overflow: hidden;
                 opacity: 0;
-                transition: max-height 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
+                transition: max-height 0.2s ease, opacity 0.2s ease, margin-top 0.2s ease;
             }
         }
     }
