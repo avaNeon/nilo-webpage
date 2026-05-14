@@ -1,7 +1,8 @@
 import type { VideoComment } from "@/shared/model/VideoComment"
 import { DefaultFoldReason } from "@/shared/model/VideoComment"
 import { CommentActionApi } from "../api/CommentActionApi"
-import { CommentApi } from "../api/CommmentApi"
+import { CommentApi as LocalCommentApi } from "../api/CommmentApi"
+import { CommentApi } from "@/shared/api/CommentApi"
 import message from "@/shared/lib/message"
 import { ref, computed, onBeforeUnmount } from "vue"
 
@@ -200,7 +201,7 @@ export function useVideoCommentItem() {
             message.warning("仅支持对顶层评论进行置顶操作")
             return
         }
-        const result = await CommentApi.topComment(videoComment.commentId)
+        const result = await LocalCommentApi.topComment(videoComment.commentId)
         if (result && result.code === 200) {
             message.success("置顶成功")
             videoComment.topType = 1
@@ -208,7 +209,7 @@ export function useVideoCommentItem() {
     }
 
     async function cancelTopComment(videoComment: VideoComment) {
-        const result = await CommentApi.cancelTopComment(videoComment.commentId)
+        const result = await LocalCommentApi.cancelTopComment(videoComment.commentId)
         if (result && result.code === 200) {
             message.success("取消置顶成功")
             videoComment.topType = 0
