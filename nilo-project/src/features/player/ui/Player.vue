@@ -59,7 +59,6 @@ onBeforeUnmount(() =>
     .content {
         border-radius: 10px;
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-        transition: height 0.4s ease;
 
         .danmaku-panel {
             padding: 10px 15px;
