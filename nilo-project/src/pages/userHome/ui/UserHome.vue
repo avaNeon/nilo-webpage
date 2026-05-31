@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useHostUserDetailStore } from '@/shared/store/UserDetailStore';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import IndexHeader from '@/widgets/indexHeader/ui/IndexHeader.vue';
+import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue';
 import { useUserHome } from '../composables/useUserHome';
 import defaultAvatar from '@/assets/user.svg';
 import maleSrc from '@/assets/icon/img/male.svg'

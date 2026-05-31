@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { inject, onMounted, onUnmounted, provide } from 'vue'
 import { RouterView } from 'vue-router'
-import IndexHeader from '@/widgets/indexHeader/ui/IndexHeader.vue'
-import Account from '@/features/account/ui/Account.vue'
-import Category from '@/entities/category/ui/Category.vue'
+import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue'
+import Account from '@/shared/features/account/ui/Account.vue'
+import Category from '@/pages/index/entities/category/ui/Category.vue'
 import defaultBg from '@/assets/banner-background-beach.jpg'
 import { BODY_PADDING } from '@/shared/config/Config'
 import { useBackgroundImg } from '../composables/useBackgroundImg'
 import { useCategory } from '../composables/useCategory'
 import { useScroll } from '../composables/useScroll'
-import VideoList from '@/widgets/videoList/ui/VideoList.vue'
+import VideoList from '@/pages/index/widgets/videoList/ui/VideoList.vue'
 import { useVideo } from '../composables/useVideo'
 
 const { bgImgUrl } = useBackgroundImg()

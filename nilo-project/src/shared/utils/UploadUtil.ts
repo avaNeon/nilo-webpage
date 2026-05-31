@@ -1,4 +1,4 @@
-import type { PreuploadVideoFile } from "@/features/videoUpload/model/PreuploadVideoFile";
+import type { PreuploadVideoFile } from "@/pages/creativeCenter/features/videoUpload/model/PreuploadVideoFile";
 import { StringUtil } from "@/shared/utils/StringUtil";
 
 export interface ExistingUploadFileInput {
