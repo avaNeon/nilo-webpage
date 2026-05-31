@@ -22,6 +22,7 @@ const {
     handleSizeChange,
     handlePageChange,
     removeVideo,
+    loadVideoCounts,
 } = useVideoManagement();
 
 const router = useRouter()
@@ -92,17 +93,18 @@ async function handleDeleteVideo(videoInfo: VideoInfo)
     if (!videoInfo.videoId) return
     const videoName = videoInfo.videoName || '该视频'
     confirm({
-        message: `确定要永久删除「${videoName}」吗？删除后无法恢复。`,
+        message: `确定要删除「${videoName}」吗？删除后可能会无法恢复。`,
         confirmFun: async () =>
         {
             const result = await VideoManagementApi.deleteVideo(videoInfo.videoId!, '用户主动删除')
-            if (result !== null)
+            if (result !== null && result.code === 200)
             {
                 message.success('视频已删除')
                 if (videoInfo.videoId)
                 {
                     removeVideo(videoInfo.videoId)
                 }
+                loadVideoCounts()
             }
         },
     })

@@ -201,5 +201,6 @@ export function useVideoManagement() {
     handleSizeChange,
     handlePageChange,
     removeVideo,
+    loadVideoCounts,
   };
 }
