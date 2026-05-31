@@ -24,6 +24,12 @@ declare module '*.svg' {
   export default src
 }
 
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue'
+  const component: DefineComponent<object, object, any>
+  export default component
+}
+
 // Vite query imports: ?url returns an URL string, ?raw returns file content
 declare module '*?url' {
   const src: string
