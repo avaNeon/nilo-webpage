@@ -1,5 +1,6 @@
 import { Api } from "@/shared/config/Api";
 import request from "@/shared/lib/request";
+import type { BaseResponse } from "@/shared/model/BaseResponse";
 import type { VideoStatusCount } from "@/widgets/VideoManagement/model/VideoStatusCount";
 import type { VideoUploadInfo } from "@/widgets/VideoManagement/model/VideoUploadInfo";
 
@@ -64,16 +65,19 @@ export const VideoManagementApi = {
    * @param videoId 视频ID
    * @param detail  删除原因详情
    */
-  async deleteVideo(videoId: string, detail: string): Promise<Object | null> {
+  async deleteVideo(
+    videoId: string,
+    detail: string,
+  ): Promise<BaseResponse<null> | null> {
     const result = await request({
       method: "delete",
       url: Api.ccDeleteVideo + videoId,
       params: { detail },
     });
-    if (!result) {
+    if (result === undefined || result === null) {
       return null;
     }
-    return result.data as Object;
+    return result;
   },
 
   /**
