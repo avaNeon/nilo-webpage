@@ -9,6 +9,8 @@ import VideoUploadEdit from "@/features/videoUpload/ui/VideoUploadEdit.vue";
 import VideoManagement from "@/widgets/VideoManagement/ui/VideoManagement.vue";
 import DanmakuManagement from "@/widgets/DanmakuManagement/ui/DanmakuManagement.vue";
 import VideoCommentManagement from "@/widgets/VideoCommentManagement/ui/VideoCommentManagement.vue";
+import UserHome from "@/pages/userHome/ui/UserHome.vue";
+import UserHomeIndex from "@/widgets/videoComment/UserHomeIndex.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -69,6 +71,18 @@ const router = createRouter({
           path: "comment/:videoId?",
           name: "videoCommentManagement",
           component: VideoCommentManagement,
+        },
+      ],
+    },
+    {
+      path: "/user/:userId",
+      name: "userHome",
+      component: UserHome,
+      children: [
+        // default
+        {
+          path: "",
+          component: UserHomeIndex,
         },
       ],
     },
