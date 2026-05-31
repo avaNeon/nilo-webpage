@@ -438,7 +438,7 @@ export function useVideoUpload() {
   // ==================== route leave guard ====================
 
   onBeforeRouteLeave((_to, _from, next) => {
-    if (!hasPendingData()) {
+    if (!hasPendingData() || submitState.value) {
       next();
       return;
     }
