@@ -68,16 +68,6 @@ function formatPostTime(postTime: string | null): string
     return postDate.format("YYYY-MM-DD HH:mm");
 }
 
-// ----- 回复信息文本 -----
-function getReplyInfo(row: CommentManagement): string
-{
-    if (row.replyNickName)
-    {
-        return `${row.nickName} 回复了 ${row.replyNickName} 的评论`;
-    }
-    return `${row.nickName} 在你的视频下面评论`;
-}
-
 // ----- 删除按钮确认流程（与评论组件一致） -----
 const confirmingMap = ref<Record<string, boolean>>({});
 const cooldownMap = ref<Record<string, boolean>>({});
@@ -147,6 +137,21 @@ async function handleDeleteClick(row: CommentManagement)
     {
         message.success("删除成功");
         emit("commentDeleted", commentId);
+    }
+}
+
+// ----- 点击跳转视频详情 -----
+function goToVideo(videoId: string)
+{
+    if (videoId)
+    {
+        const routeData = router.resolve({
+            name: "video",
+            params: {
+                videoId: videoId,
+            },
+        });
+        window.open(routeData.href, "_blank");
     }
 }
 
@@ -229,7 +234,7 @@ onBeforeUnmount(() =>
                 <template #default="{ row }">
                     <div class="video-info-cell">
                         <Cover :src="imgRequestUrl(row.videoCover)" :width="120" :scale="0.5625" fit="cover"
-                            :border-radius="4" @click="router.push(`/video/${row.videoId}`)" />
+                            :border-radius="4" @click="goToVideo(row.videoId)" />
                         <span class="video-name">{{ row.videoName }}</span>
                     </div>
                 </template>
