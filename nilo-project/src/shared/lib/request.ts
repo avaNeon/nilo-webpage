@@ -27,7 +27,7 @@ instance.interceptors.request.use(
       loading = ElLoading.service({
         lock: true,
         text: "加载中......",
-        background: "rgba(0, 0, 0, 0.7)",
+        background: "rgba(0, 0, 0, 0.5)",
       });
     }
     return config;
@@ -36,10 +36,13 @@ instance.interceptors.request.use(
     if (error.config.showLoading && loading) {
       loading.close();
     }
+
     message.error("请求发送失败");
+
     return Promise.reject("请求发送失败");
   },
 );
+
 //请求后拦截器
 instance.interceptors.response.use(
   response => {
@@ -49,10 +52,13 @@ instance.interceptors.response.use(
       showError = true,
       responseType,
     } = response.config;
+
     if (showLoading && loading) {
       loading.close();
     }
+
     const responseData = response.data;
+
     if (
       responseType == "arraybuffer" ||
       responseType == "blob" ||
@@ -60,16 +66,20 @@ instance.interceptors.response.use(
     ) {
       return responseData;
     }
+
     //正常请求
     if (responseData.code == 200) {
       return responseData;
-    } else if (responseData.code == 1005) {
+    }
+    // 登录超时 / 未登录，不抛出错误提示
+    else if (responseData.code == 1005) {
       const loginStore = useLoginStateStore();
-      //登录超时
+
       loginStore.setLoginState(false);
       return Promise.reject({ showError: false });
-    } else {
-      //其他错误
+    }
+    //其他业务异常
+    else {
       if (errorCallback) {
         errorCallback(responseData);
       }
@@ -85,13 +95,10 @@ instance.interceptors.response.use(
 );
 
 interface RequestConfig {
-  /** 请求方法 */
   method: "get" | "post" | "put" | "delete";
-  /** 请求路径（不含服务前缀） */
   url: string;
-  /** URL 查询参数，对应后端 @RequestParam */
   params?: Record<string, any>;
-  /** 请求体，对应后端 @RequestBody */
+  /** 请求体 */
   data?: Record<string, any>;
   /** 请求体格式：'json' | 'form'，默认 'json' */
   dataType?: string;
@@ -107,7 +114,7 @@ interface RequestConfig {
   errorCallback?: (data: any) => void;
   /** 目标服务类型，默认 ServiceType.web */
   serviceType?: ServiceType;
-  /** AbortSignal for cancelling requests */
+  /** 用于终止请求 */
   signal?: AbortSignal;
 }
 
@@ -116,6 +123,7 @@ interface RequestConfig {
  * @param config 请求配置
  */
 const request = (config: RequestConfig): Promise<BaseResponse> => {
+  // 请求参数分配给局部变量
   const {
     method,
     url,
@@ -131,45 +139,39 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     signal,
   } = config;
 
+  // 默认在请求头中携带 token
   const token = Cookies.get("token_normal");
-  let headers: Record<string, string> = {
+  const headers: Record<string, string> = {
     "X-Requested-With": "XMLHttpRequest",
     token: token || "",
   };
 
   // 拼接二级前缀，兼容 Vite 代理
-  const prefix =
-    `${import.meta.env.VITE_APP_BASE_URL}` + ServicePrefixMap[serviceType] ||
-    "";
-  const realUrl = prefix + url;
+  const prefix = `${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap[serviceType] || ""}`;
+  const completeUrl = prefix + url;
 
-  if (method.toLowerCase() === "get") {
-    return instance
-      .get(realUrl, {
-        params,
-        headers,
-        responseType,
-        errorCallback,
-        showLoading,
-        showError,
-        signal,
-      })
-      .catch(error => {
-        if (error.showError) {
-          message.error(error.msg);
-        }
-        return null;
-      }) as any;
-  } else if (
-    method.toLowerCase() === "post" ||
-    method.toLowerCase() === "put"
-  ) {
-    let bodyData: any = data;
+  // 构建 axios 配置（所有方法共用）
+  const axiosConfig: Record<string, any> = {
+    method: method.toLowerCase(),
+    url: completeUrl,
+    params,
+    headers,
+    responseType,
+    errorCallback,
+    showLoading,
+    showError,
+    signal,
+  };
+
+  // POST / PUT：序列化请求体
+  if (method.toLowerCase() === "post" || method.toLowerCase() === "put") {
+    // JSON
     if (dataType === "json") {
       headers["Content-Type"] = contentTypeJson;
-    } else if (dataType === "form") {
-      // If payload contains File/Blob, use FormData (multipart/form-data)
-      // otherwise use application/x-www-form-urlencoded
+      axiosConfig.data = data;
+    }
+    // FORM
+    else if (dataType === "form") {
       let hasFile = false;
       for (const key in data) {
         const val = (data as any)[key];
@@ -182,63 +184,33 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
         // Let browser set Content-Type with boundary for multipart
         delete headers["Content-Type"];
         const formData = new FormData();
-        for (let key in data) {
+        for (const key in data) {
           formData.append(key, data[key] == undefined ? "" : data[key]);
         }
-        bodyData = formData;
+        axiosConfig.data = formData;
       } else {
         headers["Content-Type"] = contentTypeForm;
         const paramsBody = new URLSearchParams();
-        for (let key in data) {
+        for (const key in data) {
           paramsBody.append(
             key,
             data[key] == undefined ? "" : String(data[key]),
           );
         }
-        bodyData = paramsBody.toString();
+        axiosConfig.data = paramsBody.toString();
       }
     }
-
-    return instance
-      .request({
-        method: method.toLowerCase() as "post" | "put",
-        url: realUrl,
-        data: bodyData,
-        params, // 这样 params 会拼到 URL 上
-        onUploadProgress: uploadProgressCallback,
-        responseType,
-        headers,
-        errorCallback,
-        showLoading,
-        showError,
-        signal,
-      })
-      .catch(error => {
-        if (error.showError) {
-          message.error(error.msg);
-        }
-        return null;
-      }) as any;
-  } else if (method.toLowerCase() === "delete") {
-    return instance
-      .delete(realUrl, {
-        params,
-        headers,
-        responseType,
-        errorCallback,
-        showLoading,
-        showError,
-        signal,
-      })
-      .catch(error => {
-        if (error.showError) {
-          message.error(error.msg);
-        }
-        return null;
-      }) as any;
-  } else {
-    return Promise.reject("不支持的请求方式");
+    axiosConfig.onUploadProgress = uploadProgressCallback;
   }
+
+  return instance.request(axiosConfig).catch((error: any) => {
+    // 如果展示错误信息，则弹出一条后端返回的错误消息
+    if (error.showError) {
+      message.error(error.msg);
+    }
+    // 如果失败，返回null
+    return null;
+  }) as any;
 };
 
 // 扩展Axios的接口定义，添加自定义的配置项
