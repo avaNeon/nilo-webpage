@@ -1,29 +1,26 @@
-import { useLoginStateStore } from '@/shared/store/LoginStateStore'
-import { Api } from '@/shared/config/Api'
-import request from '@/shared/lib/request'
-import message from '@/shared/lib/message'
-import { ServiceType } from '@/shared/model/ServiceType'
+import { useLoginStateStore } from "@/shared/store/LoginStateStore";
+import message from "@/shared/lib/message";
+import { AccountApi } from "../api/AccountApi";
 
 /**
- * 自动登录
- * @returns 自动登录函数
+ * auto-login related composables
  */
 export function useAutoLogin() {
-    const loginStateStore = useLoginStateStore()
+  const loginStateStore = useLoginStateStore();
 
-    async function autoLogin() {
-        const result = await request({ method: 'get', url: Api.autoLogin, serviceType: ServiceType.web })
-        if (!result?.data) {
-            return
-        }
-        loginStateStore.setLoginState(true)
-        loginStateStore.setUserInfo(result.data.userInfo)
-        loginStateStore.setFollowerCount(result.data.followerCount)
-        loginStateStore.setFollowingCount(result.data.followingCount)
-        loginStateStore.setCurrentCoin(result.data.currentCoin)
-        loginStateStore.showPanel = false
-        message.success(`欢迎回来！ ${result.data.userInfo.nickName}`)
+  /**
+   * auto-login
+   * only load non-statistical user info
+   */
+  async function autoLogin(): Promise<void> {
+    const tokenUserInfo = await AccountApi.autoLogin();
+    if (tokenUserInfo != null) {
+      loginStateStore.setLoginState(true);
+      loginStateStore.setUserInfo(tokenUserInfo.userInfo);
+      loginStateStore.showPanel = false;
+      message.success(`欢迎回来！ ${tokenUserInfo.userInfo.nickName}`);
     }
+  }
 
-    return { autoLogin }
+  return { autoLogin };
 }

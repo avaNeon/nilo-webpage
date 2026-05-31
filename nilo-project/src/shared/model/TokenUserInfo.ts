@@ -5,7 +5,4 @@ import type { BriefUserInfo } from './BriefUserInfo'
  */
 export interface TokenUserInfo {
     userInfo: BriefUserInfo
-    followerCount: number
-    followingCount: number
-    currentCoin: number
 }
