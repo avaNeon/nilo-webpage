@@ -223,7 +223,7 @@ watch(
 .pagination {
   padding-top: 10px 0;
 
-  margin: 20px 0;
+  margin: 20px;
 }
 
 .el-table__body tr.current-row>td.el-table__cell {
