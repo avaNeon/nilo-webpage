@@ -5,23 +5,25 @@ import { useVideoActionUiStore } from '../store/VideoActionUiStore';
 import coin1 from '@/assets/coin1.png'
 import coin2 from '@/assets/coin2.png'
 
-const { coinAmount, updateCoinAmount, doVideoAction, checkLogin, videoActionState } = useVideoAction()
+const { coinAmount, updateCoinAmount, doVideoAction, checkLogin } = useVideoAction()
 const videoActionUiStore = useVideoActionUiStore()
 
-const emit = defineEmits<{ 'action-done': [] }>()
+const emit = defineEmits<{
+    (e: 'action-done', coinAmount: number): void
+}>()
 
-async function handleAction(actionType: number, coinAmount?: number) {
-    if (!checkLogin()) {
+async function handleAction(actionType: number, coinAmount: number)
+{
+    if (!checkLogin())
+    {
         return
     }
-    // 记录投币前的数量，用于判断是否真正投币成功
-    const coinBefore = videoActionState.coin
-    await doVideoAction(actionType, coinAmount)
-    // let upper layer update video info (including video action status)
-    emit('action-done')
-    videoActionUiStore.closeCoinDialog()
-    // 只在投币数量确实增加时才触发动画（确保是有效投币，而非重复请求被后端拒绝）
-    if (videoActionState.coin > coinBefore) {
+    const result: boolean = await doVideoAction(actionType, coinAmount)
+    if (result)
+    {
+        // let upper layer update video info (including video action status)
+        emit('action-done', coinAmount)
+        videoActionUiStore.closeCoinDialog()
         videoActionUiStore.triggerCoinAnimation()
     }
 }
