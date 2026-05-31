@@ -1,6 +1,6 @@
-import { Api, getWebBaseUrl } from "@/shared/config/Api"
-import { type Danmaku } from "@/shared/model/Danmaku"
-import request from "@/shared/lib/request"
+import { Api, getWebBaseUrl } from "@/shared/config/Api";
+import { type Danmaku } from "@/shared/model/Danmaku";
+import request from "@/shared/lib/request";
 
 /**
  * Save one danmaku item to backend.
@@ -8,17 +8,17 @@ import request from "@/shared/lib/request"
  * @returns backend `data` field when request succeeds
  */
 async function postDanmaku(danmaku: Danmaku): Promise<boolean | null> {
-    const result = await request({
-        method: 'post',
-        url: Api.postDanmaku,
-        data: danmaku,
-    })
-    if (!result) {
-        return null
-    }
-    // request 拦截器已保证 code===200 才会返回 result
-    // 这里不能再依赖 result.data 是否为真，因为后端可能返回空 data
-    return true
+  const result = await request({
+    method: "post",
+    url: Api.postDanmaku,
+    data: danmaku,
+  });
+  if (!result) {
+    return null;
+  }
+  // request 拦截器已保证 code===200 才会返回 result
+  // 这里不能再依赖 result.data 是否为真，因为后端可能返回空 data
+  return true;
 }
 
 /**
@@ -27,18 +27,21 @@ async function postDanmaku(danmaku: Danmaku): Promise<boolean | null> {
  * @param fileIndex file index
  * @returns backend `data` field containing the danmaku list
  */
-async function loadDanmakuList(videoId: string, fileIndex: number): Promise<Danmaku[] | null> {
-    const result = await request({
-        method: 'get',
-        url: `${Api.loadDanmaku}/${videoId}`,
-        params: {
-            fileIndex,
-        }
-    })
-    if (!result) {
-        return null
-    }
-    return result.data
+async function loadDanmakuList(
+  videoId: string,
+  fileIndex: number,
+): Promise<Danmaku[] | null> {
+  const result = await request({
+    method: "get",
+    url: `${Api.loadDanmaku}/${videoId}`,
+    params: {
+      fileIndex,
+    },
+  });
+  if (!result) {
+    return null;
+  }
+  return result.data;
 }
 
 /**
@@ -49,8 +52,20 @@ async function loadDanmakuList(videoId: string, fileIndex: number): Promise<Danm
  * @returns absolute URL to the master playlist
  */
 function getVideoResource(videoId: string, index: number): string {
-    const baseUrl = getWebBaseUrl();
-    return `${baseUrl}${Api.hlsMasterPlaylist}/${videoId}/${index}/master.m3u8`;
+  const baseUrl = getWebBaseUrl();
+  return `${baseUrl}${Api.hlsMasterPlaylist}/${videoId}/${index}/master.m3u8`;
 }
 
-export { getVideoResource, loadDanmakuList, postDanmaku }
+/**
+ * 上报播放统计（视频播放50%后调用一次，后续不再触发）
+ * @param videoId 视频ID
+ */
+async function reportPlayCount(videoId: string): Promise<void> {
+  await request({
+    method: "post",
+    url: Api.playCount + `/${videoId}`,
+  });
+  console.log("上报播放统计成功");
+}
+
+export { getVideoResource, loadDanmakuList, postDanmaku, reportPlayCount };

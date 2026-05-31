@@ -46,6 +46,8 @@ import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
 import { useDanmakuStore } from "@/features/player/store/DanmakuStore";
 import * as videoApi from "@/features/player/api/VideoApi";
 import * as videoOnlineApi from "@/features/player/api/VideoOnlineApi";
+import { usePlayCount } from "@/features/player/model/usePlayCount";
+import { getOrCreateSessionId } from "@/shared/lib/sessionId";
 
 // ============================================================
 // Module-level constants
@@ -61,10 +63,6 @@ const HLS_CONFIG = {
   startLevel: -1,
 };
 
-const VIDEO_ONLINE_SESSION_ID_KEY = "video-online-session-id";
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 // ============================================================
 // usePlayer composable
 // ============================================================
@@ -76,6 +74,7 @@ export function usePlayer() {
   const videoStateStore = useVideoStateStore();
   const loginStateStore = useLoginStateStore();
   const danmakuStore = useDanmakuStore();
+  const { tryReportPlayCount } = usePlayCount();
 
   // ──────────────────────────────────────────────────────────
   // Reactive state
@@ -91,7 +90,7 @@ export function usePlayer() {
   const coverSrc = ref<string>("");
   const watcherCount = ref("1");
   const timer = ref(0);
-  const interval = 5_000;
+  const interval = 10_000;
 
   // ──────────────────────────────────────────────────────────
   // Non-reactive module state
@@ -220,7 +219,6 @@ export function usePlayer() {
 
   function setupSmoothQualitySwitch(art: Artplayer, hls: Hls) {
     let pendingLevel: number | null = null;
-    let pendingLabel = "";
 
     const updateQualityUi = () => {
       if (!hls.levels.length) return;
@@ -236,14 +234,12 @@ export function usePlayer() {
         if (selectedLevel === -1) {
           hls.nextLevel = -1;
           pendingLevel = null;
-          pendingLabel = "";
           art.notice.show = `画质: ${selectedLabel || "自动"}`;
           return selectedLabel;
         }
 
         hls.nextLevel = selectedLevel;
         pendingLevel = selectedLevel;
-        pendingLabel = selectedLabel;
         art.notice.show = `画质: ${selectedLabel}（切换中）`;
         return selectedLabel;
       };
@@ -280,7 +276,6 @@ export function usePlayer() {
         // 手动切换成功
         art.notice.show = `已切换到：${label}`;
         pendingLevel = null;
-        pendingLabel = "";
       } else if (pendingLevel === null) {
         // ABR 自动切换
         art.notice.show = `自动切换到：${label}`;
@@ -703,6 +698,21 @@ export function usePlayer() {
       cleanupFullscreenButton();
     });
 
+    // 播放统计：累积实际播放15秒后上报一次
+    art.value.on("video:timeupdate", function onTimeUpdate() {
+      const player = art.value;
+
+      if (!player) return;
+
+      const needReport = tryReportPlayCount(player.currentTime);
+
+      // 如果已经做好播放统计，结束记录
+      if (needReport) {
+        videoApi.reportPlayCount(videoId.value);
+        player.off("video:timeupdate", onTimeUpdate);
+      }
+    });
+
     // 监听弹幕 toggle 按钮点击，每次点击翻转 danmakuEnabled 状态
     toggleButtonSetupTimer = window.setTimeout(() => {
       const toggleButton = document.querySelector(".apd-toggle");
@@ -724,85 +734,13 @@ export function usePlayer() {
   }
 
   // ──────────────────────────────────────────────────────────
-  // Session ID
-  // ──────────────────────────────────────────────────────────
-  let memorySessionId: string | null = null;
-
-  /**
-   * Create a UUID v4 session id with far low collision probability.
-   */
-  function createSessionId(): string {
-    // 1. use built-in crypto API if available for better randomness and performance
-    if (globalThis.crypto?.randomUUID) {
-      return globalThis.crypto.randomUUID();
-    }
-    // 2. fallback to manual UUID v4 generation using crypto.getRandomValues if available
-    if (globalThis.crypto?.getRandomValues) {
-      const randomValues = new Uint8Array(16);
-      globalThis.crypto.getRandomValues(randomValues);
-      randomValues[6] = ((randomValues[6] ?? 0) & 0x0f) | 0x40;
-      randomValues[8] = ((randomValues[8] ?? 0) & 0x3f) | 0x80;
-
-      const hex = Array.from(randomValues, value =>
-        value.toString(16).padStart(2, "0"),
-      );
-      return [
-        hex.slice(0, 4).join(""),
-        hex.slice(4, 6).join(""),
-        hex.slice(6, 8).join(""),
-        hex.slice(8, 10).join(""),
-        hex.slice(10, 16).join(""),
-      ].join("-");
-    }
-    // 3. fallback to timestamp and random values if crypto API is not available
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
-  }
-
-  /**
-   * Get one stable viewer session id for the current browser.
-   * This works for both logged-in and anonymous users.
-   *
-   * localStorage is used on purpose so the same browser keeps the same id
-   * across page switches and repeated heartbeat calls.
-   */
-  function getVideoOnlineSessionId(): string {
-    // id session id has been saved in memory, return it directly for better performance
-    if (memorySessionId) {
-      return memorySessionId;
-    }
-    // else we will search for a valid session id in localStorage, if there is none, we will create a new one, store it in localStorage and return it
-    try {
-      // if there is a valid session id stored in localStorage, use it
-      const storedValue = window.localStorage.getItem(
-        VIDEO_ONLINE_SESSION_ID_KEY,
-      );
-      const storedSessionId = storedValue?.trim();
-      if (storedSessionId && UUID_PATTERN.test(storedSessionId)) {
-        memorySessionId = storedSessionId;
-        return storedSessionId;
-      }
-      // else create a new session id, store it in localStorage and return it
-      const newSessionId = createSessionId();
-      window.localStorage.setItem(
-        VIDEO_ONLINE_SESSION_ID_KEY,
-        String(newSessionId),
-      );
-      memorySessionId = newSessionId;
-      return newSessionId;
-    } catch {
-      memorySessionId = createSessionId();
-      return memorySessionId;
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────
   // Online heartbeat & counter
   // ──────────────────────────────────────────────────────────
   function sendHeartbeat() {
     videoOnlineApi.sendHeartbeat(
       videoId.value,
       Number(route.params.index) || 1,
-      getVideoOnlineSessionId(),
+      getOrCreateSessionId(),
     );
   }
 
