@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import Avatar from '@/entities/avatar/ui/Avatar.vue';
+import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useCreativeCenter } from '../composables/useCreativeCenter';
 import { useRoute } from 'vue-router';

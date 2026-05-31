@@ -1,19 +1,19 @@
 <script lang="ts" setup>
-import IndexHeader from '@/widgets/indexHeader/ui/IndexHeader.vue';
+import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue';
 import { useVideoDetail } from '../composables/useVideoDetail';
 import { VIDEO_PAGE_SIDE_PADDING } from '@/shared/config/Config';
 import { inject, onMounted } from 'vue';
-import Avatar from '@/entities/avatar/ui/Avatar.vue';
+import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import Account from '@/features/account/ui/Account.vue';
-import Player from '@/features/player/ui/Player.vue';
+import Account from '@/shared/features/account/ui/Account.vue';
+import Player from '@/pages/videoDetail/features/player/ui/Player.vue';
 import useVideoStateStore from '../store/VideoStateStore';
-import VideoPartitionList from '@/entities/videoPartitonList/ui/VideoPartitionList.vue';
-import DanmakuList from '@/entities/danmakuList/ui/DanmakuList.vue';
-import VideoActionItem from '@/features/videoAction/ui/VideoActionItem.vue';
-import CoinDialog from '@/features/videoAction/ui/CoinDialog.vue';
-import VideoIntroduction from '@/entities/videoIntroduction/ui/VideoIntroduction.vue';
-import VideoComment from '@/widgets/videoComment/ui/VideoComment.vue';
+import VideoPartitionList from '@/pages/videoDetail/entities/videoPartitonList/ui/VideoPartitionList.vue';
+import DanmakuList from '@/pages/videoDetail/entities/danmakuList/ui/DanmakuList.vue';
+import VideoActionItem from '@/pages/videoDetail/features/videoAction/ui/VideoActionItem.vue';
+import CoinDialog from '@/pages/videoDetail/features/videoAction/ui/CoinDialog.vue';
+import VideoIntroduction from '@/pages/videoDetail/entities/videoIntroduction/ui/VideoIntroduction.vue';
+import VideoComment from '@/pages/videoDetail/widgets/videoComment/ui/VideoComment.vue';
 import { useRoute } from 'vue-router';
 
 const {

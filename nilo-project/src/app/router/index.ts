@@ -1,16 +1,16 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Index from "@/pages/index/ui/Index.vue";
-import RecommendVideo from "@/widgets/recommendVideo/ui/RecommendVideo.vue";
-import SubCategoryBanner from "@/widgets/subCategoryBanner/ui/SubCategoryBanner.vue";
+import RecommendVideo from "@/pages/index/widgets/recommendVideo/ui/RecommendVideo.vue";
+import SubCategoryBanner from "@/pages/index/widgets/subCategoryBanner/ui/SubCategoryBanner.vue";
 import VideoDetail from "@/pages/videoDetail/ui/VideoDetail.vue";
 import CreativeCenter from "@/pages/creativeCenter/ui/CreativeCenter.vue";
-import CreativeCenterHome from "@/widgets/creativeCenterHome/ui/CreativeCenterHome.vue";
-import VideoUploadEdit from "@/features/videoUpload/ui/VideoUploadEdit.vue";
-import VideoManagement from "@/widgets/VideoManagement/ui/VideoManagement.vue";
-import DanmakuManagement from "@/widgets/DanmakuManagement/ui/DanmakuManagement.vue";
-import VideoCommentManagement from "@/widgets/VideoCommentManagement/ui/VideoCommentManagement.vue";
+import CreativeCenterHome from "@/pages/creativeCenter/widgets/creativeCenterHome/ui/CreativeCenterHome.vue";
+import VideoUploadEdit from "@/pages/creativeCenter/features/videoUpload/ui/VideoUploadEdit.vue";
+import VideoManagement from "@/pages/creativeCenter/widgets/VideoManagement/ui/VideoManagement.vue";
+import DanmakuManagement from "@/pages/creativeCenter/widgets/DanmakuManagement/ui/DanmakuManagement.vue";
+import VideoCommentManagement from "@/pages/creativeCenter/widgets/VideoCommentManagement/ui/VideoCommentManagement.vue";
 import UserHome from "@/pages/userHome/ui/UserHome.vue";
-import UserHomeIndex from "@/widgets/videoComment/UserHomeIndex.vue";
+import UserHomeIndex from "@/pages/userHome/widgets/userHomeIndex/ui/UserHomeIndex.vue";
 
 const router = createRouter({
   history: createWebHistory(),

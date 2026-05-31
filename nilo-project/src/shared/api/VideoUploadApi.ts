@@ -1,7 +1,7 @@
 import { Api } from "@/shared/config/Api";
 import request from "@/shared/lib/request";
 import type { AxiosProgressEvent } from "axios";
-import type { VideoUpload } from "@/features/videoUpload/model/VideoUpload";
+import type { VideoUpload } from "@/pages/creativeCenter/features/videoUpload/model/VideoUpload";
 
 export const videoUploadApi = {
   async preUploadVideo(
