@@ -2,7 +2,7 @@
 import IndexHeader from '@/widgets/indexHeader/ui/IndexHeader.vue';
 import { useVideoDetail } from '../composables/useVideoDetail';
 import { VIDEO_PAGE_SIDE_PADDING } from '@/shared/config/Config';
-import { inject, onMounted, ref } from 'vue';
+import { inject, onMounted } from 'vue';
 import Avatar from '@/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import Account from '@/features/account/ui/Account.vue';
@@ -54,7 +54,7 @@ onMounted(() =>
 
 <template>
     <Account />
-    <CoinDialog @action-done="afterCoinAction()" />
+    <CoinDialog @action-done="afterCoinAction" />
     <div :class="['page-content', videoStateStore.displayMode]" :style="{
         'max-width': mainContentMaxWidth + 'px',
         'min-width': mainContentMinWidth + 'px',
