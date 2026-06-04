@@ -37,7 +37,8 @@ const props = withDefaults(defineProps<{
                 @mouseenter="waitAndChange($event)" @mouseleave="waitAndLeave($event)">
                 <RouterLink draggable="false" class="category-item" :to="`/c/${categoryItem.categoryNumber}`"
                     @mousedown="(e) => onItemMousedown(e, categoryItem.color)" :style="{
-                        background: categoryStore.currentPCategory?.categoryNumber === categoryItem.categoryNumber ? categoryItem.color + '50' : '',
+                        '--category-color': categoryItem.color,
+                        '--category-hover-bg': categoryItem.color + '50',
                     }">
                     <span class="category-name">
                         {{ categoryItem.categoryName }}
@@ -83,9 +84,12 @@ const props = withDefaults(defineProps<{
         </RouterLink>
         <div class="category-items" :class="{ expanded: isFoldedHovered }">
             <RouterLink class="category-item" v-for="categoryItem in categoryStore.categoryList"
-                :key="categoryItem.categoryNumber" :to="`/c/${categoryItem.categoryNumber}`"">
-                <span class=" category-name">
-                {{ categoryItem.categoryName }}
+                :key="categoryItem.categoryNumber" :to="`/c/${categoryItem.categoryNumber}`" :style="{
+                    '--category-color': categoryItem.color,
+                    '--category-hover-bg': categoryItem.color + '50',
+                }">
+                <span class="category-name">
+                    {{ categoryItem.categoryName }}
                 </span>
             </RouterLink>
         </div>
@@ -175,6 +179,8 @@ const props = withDefaults(defineProps<{
                 &.active {
 
                     .category-item {
+                        background-color: var(--category-hover-bg);
+                        color: var(--category-color);
                         font-weight: 500;
                     }
                 }
@@ -192,7 +198,8 @@ const props = withDefaults(defineProps<{
                     transition: background-color 0.3s;
 
                     &:hover {
-                        background-color: $color-surface-hover;
+                        background-color: var(--category-hover-bg);
+                        color: var(--category-color);
                     }
 
                     .category-name {
@@ -386,7 +393,8 @@ const props = withDefaults(defineProps<{
                 border-radius: 7px;
 
                 &:hover {
-                    background-color: $color-surface-hover;
+                    background-color: var(--category-hover-bg);
+                    color: var(--category-color);
                 }
 
                 .category-name {
