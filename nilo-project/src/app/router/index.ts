@@ -11,6 +11,9 @@ import DanmakuManagement from "@/pages/creativeCenter/widgets/DanmakuManagement/
 import VideoCommentManagement from "@/pages/creativeCenter/widgets/VideoCommentManagement/ui/VideoCommentManagement.vue";
 import UserHome from "@/pages/userHome/ui/UserHome.vue";
 import UserHomeIndex from "@/pages/userHome/widgets/userHomeIndex/ui/UserHomeIndex.vue";
+import UserHomeUpload from "@/pages/userHome/widgets/userHomeUpload/ui/UserHomeUpload.vue";
+import UserHomeVideoSeries from "@/pages/userHome/widgets/userHomeVideoSeries/ui/UserHomeVideoSeries.vue";
+import UserHomeCollection from "@/pages/userHome/widgets/userHomeCollection/ui/UserHomeCollection.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -79,10 +82,29 @@ const router = createRouter({
       name: "userHome",
       component: UserHome,
       children: [
-        // default
+        // default - 首页
         {
           path: "",
+          name: "userHomeIndex",
           component: UserHomeIndex,
+        },
+        // 投稿
+        {
+          path: "upload/:sortType?",
+          name: "userUpload",
+          component: UserHomeUpload,
+        },
+        // 系列
+        {
+          path: "series/:seriesId?",
+          name: "userVideoSeries",
+          component: UserHomeVideoSeries,
+        },
+        // 收藏
+        {
+          path: "collection",
+          name: "userCollection",
+          component: UserHomeCollection,
         },
       ],
     },

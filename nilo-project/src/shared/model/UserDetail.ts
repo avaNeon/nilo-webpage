@@ -35,6 +35,12 @@ export interface UserDetail {
   /** 当前硬币数 */
   currentCoin: number;
 
+  /** 点赞数 */
+  likeCount: number;
+
+  /** 播放数 */
+  playCount: number;
+
   /** 粉丝数 */
   followerCount: number;
 
