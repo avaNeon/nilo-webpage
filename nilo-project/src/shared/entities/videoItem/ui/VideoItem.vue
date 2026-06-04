@@ -36,9 +36,11 @@ const props = withDefaults(defineProps<{
      */
     authorMode?: boolean,
     reviewState?: 0 | 1 | 2 | 3 | 4 | null,
+    width?: string,
 }>(), {
     margin: '0',
     authorMode: false,
+    width: '20%',
 })
 
 const emit = defineEmits<{
@@ -50,6 +52,12 @@ const emit = defineEmits<{
 
 const canEdit = computed(() =>
     (props.reviewState === VideoStatusEnum.Passed || props.reviewState === VideoStatusEnum.NotPassed || props.reviewState === VideoStatusEnum.TranscodingFailed) && !!props.videoInfo.videoId,
+)
+
+const imgSectionStyle = computed(() =>
+    props.type === 'vertical'
+        ? { width: props.width }
+        : undefined,
 )
 
 function onEditClick()
@@ -105,8 +113,8 @@ function toggleOptionsPanel()
         zIndex: showOptionsPanel ? 100 : undefined,
         ...(props.authorMode ? {} : getRippleStyle(props.videoInfo)),
     }">
-        <RouterLink class="img-section" :to="`/video/${props.videoInfo.videoId}`"
-            style="color: inherit; text-decoration: none;" target="_blank">
+        <RouterLink class="img-section" :style="[{ color: 'inherit', textDecoration: 'none' }, imgSectionStyle]"
+            :to="`/video/${props.videoInfo.videoId}`" target="_blank">
             <div class="cover">
                 <img loading="lazy" :src="imgRequestUrl(props.videoInfo.videoCover)">
             </div>
@@ -139,17 +147,19 @@ function toggleOptionsPanel()
                     <span v-if="reviewState === VideoStatusEnum.NotPassed" class="info-text">请修改后重新上传</span>
                 </div>
             </div>
-            <div v-if="!authorMode" class="other-info"
+            <div v-if="!authorMode" :class="['other-info', type === 'vertical' ? 'vertical' : '']"
                 :title="`${props.videoInfo.briefUserInfo?.nickName + ' · '}${calculateRelativeTime(props.videoInfo.lastUpdateTime)}`">
                 <span class="author-name iconfont icon-upzhu"
                     @click="routerToNewPage(`/user/${props.videoInfo.briefUserInfo?.userId}`)">{{
                         props.videoInfo.briefUserInfo?.nickName }}</span>
-                <span> · </span>
+                <span v-if="type === 'horizontal'"> · </span>
                 <div v-if="type === 'vertical'" class="count">
                     <div class="iconfont icon-play2" title="播放数">{{ props.videoInfo.playCount }}</div>
                     <div class="iconfont icon-danmu" title="弹幕数">{{ props.videoInfo.danmakuCount }}</div>
                 </div>
-                <span class="post-date">{{ calculateRelativeTime(props.videoInfo.lastUpdateTime) }}</span>
+                <span v-if="type === 'horizontal'" class="post-date">
+                    {{ calculateRelativeTime(props.videoInfo.lastUpdateTime) }}
+                </span>
             </div>
             <div v-else class="other-info">
                 <div class="left">
@@ -251,22 +261,19 @@ function toggleOptionsPanel()
 
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     height: 100%;
-    padding: 10px;
-    border-radius: 5px;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    border-radius: 15px;
+    transition: box-shadow 0.2s ease;
 
     &:hover {
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
-        transform: translateY(-4px);
     }
 
     .img-section {
         display: block;
         width: 100%;
-        height: 75%;
-        border-radius: 5px;
+        height: 70%;
+        border-radius: 15px;
         cursor: pointer;
         position: relative;
         overflow: hidden;
@@ -324,25 +331,26 @@ function toggleOptionsPanel()
     }
 
     .video-info {
-        height: 25%;
+        height: 30%;
         display: flex;
         flex-direction: column;
         justify-content: end;
         z-index: 1;
+        padding: 0 10px 10px;
 
         .video-name {
-            margin: 5px 0 3px;
+            margin: 7px 0 0;
 
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
-            transition: all 0.2s ease;
+            transition: color 0.3s ease;
             cursor: pointer;
             text-wrap: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
 
             &:hover {
-                font-size: 16px;
+                color: $color-bilibili-blue;
             }
         }
 
@@ -355,11 +363,11 @@ function toggleOptionsPanel()
 
             .author-name {
                 font-weight: 500;
-                transition: all 0.2s ease;
+                transition: color 0.2s ease;
                 cursor: pointer;
 
                 &:hover {
-                    font-size: 16px;
+                    color: $color-bilibili-blue;
                 }
 
                 &::before {
@@ -403,7 +411,7 @@ function toggleOptionsPanel()
 
     .img-section {
         display: block;
-        width: 20%;
+        flex-shrink: 0;
         height: 100%;
         border-radius: 5px;
         cursor: pointer;
@@ -455,18 +463,33 @@ function toggleOptionsPanel()
     }
 
     .video-info {
-        flex: 1;
+        flex: 1 1 0;
+        min-width: 0;
         z-index: 1;
 
         .top-info {
             display: flex;
             column-gap: 10px;
             align-items: center;
+            min-width: 0;
 
             .video-name {
+                flex: 1 1 auto;
+                min-width: 0;
                 font-size: 18px;
                 transition: all 0.2s ease;
                 cursor: pointer;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+
+                >div,
+                >span {
+                    display: block;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
 
                 &:hover {
                     color: $color-bilibili-blue;
@@ -517,39 +540,38 @@ function toggleOptionsPanel()
             justify-content: space-between;
             align-items: center;
 
-            .left {
+            .author-name {
+                font-size: 14px;
+                color: $color-text-muted;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                cursor: pointer;
 
-                .author-name {
+                &:hover {
+                    color: $color-bilibili-blue;
+                }
+
+                &::before {
+                    margin-right: 2px;
+                }
+            }
+
+            .count {
+                display: flex;
+                column-gap: 10px;
+
+                color: $color-text-secondary;
+
+                .iconfont {
                     font-size: 14px;
-                    color: $color-text-muted;
-                    font-weight: 500;
-                    transition: all 0.2s ease;
-                    cursor: pointer;
-
-                    &:hover {
-                        color: $color-bilibili-blue;
-                    }
 
                     &::before {
-                        margin-right: 2px;
+                        margin-right: 3px;
                     }
                 }
+            }
 
-
-                .count {
-                    display: flex;
-                    column-gap: 10px;
-
-                    color: $color-text-secondary;
-
-                    .iconfont {
-                        font-size: 14px;
-
-                        &::first-letter {
-                            margin-right: 3px;
-                        }
-                    }
-                }
+            .left {
 
                 .post-date {
                     margin: 10px 0;
@@ -674,6 +696,17 @@ function toggleOptionsPanel()
                         }
                     }
                 }
+            }
+        }
+
+        .other-info.vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: start;
+
+            .count {
+                display: flex;
+                column-gap: 10px;
             }
         }
     }

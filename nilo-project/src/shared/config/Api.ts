@@ -61,6 +61,36 @@ const Api = {
   follow: "/follow/follow",
   // ——————用户中心——————
   getUserDetail: "/uHome/user/",
+  updateUserInfo: "/uHome/user",
+  // 用户中心 - 视频列表
+  uHomeLoadVideo: "/uHome/video",
+  // 用户中心 - 合集展示
+  uHomeLoadSeriesWithVideos: "/uHome/series/videos",
+  // ——————视频合集管理（/series）——————
+  // 获取用户的全部视频合集
+  VideoSeries: "/series",
+  // 重新排序视频合集
+  VideoSeriesResort: "/series/resort",
+  // 新增/修改视频合集
+  VideoSeriesSave: "/series/series",
+  // 向合集中添加视频
+  VideoSeriesAddVideo: "/series/video",
+  // 查询不在集合中的视频数量
+  VideoSeriesExcludingCount: "/series/video/ex/count",
+  // 分页查询不在集合中的视频
+  VideoSeriesExcludingList: "/series/video/ex",
+  // 分页查询集合中的视频（公开）
+  VideoSeriesVideos: "/series/video",
+  // 重新排序系列中的视频
+  VideoSeriesVideoResort: "/series/video/resort",
+  // 查询集合中的视频数量
+  VideoSeriesVideoCount: "/series/video/count",
+  // 从系列中移除一条视频
+  VideoSeriesDeleteVideo: "/series/video",
+  // 删除视频系列
+  VideoSeriesDelete: "/series/series",
+  // 根据系列ID获取视频系列信息
+  uHomeSeriesInfo: "/series/series",
 };
 
 // 区分不同的微服务
