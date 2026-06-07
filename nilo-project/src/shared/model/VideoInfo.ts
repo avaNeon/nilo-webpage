@@ -1,4 +1,3 @@
-
 import type { BriefUserInfo } from "@/shared/model/BriefUserInfo";
 import type { PublicUserInfo } from "./PublicUserInfo";
 
