@@ -12,6 +12,11 @@ export const useHostUserDetailStore = defineStore("userDetail", {
     setUserDetail(detail: UserDetail | null) {
       this.userHostDetail = detail;
     },
+    setTheme(theme: number) {
+      if (this.userHostDetail) {
+        this.userHostDetail.theme = theme;
+      }
+    },
     clearUserDetail() {
       this.userHostDetail = null;
     },

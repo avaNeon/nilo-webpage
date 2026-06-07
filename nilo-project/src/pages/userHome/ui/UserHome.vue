@@ -8,18 +8,51 @@ import maleSrc from '@/assets/icon/img/male.svg'
 import femaleSrc from '@/assets/icon/img/female.svg'
 import editSrc from '@/assets/icon/img/edit.svg'
 import UserInfoEditor from '../features/userInfoEditor/ui/UserInfoEditor.vue';
+import UserHomeBgImg from '../features/userHomeBgImg/ui/UserHomeBgImg.vue';
+import message from '@/shared/lib/message.ts';
 
 const hostUserDetailStore = useHostUserDetailStore();
-const { isMySelf, bgStyle, navItems, activeRouteName, keyword, showEditor, subscribe, unsubscribe, navigateTo, viewFollowing, viewFollower, reloadUserInfo } = useUserHome();
+const {
+    hideUi,
+    isMySelf,
+    bgStyle,
+    navItems,
+    activeRouteName,
+    keyword,
+    showEditor,
+    showBgImgEditor,
+    currentThemeIndex,
+    setPreviewWallpaper,
+    searchVideos,
+    subscribe,
+    unsubscribe,
+    navigateTo,
+    viewFollowing,
+    viewFollower,
+    reloadUserInfo
+} = useUserHome();
 
+function saveTheme(index: number)
+{
+    // 更改store
+    hostUserDetailStore.setTheme(index)
+    // 删除预览数据
+    setPreviewWallpaper(null)
+    // 关闭选择壁纸界面
+    showBgImgEditor.value = false
+    // 提示消息
+    message.success('壁纸修改成功')
+}
 
 </script>
 
 <template>
-    <div class="content" :style="bgStyle">
+    <div class="user-home-page" :style="bgStyle">
         <IndexHeader />
         <UserInfoEditor v-model:visible="showEditor" @reload="reloadUserInfo" />
-        <div class="user-profile">
+        <UserHomeBgImg v-model:show="showBgImgEditor" :current-theme-index="currentThemeIndex"
+            @preview="setPreviewWallpaper" @save-theme="saveTheme" />
+        <div v-if="!hideUi" class="user-profile">
             <div class="profile">
                 <img class="avatar"
                     :src="hostUserDetailStore.userHostDetail?.avatar ? imgRequestUrl(hostUserDetailStore.userHostDetail.avatar) : defaultAvatar" />
@@ -28,12 +61,26 @@ const { isMySelf, bgStyle, navItems, activeRouteName, keyword, showEditor, subsc
                         <div class="nickName">{{ hostUserDetailStore.userHostDetail?.nickName }}</div>
                         <img class="gender" v-if="hostUserDetailStore.userHostDetail?.gender != 2"
                             :src="hostUserDetailStore.userHostDetail?.gender == 0 ? femaleSrc : maleSrc" alt="gender">
-                        <img class="edit" v-if="isMySelf" :src="editSrc" alt="edit" @click="showEditor = true">
+                        <el-tooltip content="编辑个人信息" placement="top">
+                            <button v-if="isMySelf" class="edit-button glass" @click="showEditor = true">
+                                <img class="edit" :src="editSrc" alt="edit">
+                            </button>
+                        </el-tooltip>
                     </div>
                     <div class="bio">{{ hostUserDetailStore.userHostDetail?.personalIntroduction }}</div>
                 </div>
             </div>
             <div class="operation">
+                <el-tooltip content="隐藏界面" placement="top">
+                    <button class="theme-btn glass" @click="hideUi = true">
+                        <span class="iconfont icon-theme">😶‍🌫️</span>
+                    </button>
+                </el-tooltip>
+                <el-tooltip content="更换壁纸" placement="top">
+                    <button v-if="isMySelf" class="theme-btn glass" @click="showBgImgEditor = true">
+                        <span class="iconfont icon-theme">🎨</span>
+                    </button>
+                </el-tooltip>
                 <div class="follow">
                     <el-dropdown class="follow-panel" v-if="hostUserDetailStore.userHostDetail?.hasFollowed">
                         <el-button class="follow-button" size="large">
@@ -54,7 +101,7 @@ const { isMySelf, bgStyle, navItems, activeRouteName, keyword, showEditor, subsc
                 </div>
             </div>
         </div>
-        <div class="main-content glass">
+        <div v-if="!hideUi" class="main-content glass">
             <div class="top-bar">
                 <div class="items">
                     <nav v-for="item in navItems" :key="item.routeName"
@@ -63,7 +110,7 @@ const { isMySelf, bgStyle, navItems, activeRouteName, keyword, showEditor, subsc
                         <span class="item-text" :class="['iconfont', item.icon]">{{ item.label }}</span>
                     </nav>
                     <input class="search" v-model="keyword" style="width:240px; margin-bottom: 10px;" placeholder="搜索视频"
-                        clearable />
+                        clearable @keyup.enter="searchVideos" />
                 </div>
                 <div class="countable-info">
                     <div :class="['count-item', 'folllowing-count', isMySelf ? 'active' : '']" @click="viewFollowing">
@@ -96,8 +143,15 @@ const { isMySelf, bgStyle, navItems, activeRouteName, keyword, showEditor, subsc
                     </div>
                 </div>
             </div>
-            <RouterView />
+            <RouterView class="router-link" />
         </div>
+        <div class="bottom">
+        </div>
+        <el-tooltip v-if="hideUi" content="显示界面" placement="top">
+            <button class="hide-button glass" @click="hideUi = false">
+                <span class="iconfont icon-theme">😀</span>
+            </button>
+        </el-tooltip>
     </div>
 </template>
 
@@ -105,11 +159,13 @@ const { isMySelf, bgStyle, navItems, activeRouteName, keyword, showEditor, subsc
 $side-margin: 100px;
 $avatar-size: 70px;
 
-.content {
+.user-home-page {
     min-height: 100vh;
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
+
+    overflow: hidden; // 防止出现margin塌陷
 
     .user-profile {
         width: 90%;
@@ -155,9 +211,31 @@ $avatar-size: 70px;
                         width: 30px;
                     }
 
-                    .edit {
+                    .edit-button {
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 50%;
+                        border: none;
                         cursor: pointer;
-                        width: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        transition: transform 0.2s ease;
+
+                        &:hover {
+                            transform: scale(1.08);
+                        }
+
+                        &:active {
+                            transform: scale(0.95);
+                        }
+
+                        .edit {
+                            width: 22px;
+                            height: 22px;
+                            display: block;
+                        }
                     }
                 }
 
@@ -171,6 +249,31 @@ $avatar-size: 70px;
 
         .operation {
             margin-right: 40px;
+
+            display: flex;
+            align-items: center;
+            column-gap: 12px;
+
+            .theme-btn {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                transition: transform 0.2s ease;
+
+                &:hover {
+                    transform: scale(1.1);
+                }
+
+                &:active {
+                    transform: scale(0.95);
+                }
+            }
 
             .follow {
                 .follow-button {
@@ -193,19 +296,22 @@ $avatar-size: 70px;
 
     .main-content {
         width: 90%;
-        margin: 30px auto 0;
-        padding: 20px 15px;
-        border-top-left-radius: 20px;
-        border-top-right-radius: 20px;
+        margin: 30px auto;
+        padding: 0 0 20px;
+        border-radius: 20px;
+
 
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: start;
-            padding: 0 10px;
+            padding: 20px 30px 18px;
+            margin: 15px 10px 20px;
+            background-color: rgba(255, 255, 255, 0.4);
+            overflow: hidden;
+            border-radius: 40px;
 
             .items {
-                margin: 0 10px 15px;
 
                 display: flex;
                 column-gap: 30px;
@@ -298,6 +404,37 @@ $avatar-size: 70px;
                 }
             }
         }
+
+        .router-link {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+    }
+
+}
+
+.hide-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: scale(1.1);
+    }
+
+    &:active {
+        transform: scale(0.95);
     }
 }
 

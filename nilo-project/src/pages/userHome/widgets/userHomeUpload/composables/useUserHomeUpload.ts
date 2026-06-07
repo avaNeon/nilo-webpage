@@ -1,7 +1,7 @@
 import { UserHomeSharedApi } from "@/pages/userHome/shared/api/UserHomeSharedApi";
 import type { SortType } from "@/pages/userHome/shared/model/SortType";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 export function useUserHomeUpload() {
@@ -28,6 +28,12 @@ export function useUserHomeUpload() {
     } else {
       return Number(value);
     }
+  });
+
+  /** 从路由 query 读取搜索关键词 */
+  const searchKeyword = computed(() => {
+    const kw = route.query.keyword as string | undefined;
+    return kw && kw.trim() ? kw.trim().substring(0, 100) : "";
   });
 
   const count = ref(0);
@@ -65,6 +71,7 @@ export function useUserHomeUpload() {
       pageNo.value,
       20,
       sortType,
+      searchKeyword.value || undefined,
     );
 
     if (result === false || result === null) {
@@ -81,6 +88,14 @@ export function useUserHomeUpload() {
     }
   }
 
+  /** 监听搜索关键词变化，重新加载 */
+  watch(searchKeyword, () => {
+    pageNo.value = 0;
+    count.value = 0;
+    pageSize.value = 0;
+    loadVideos(1);
+  });
+
   onMounted(() => {
     loadVideos(1);
   });
@@ -88,6 +103,7 @@ export function useUserHomeUpload() {
   return {
     SortTypes,
     sortTypeValue,
+    searchKeyword,
     count,
     pageNo,
     pageSize,

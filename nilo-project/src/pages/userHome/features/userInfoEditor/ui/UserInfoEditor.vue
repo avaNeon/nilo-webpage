@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { UserInfoEditorApi } from '../api/UserInfoEditorApi';
 import { useUserInfoEditor } from '../model/useUserInfoEditor';
 import { useHostUserDetailStore } from '@/shared/store/HostUserDetailStore';
+import AvatarEdit from './AvatarEdit.vue';
 
 /* ———————— 父组件通信 ———————— */
 const props = defineProps<{
@@ -29,6 +30,8 @@ const hostUserDetailStore = useHostUserDetailStore();
 
 /* ———————— 头像文件选择 ———————— */
 const avatarInputRef = ref<HTMLInputElement>();
+const avatarEditVisible = ref(false);
+const selectedAvatarUrl = ref('');
 
 function triggerAvatarSelect()
 {
@@ -41,9 +44,41 @@ async function onAvatarFileChange(e: Event)
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    await handleAvatarUpload(file);
+
+    revokeSelectedAvatarUrl();
+    selectedAvatarUrl.value = URL.createObjectURL(file);
+    avatarEditVisible.value = true;
     // 重置 input，使得重复选择同一个文件也能触发 change
     input.value = '';
+}
+
+function revokeSelectedAvatarUrl()
+{
+    if (!selectedAvatarUrl.value) return;
+
+    URL.revokeObjectURL(selectedAvatarUrl.value);
+    selectedAvatarUrl.value = '';
+}
+
+function cancelAvatarCrop()
+{
+    avatarEditVisible.value = false;
+    revokeSelectedAvatarUrl();
+}
+
+async function handleAvatarCrop(blob: Blob)
+{
+    avatarEditVisible.value = false;
+
+    try
+    {
+        const file = new File([blob], 'avatar.png', { type: blob.type || 'image/png' });
+        await handleAvatarUpload(file);
+    }
+    finally
+    {
+        revokeSelectedAvatarUrl();
+    }
 }
 
 /* ———————— 操作 ———————— */
@@ -105,11 +140,23 @@ watch(
             }
             formRef.value?.clearValidate();
         }
+        else
+        {
+            cancelAvatarCrop();
+        }
     },
 );
+
+onBeforeUnmount(() =>
+{
+    revokeSelectedAvatarUrl();
+});
 </script>
 
 <template>
+    <AvatarEdit :model-value="avatarEditVisible" :img-src="selectedAvatarUrl" @crop="handleAvatarCrop"
+        @cancel="cancelAvatarCrop" />
+
     <el-dialog :model-value="visible" title="编辑个人信息" width="520px" :close-on-click-modal="false"
         @update:model-value="emit('update:visible', $event)">
         <el-form ref="formRef" :model="formData" :rules="rules" label-width="90px">
@@ -122,9 +169,9 @@ watch(
                 <div class="avatar-editor">
                     <img class="avatar-preview" :src="avatarPreviewUrl" alt="头像预览" />
                     <div class="avatar-upload-area">
-                        <el-button class="avatar-upload-btn" :disabled="uploadProgress !== null"
+                        <el-button class="avatar-upload-btn" :disabled="uploadProgress !== null || avatarEditVisible"
                             @click="triggerAvatarSelect">
-                            {{ uploadProgress !== null ? '上传中...' : '上传图片' }}
+                            {{ uploadProgress !== null ? '上传中...' : '选择图片' }}
                         </el-button>
                         <el-progress v-if="uploadProgress !== null" class="avatar-progress" :percentage="uploadProgress"
                             :stroke-width="6" />
