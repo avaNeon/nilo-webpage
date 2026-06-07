@@ -47,6 +47,7 @@ import { useDanmakuStore } from "@/pages/videoDetail/features/player/store/Danma
 import * as videoApi from "@/pages/videoDetail/features/player/api/VideoApi";
 import * as videoOnlineApi from "@/pages/videoDetail/features/player/api/VideoOnlineApi";
 import { usePlayCount } from "@/pages/videoDetail/features/player/model/usePlayCount";
+import { VideoPlayHistoryApi } from "@/shared/api/VideoPlayHistoryApi";
 import { getOrCreateSessionId } from "@/shared/lib/sessionId";
 
 // ============================================================
@@ -104,6 +105,8 @@ export function usePlayer() {
   let fullscreenButtonCleanup: (() => void) | null = null;
   // 记录是否从网页全屏进入原生全屏，以便退出时恢复
   let restoreWebFullscreen = false;
+  // 记录上一次上报播放历史的分P，避免同一分P暂停后继续播放重复上报
+  let lastReportedHistoryKey: string | null = null;
 
   // ──────────────────────────────────────────────────────────
   // Computed
@@ -671,6 +674,17 @@ export function usePlayer() {
         origCleanup();
         document.removeEventListener("fullscreenchange", onFullscreenExit);
       };
+    });
+
+    // 播放开始时记录播放历史：同一分P连续播放仅触发一次，切换分P后重新触发
+    art.value.on("video:play", () => {
+      const fileIndex = Number(route.params.index) || 1;
+      const historyKey = `${videoId.value}:${fileIndex}`;
+
+      if (lastReportedHistoryKey === historyKey) return;
+
+      lastReportedHistoryKey = historyKey;
+      void VideoPlayHistoryApi.saveHistory(videoId.value, fileIndex);
     });
 
     art.value.on("video:ended", () => {

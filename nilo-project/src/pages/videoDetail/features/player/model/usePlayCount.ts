@@ -14,7 +14,7 @@ export function usePlayCount() {
   /**
    * 每次 timeupdate 时调用，累积实际播放时长
    * @param currentTime 当前播放进度（秒）
-   * @returns true 表示已达到50%播放时长，需要上报，false 表示继续等待
+   * @returns true 表示已达到20%播放时长，需要上报，false 表示继续等待
    */
   function tryReportPlayCount(currentTime: number): boolean {
     // 如果视频数据没有加载好，返回false
@@ -46,7 +46,7 @@ export function usePlayCount() {
       console.log("增加播放时长：", delta, "  累计播放时长：", accumulatedTime);
     }
 
-    if (accumulatedTime >= videoStateStore.videoInfo.duration * 0.5) {
+    if (accumulatedTime >= videoStateStore.videoInfo.duration * 0.2) {
       reported = true;
       return true;
     }
