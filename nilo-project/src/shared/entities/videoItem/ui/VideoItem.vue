@@ -37,10 +37,21 @@ const props = withDefaults(defineProps<{
     authorMode?: boolean,
     reviewState?: 0 | 1 | 2 | 3 | 4 | null,
     width?: string,
+    dateDescription?: string,
+    date?: string,
+    videoPath?: string,
+    fileIndex?: number,
+    showStats?: boolean,
+    showDuration?: boolean,
+    renderTitleHtml?: boolean,
+    titleFontSize?: string,
 }>(), {
     margin: '0',
     authorMode: false,
     width: '20%',
+    showStats: true,
+    showDuration: true,
+    renderTitleHtml: false,
 })
 
 const emit = defineEmits<{
@@ -59,6 +70,32 @@ const imgSectionStyle = computed(() =>
         ? { width: props.width }
         : undefined,
 )
+
+const videoPath = computed(() =>
+    props.videoPath ?? `/video/${props.videoInfo.videoId}${props.fileIndex ? `/${props.fileIndex}` : ''}`,
+)
+
+const videoNameText = computed(() =>
+    (props.videoInfo.videoName ?? '').replace(/<[^>]*>/g, ''),
+)
+
+const videoNameHtml = computed(() =>
+    sanitizeHighlightHtml(props.videoInfo.videoName ?? ''),
+)
+
+function sanitizeHighlightHtml(value: string)
+{
+    return value
+        .replace(/<span\s+class=(["'])highlight\1\s*>/gi, '[[[highlight-open]]]')
+        .replace(/<\/span>/gi, '[[[highlight-close]]]')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\[\[\[highlight-open\]\]\]/g, '<span class="highlight">')
+        .replace(/\[\[\[highlight-close\]\]\]/g, '</span>')
+}
 
 function onEditClick()
 {
@@ -110,26 +147,28 @@ function toggleOptionsPanel()
 <template>
     <div :class="['video', props.type, { 'author-mode': props.authorMode }]" :style="{
         margin: props.margin,
-        zIndex: showOptionsPanel ? 100 : undefined,
+        zIndex: showOptionsPanel ? 500 : undefined,
         ...(props.authorMode ? {} : getRippleStyle(props.videoInfo)),
     }">
         <RouterLink class="img-section" :style="[{ color: 'inherit', textDecoration: 'none' }, imgSectionStyle]"
-            :to="`/video/${props.videoInfo.videoId}`" target="_blank">
+            :to="videoPath" target="_blank">
             <div class="cover">
                 <img loading="lazy" :src="imgRequestUrl(props.videoInfo.videoCover)">
             </div>
-            <div class="video-detail">
-                <div v-if="type === 'horizontal'" class="count">
+            <div v-if="fileIndex" class="file-index">P{{ fileIndex }}</div>
+            <div v-if="showStats || showDuration" class="video-detail">
+                <div v-if="type === 'horizontal' && showStats" class="count">
                     <div class="iconfont icon-play2">{{ props.videoInfo.playCount }}</div>
                     <div class="iconfont icon-danmu">{{ props.videoInfo.danmakuCount }}</div>
                 </div>
-                <div class="duration">{{ calculateDuration(props.videoInfo.duration) }}</div>
+                <div v-if="showDuration" class="duration">{{ calculateDuration(props.videoInfo.duration) }}</div>
             </div>
         </RouterLink>
         <div class="video-info">
             <div class="top-info">
-                <div class="video-name" @click="routerToNewPage(`/video/${props.videoInfo.videoId}`)">
-                    <span :title="props.videoInfo.videoName || ''">
+                <div class="video-name" @click="routerToNewPage(videoPath)">
+                    <span v-if="props.renderTitleHtml" :title="videoNameText" v-html="videoNameHtml"></span>
+                    <span v-else :title="props.videoInfo.videoName || ''" :style="{fontSize: titleFontSize ? titleFontSize : '15px'}">
                         {{ props.videoInfo.videoName }}
                     </span>
                 </div>
@@ -153,12 +192,17 @@ function toggleOptionsPanel()
                     @click="routerToNewPage(`/user/${props.videoInfo.briefUserInfo?.userId}`)">{{
                         props.videoInfo.briefUserInfo?.nickName }}</span>
                 <span v-if="type === 'horizontal'"> · </span>
-                <div v-if="type === 'vertical'" class="count">
+                <div v-if="type === 'vertical' && showStats" class="count">
                     <div class="iconfont icon-play2" title="播放数">{{ props.videoInfo.playCount }}</div>
                     <div class="iconfont icon-danmu" title="弹幕数">{{ props.videoInfo.danmakuCount }}</div>
                 </div>
+                <span v-if="type === 'vertical' && (dateDescription || date)" class="post-date">
+                    {{ dateDescription }}{{ calculateRelativeTime(date === undefined ? props.videoInfo.lastUpdateTime :
+                        date) }}
+                </span>
                 <span v-if="type === 'horizontal'" class="post-date">
-                    {{ calculateRelativeTime(props.videoInfo.lastUpdateTime) }}
+                    {{ dateDescription }}{{ calculateRelativeTime(date === undefined ? props.videoInfo.lastUpdateTime :
+                        date) }}
                 </span>
             </div>
             <div v-else class="other-info">
@@ -234,7 +278,7 @@ function toggleOptionsPanel()
         inset: 0;
         border-radius: inherit;
         pointer-events: none;
-        z-index: 0;
+        z-index: 100;
         background-color: var(--ripple-color, #A29BFE);
 
         /* 离开时：scale 缩回 0，先慢后快（ease-in） */
@@ -277,7 +321,7 @@ function toggleOptionsPanel()
         cursor: pointer;
         position: relative;
         overflow: hidden;
-        z-index: 1;
+        z-index: 200;
 
         .cover {
             display: block;
@@ -302,6 +346,20 @@ function toggleOptionsPanel()
                 object-fit: cover;
                 object-position: center;
             }
+        }
+
+        .file-index {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 300;
+            padding: 3px 8px;
+            border-radius: 8px;
+            background-color: $color-mask-60;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 18px;
         }
 
         .video-detail {
@@ -335,7 +393,7 @@ function toggleOptionsPanel()
         display: flex;
         flex-direction: column;
         justify-content: end;
-        z-index: 1;
+        z-index: 200;
         padding: 0 10px 10px;
 
         .video-name {
@@ -350,6 +408,10 @@ function toggleOptionsPanel()
             text-overflow: ellipsis;
 
             &:hover {
+                color: $color-bilibili-blue;
+            }
+
+            :deep(.highlight) {
                 color: $color-bilibili-blue;
             }
         }
@@ -417,7 +479,7 @@ function toggleOptionsPanel()
         cursor: pointer;
         position: relative;
         overflow: hidden;
-        z-index: 1;
+        z-index: 200;
 
         .cover {
             display: block;
@@ -444,6 +506,20 @@ function toggleOptionsPanel()
             }
         }
 
+        .file-index {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 300;
+            padding: 3px 8px;
+            border-radius: 8px;
+            background-color: $color-mask-60;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 18px;
+        }
+
         .video-detail {
             width: 100%;
             padding: 5px 10px;
@@ -465,7 +541,7 @@ function toggleOptionsPanel()
     .video-info {
         flex: 1 1 0;
         min-width: 0;
-        z-index: 1;
+        z-index: 200;
 
         .top-info {
             display: flex;
@@ -492,6 +568,10 @@ function toggleOptionsPanel()
                 }
 
                 &:hover {
+                    color: $color-bilibili-blue;
+                }
+
+                :deep(.highlight) {
                     color: $color-bilibili-blue;
                 }
             }
@@ -619,7 +699,7 @@ function toggleOptionsPanel()
                         position: absolute;
                         top: calc(100% + 8px);
                         right: 0;
-                        z-index: 3000;
+                        z-index: 500;
 
                         width: 200px;
                         background-color: #fff;
@@ -703,10 +783,16 @@ function toggleOptionsPanel()
             display: flex;
             flex-direction: column;
             align-items: start;
+            row-gap: 6px;
 
             .count {
                 display: flex;
                 column-gap: 10px;
+            }
+
+            .post-date {
+                font-size: 14px;
+                color: $color-text-muted;
             }
         }
     }

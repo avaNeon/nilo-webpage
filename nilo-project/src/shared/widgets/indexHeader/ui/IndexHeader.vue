@@ -4,12 +4,38 @@ import { useCategory } from '../model/useCategory';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import { routerToNewPage } from '@/shared/utils/RouteUtil';
-const props = withDefaults(defineProps<{ theme?: string }>(), {
-    theme: "light"
+import SearchBar from '@/shared/features/searchBar/ui/SearchBar.vue';
+import { MessageApi } from '@/shared/api/MessageApi';
+import { computed, onMounted, ref } from 'vue';
+const props = withDefaults(defineProps<{
+    theme?: string,
+    showSearch?: boolean,
+}>(), {
+    theme: "light",
+    showSearch: true,
 }) // theme属性，可以是light或dark，默认为light
 
 const { categoryStore, getIcon } = useCategory();
 const loginStateStore = useLoginStateStore();
+const uncheckedMessageCount = ref(0);
+const uncheckedMessageCountText = computed(() =>
+    uncheckedMessageCount.value > 99 ? '99+' : String(uncheckedMessageCount.value),
+)
+
+async function loadUncheckedMessageCount()
+{
+    const messageCount = await MessageApi.getUncheckedMessageCount();
+    uncheckedMessageCount.value =
+        (messageCount?.systemMessageCount ?? 0) +
+        (messageCount?.likeMessageCount ?? 0) +
+        (messageCount?.collectMessageCount ?? 0) +
+        (messageCount?.commentMessageCount ?? 0);
+}
+
+onMounted(() =>
+{
+    loadUncheckedMessageCount();
+})
 
 </script>
 
@@ -34,18 +60,10 @@ const loginStateStore = useLoginStateStore();
             </el-popover>
             <nav></nav>
         </div>
-        <div class="search">
-            <div class="search-bar">
-                <div class="search-bar-content">
-                    <input />
-                    <div class="iconfont icon-search"></div>
-                </div>
-                <div class="search-bar-panel">
-                    <div class="history"></div>
-                    <div class="trending"></div>
-                </div>
-            </div>
+        <div v-if="props.showSearch" class="search">
+            <SearchBar />
         </div>
+        <div v-else></div>
         <div class="user">
             <div class="user-avatar">
                 <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar) : ''"
@@ -53,15 +71,18 @@ const loginStateStore = useLoginStateStore();
                     :width="48">
                 </Avatar>
             </div>
-            <nav>
-                <div class="iconfont icon-message"></div>
+            <nav class="message-nav">
+                <div class="iconfont icon-message" @click="routerToNewPage('/message/1')"></div>
+                <div v-if="uncheckedMessageCount > 0" class="message-badge">
+                    {{ uncheckedMessageCountText }}
+                </div>
                 <div class="description">消息</div>
             </nav>
-            <nav>
+            <nav @click="routerToNewPage(`/user/${loginStateStore.userInfo?.userId}/collection`)">
                 <div class="iconfont icon-collection"></div>
                 <div class="description">收藏</div>
             </nav>
-            <nav>
+            <nav @click="routerToNewPage(`/history/${loginStateStore.userInfo?.userId}`)">
                 <div class="iconfont icon-history"></div>
                 <div class="description">历史</div>
             </nav>
@@ -177,46 +198,6 @@ const loginStateStore = useLoginStateStore();
             width: 90%;
             margin: 0 auto;
         }
-
-        .search-bar-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: $color-neutral-1;
-            opacity: 0.8;
-            border-radius: 8px;
-            padding: 0 8px;
-            height: 36px;
-            position: relative;
-
-            &:hover {
-                opacity: 1;
-            }
-
-            input {
-                flex: 1;
-                border: none;
-                background: none;
-                outline: none;
-                height: 32px;
-                background-color: $color-neutral-1;
-                opacity: inherit;
-
-                &:focus {
-                    border-radius: 5px;
-                    background-color: $color-neutral-2;
-                    z-index: 1000;
-                }
-            }
-
-            .icon-search {
-                color: #18191c;
-                font-size: 18px;
-                line-height: 18px;
-                cursor: pointer;
-                padding-left: 15px;
-            }
-        }
     }
 
     .user {
@@ -232,6 +213,7 @@ const loginStateStore = useLoginStateStore();
             text-align: center;
             cursor: pointer;
             width: 56px;
+            position: relative;
 
             .iconfont {
                 text-align: center;
@@ -242,6 +224,26 @@ const loginStateStore = useLoginStateStore();
                 text-align: center;
                 font-size: 13px;
                 font-weight: normal;
+            }
+        }
+
+        .message-nav {
+            .message-badge {
+                position: absolute;
+                top: -6px;
+                right: 8px;
+                min-width: 18px;
+                height: 18px;
+                padding: 0 5px;
+                box-sizing: border-box;
+                border-radius: 9px;
+                color: white;
+                background-color: $color-warning-red;
+                font-size: 12px;
+                font-weight: 600;
+                line-height: 18px;
+                text-align: center;
+                pointer-events: none;
             }
         }
 

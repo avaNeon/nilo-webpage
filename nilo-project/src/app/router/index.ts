@@ -14,6 +14,12 @@ import UserHomeIndex from "@/pages/userHome/widgets/userHomeIndex/ui/UserHomeInd
 import UserHomeUpload from "@/pages/userHome/widgets/userHomeUpload/ui/UserHomeUpload.vue";
 import UserHomeVideoSeries from "@/pages/userHome/widgets/userHomeVideoSeries/ui/UserHomeVideoSeries.vue";
 import UserHomeCollection from "@/pages/userHome/widgets/userHomeCollection/ui/UserHomeCollection.vue";
+import UserHomeFollowerList from "@/pages/userHome/widgets/userHomeFollowerList/ui/UserHomeFollowerList.vue";
+import UserHomeFollowingList from "@/pages/userHome/widgets/userHomeFollowingList/ui/UserHomeFollowingList.vue";
+import VideoHistory from "@/pages/videoHistory/ui/VideoHistory.vue";
+import MessageCenter from "@/pages/messageCenter/ui/MessageCenter.vue";
+import HotRanking from "@/pages/hotRanking/ui/HotRanking.vue";
+import VideoSearch from "@/pages/videoSearch/ui/VideoSearch.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -106,7 +112,39 @@ const router = createRouter({
           name: "userCollection",
           component: UserHomeCollection,
         },
+        // 粉丝列表
+        {
+          path: "follower",
+          name: "userFollowerList",
+          component: UserHomeFollowerList,
+        },
+        // 关注列表
+        {
+          path: "following",
+          name: "userFollowingList",
+          component: UserHomeFollowingList,
+        },
       ],
+    },
+    {
+      path: "/history/:userId",
+      name: "history",
+      component: VideoHistory,
+    },
+    {
+      path: "/message/:type",
+      name: "messageCenter",
+      component: MessageCenter,
+    },
+    {
+      path: "/popular",
+      name: "hot-ranking",
+      component: HotRanking,
+    },
+    {
+      path: "/search/:keyword?",
+      name: "video-search",
+      component: VideoSearch,
     },
   ],
 });
