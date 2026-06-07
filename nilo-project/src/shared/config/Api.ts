@@ -59,6 +59,10 @@ const Api = {
   userVideoAction: "/user/videoAction/action",
   //关注 / 取消关注
   follow: "/follow/follow",
+  // 粉丝列表
+  getFollowerList: "/follow/follower",
+  // 关注列表
+  getFollowingList: "/follow/following",
   // ——————用户中心——————
   getUserDetail: "/uHome/user/",
   updateUserInfo: "/uHome/user",
@@ -66,6 +70,8 @@ const Api = {
   uHomeLoadVideo: "/uHome/video",
   // 用户中心 - 合集展示
   uHomeLoadSeriesWithVideos: "/uHome/series/videos",
+  // 用户中心 - 收藏视频列表
+  uHomeLoadCollection: "/uHome/collection/",
   // ——————视频合集管理（/series）——————
   // 获取用户的全部视频合集
   VideoSeries: "/series",
@@ -91,6 +97,27 @@ const Api = {
   VideoSeriesDelete: "/series/series",
   // 根据系列ID获取视频系列信息
   uHomeSeriesInfo: "/series/series",
+  // ——————用户主页-背景主题——————
+  uHomeSaveTheme: "/uHome/theme/",
+  // ——————播放历史——————
+  history: "/history",
+  // ——————消息中心——————
+  // 获取用户未读信息数量
+  messageUnchecked: "/message/unchecked",
+  // 将一个分类的未读消息都标记为已读（/clear/{messageType}）
+  messageClear: "/message/clear",
+  // 将单条消息标记为已读（/check/{messageId}）
+  messageCheck: "/message/check/",
+  // 获取单个分类的消息数量（/{messageType}）
+  messageCount: "/message/",
+  // 分页获取单个分类的消息（/{messageType}/{pageNo}）
+  messageList: "/message/",
+  // 删除一条消息（/{messageId}）
+  messageDelete: "/message/",
+  // ——————热门视频——————
+  loadHotVideo: "/video/hot/",
+  // ——————视频搜索——————
+  videoSearch: "/video-serach",
 };
 
 // 区分不同的微服务
