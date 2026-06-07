@@ -77,11 +77,14 @@ export function useCcHome() {
         item => item.dataType === dataType,
       );
 
+      const sortedCurrentTypeList = currentTypeList
+        .filter(item => item.statisticsDate !== null)
+        .sort((a, b) =>
+          (a.statisticsDate ?? "").localeCompare(b.statisticsDate ?? ""),
+        );
+
       /** 近7天的日期 */
-      const dateList = currentTypeList
-        .map(item => item.statisticsDate)
-        .filter(item => item !== null)
-        .sort();
+      const dateList = sortedCurrentTypeList.map(item => item.statisticsDate);
 
       chart.setOption({
         // X轴
@@ -98,7 +101,7 @@ export function useCcHome() {
           {
             name: TypeInfo.find(item => item.value === dataType)?.name,
             type: "line",
-            data: currentTypeList.map(item => item.statisticsCount),
+            data: sortedCurrentTypeList.map(item => item.statisticsCount),
             // 折线平滑
             smooth: true,
             symbol: "circle",
