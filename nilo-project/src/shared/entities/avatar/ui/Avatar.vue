@@ -72,7 +72,7 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
 <style lang="scss" scoped>
 .onLogin {
     position: relative;
-    z-index: 200;
+    z-index: 500;
 
     &:hover {
         .avatar.mobile {
@@ -101,7 +101,7 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
         display: inline-block;
         cursor: pointer;
         position: relative;
-        z-index: 10;
+        z-index: 500;
         transition: all 0.2s 0.1s ease;
     }
 
@@ -119,7 +119,7 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
         box-shadow: 0 2px 8px $color-shadow-sm;
         border-radius: 4px;
         padding: 10px;
-        z-index: 9;
+        z-index: 400;
         transition: all 0.2s 0.1s ease;
 
         padding: 30px 10px 20px;

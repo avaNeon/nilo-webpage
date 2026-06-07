@@ -137,7 +137,7 @@ async function handleDeleteVideo(videoInfo: VideoInfo)
             <div class="video-item" v-for="(video, index) in videoInfoList">
                 <VideoItem :key="video.videoId ?? index" :video-info="video" type="vertical" :author-mode="true"
                     :review-state="video.status" @edit="handleEdit" @toggle-danmaku="handleToggleDanmaku"
-                    @toggle-comment="handleToggleComment" @delete-video="handleDeleteVideo" />
+                    @toggle-comment="handleToggleComment" @delete-video="handleDeleteVideo" title-font-size="18px"/>
             </div>
         </div>
         <div class="pagination-wrapper">

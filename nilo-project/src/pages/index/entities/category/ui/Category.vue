@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<{
             'padding-left': BODY_PADDING,
             'padding-right': BODY_PADDING,
         }">
-        <RouterLink to="/popular" class="popular">
+        <RouterLink to="/popular" class="popular" target="_blank">
             <div class="iconfont icon-hot"></div>
             <div class="popular-info">热门</div>
         </RouterLink>
@@ -60,15 +60,15 @@ const props = withDefaults(defineProps<{
             </div>
         </div>
         <div class="others">
-            <div class="online-user-count">
-                <img class="user-count-img" src="@/assets/bilibili_tv.jpg" alt="bilibili"><!-- 以后可以在这里设计个图片 -->
-                <!-- <span class="count-text">在线人数：</span> -->
-                <!-- <span class="count-number">0</span> --><!-- 这个数字后端还没做，暂时写死为0 -->
-            </div>
-            <RouterLink class="read" to="/read">
-                <img class="read-img" src="@/assets/document.svg" alt="document">
-                <span class="read-text">专栏</span>
-            </RouterLink>
+            <!-- <div class="online-user-count"> -->
+            <!-- <img class="user-count-img" src="@/assets/bilibili_tv.jpg" alt="bilibili"> -->
+            <!-- <span class="count-text">在线人数：</span> -->
+            <!-- <span class="count-number">0</span> -->
+            <!-- </div> -->
+            <!-- <RouterLink class="read" to="/read"> -->
+            <!-- <img class="read-img" src="@/assets/document.svg" alt="document"> -->
+            <!-- <span class="read-text">专栏</span> -->
+            <!-- </RouterLink> -->
         </div>
     </div>
     <div class="category-bar folded" v-else @mouseenter="isFoldedHovered = true" @mouseleave="isFoldedHovered = false"
@@ -210,7 +210,7 @@ const props = withDefaults(defineProps<{
 
                 .sub-category-items {
                     position: absolute;
-                    z-index: 200;
+                    z-index: 300;
                     top: calc(100% + 4px); // 紧挨着父级
                     left: 50%;
 
@@ -262,52 +262,52 @@ const props = withDefaults(defineProps<{
 
             min-width: 150px;
 
-            .online-user-count {
-                color: $color-text-primary;
-                display: flex;
-                align-items: center;
+            // .online-user-count {
+            //     color: $color-text-primary;
+            //     display: flex;
+            //     align-items: center;
 
-                .user-count-img {
-                    width: 50px;
-                }
+            //     .user-count-img {
+            //         width: 50px;
+            //     }
 
-                .count-text {
-                    font-size: 20px;
-                    font-weight: 500;
-                }
+            //     .count-text {
+            //         font-size: 20px;
+            //         font-weight: 500;
+            //     }
 
-                .count-number {
-                    font-size: 30px;
-                    font-weight: 500;
-                }
-            }
+            //     .count-number {
+            //         font-size: 30px;
+            //         font-weight: 500;
+            //     }
+            // }
 
-            .read {
-                padding: 5px 0;
-                width: 70px;
-                height: 40px;
-                line-height: 30px;
-                text-align: center;
-                color: $color-text-secondary;
-                border-radius: 7px;
-                text-decoration: none;
-                display: flex;
-                align-items: center;
+            // .read {
+            //     padding: 5px 0;
+            //     width: 70px;
+            //     height: 40px;
+            //     line-height: 30px;
+            //     text-align: center;
+            //     color: $color-text-secondary;
+            //     border-radius: 7px;
+            //     text-decoration: none;
+            //     display: flex;
+            //     align-items: center;
 
-                &:hover {
-                    .read-text {
-                        color: $color-bilibili-blue;
-                    }
-                }
+            //     &:hover {
+            //         .read-text {
+            //             color: $color-bilibili-blue;
+            //         }
+            //     }
 
-                .read-img {
-                    width: 20px;
-                }
+            //     .read-img {
+            //         width: 20px;
+            //     }
 
-                .read-text {
-                    font-size: 16px;
-                }
-            }
+            //     .read-text {
+            //         font-size: 16px;
+            //     }
+            // }
         }
     }
 
@@ -316,7 +316,7 @@ const props = withDefaults(defineProps<{
         top: $header-bar-height;
         margin: 0 auto;
         width: 100%;
-        z-index: 100;
+        z-index: 300;
         color: $color-text-muted;
         border-bottom: $color-border solid 1px;
         padding: 10px 100px;
@@ -428,7 +428,7 @@ const props = withDefaults(defineProps<{
     width: 100%;
     overflow: hidden;
     pointer-events: none;
-    z-index: 201;
+    z-index: 300;
     /* top 和 height 由 useRipple 在每次 mousedown 时动态设置 */
 }
 

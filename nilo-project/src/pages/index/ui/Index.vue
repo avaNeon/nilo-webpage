@@ -118,7 +118,7 @@ body {
         position: sticky;
         top: 0;
         height: 0;
-        z-index: 200;
+        z-index: 400;
         overflow: visible;
     }
 
