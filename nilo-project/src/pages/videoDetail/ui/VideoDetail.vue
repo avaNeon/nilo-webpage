@@ -15,6 +15,8 @@ import CoinDialog from '@/pages/videoDetail/features/videoAction/ui/CoinDialog.v
 import VideoIntroduction from '@/pages/videoDetail/entities/videoIntroduction/ui/VideoIntroduction.vue';
 import VideoComment from '@/pages/videoDetail/widgets/videoComment/ui/VideoComment.vue';
 import { useRoute } from 'vue-router';
+import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue';
+import { useRecommendVideo } from '../composables/useRecommendVideo';
 
 const {
     avatarUrl,
@@ -36,6 +38,7 @@ const {
     initLoad,
 } = useVideoDetail();
 
+const { recommendVideoList } = useRecommendVideo();
 const videoStateStore = useVideoStateStore()
 const route = useRoute();
 
@@ -130,6 +133,10 @@ onMounted(() =>
                 <div class="right">
                     <DanmakuList v-if="isCommentAvailable()" class="danmaku-list"></DanmakuList>
                     <VideoPartitionList></VideoPartitionList>
+                    <div v-if="recommendVideoList.length > 0" class="recommend-video-list">
+                        <VideoItem v-for="(videoInfo, index) in recommendVideoList" :key="videoInfo.videoId ?? index"
+                            class="recommend-video-item" :video-info="videoInfo" type="vertical" width="40%" title-font-size="16px" />
+                    </div>
                 </div>
             </div>
 
@@ -154,6 +161,10 @@ onMounted(() =>
                 <div class="right">
                     <DanmakuList class="danmaku-list"></DanmakuList>
                     <VideoPartitionList></VideoPartitionList>
+                    <div v-if="recommendVideoList.length > 0" class="recommend-video-list">
+                        <VideoItem v-for="(videoInfo, index) in recommendVideoList" :key="videoInfo.videoId ?? index"
+                            class="recommend-video-item" :video-info="videoInfo" type="vertical" width="40%" />
+                    </div>
                 </div>
             </div>
         </div>
@@ -174,10 +185,9 @@ $right-content-max-width: 28%;
     .header {
         position: sticky;
         top: 0;
-        z-index: 200;
+        z-index: 600;
         width: 100%;
 
-        z-index: 300;
     }
 
     .video-content {
@@ -318,6 +328,19 @@ $right-content-max-width: 28%;
 
                 .danmaku-list {
                     margin-bottom: 10px;
+                }
+
+                .recommend-video-list {
+                    margin-top: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    row-gap: 12px;
+
+                    :deep(.recommend-video-item.video.vertical) {
+                        flex: 0 0 96px;
+                        height: 96px;
+                        min-height: 96px;
+                    }
                 }
             }
 
