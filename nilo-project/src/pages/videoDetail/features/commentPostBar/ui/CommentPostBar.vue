@@ -348,7 +348,7 @@ $icon-size: 24px;
                 position: absolute;
                 top: calc(100% + 8px);
                 left: 0;
-                z-index: 1000;
+                z-index: 500;
                 width: 380px;
                 background: #fff;
                 border-radius: 8px;
@@ -395,7 +395,7 @@ $icon-size: 24px;
                 line-height: 1;
                 padding: 0;
                 transition: background 0.2s ease;
-                z-index: 2;
+                z-index: 200;
 
                 &:hover {
                     background: #e0e0e0;
