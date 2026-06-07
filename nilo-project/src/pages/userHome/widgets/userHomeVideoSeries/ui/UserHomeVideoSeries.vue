@@ -404,7 +404,7 @@ function getSerieRoute(seriesId: string | null | undefined)
         position: absolute;
         top: 0;
         left: 0;
-        z-index: 5;
+        z-index: 200;
         width: 56px;
         height: 56px;
         padding: 0;

@@ -36,7 +36,7 @@ const {
             </div>
             <div v-else class="no-data">
                 <img :src="noneSrc" alt="none">
-                <span>此用户暂时没有发布视频</span>
+                <span>没有视频</span>
             </div>
             <div v-if="count !== 0" class="pagination">
                 <el-pagination layout="prev, pager, next" :total="count" :page-size="pageSize"
@@ -124,7 +124,6 @@ const {
             justify-content: start;
             column-gap: 20px;
             row-gap: 20px;
-            margin: 0 auto;
 
             .video-item {
                 width: 265px;

@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { UserHomeApi } from "@/pages/userHome/api/UserHomeApi";
 import { useHostUserDetailStore } from "@/shared/store/HostUserDetailStore";
@@ -11,13 +11,13 @@ import { useUserHomeShared } from "../shared/composables/useUserHomeShared";
 export function useUserHome() {
   const { isMySelf } = useUserHomeShared();
 
-  // Vite 编译时加载所有背景图
+  /* ——————初始化：Vite 编译时加载所有背景图，静态数据源不变化—————— */
+
+  const bgImageMap: Record<number, string> = {};
+
   const bgModules = import.meta.glob("@/assets/userHome-background/*.jpg", {
     eager: true,
   });
-
-  // 从文件名提取 theme 编号 → 图片 URL
-  const bgImageMap: Record<number, string> = {};
 
   for (const [filePath, mod] of Object.entries(bgModules)) {
     const match = filePath.match(/background-(\d+)\.jpg$/);
@@ -63,40 +63,73 @@ export function useUserHome() {
   /* ————————状态———————— */
   const hostUserDetailStore = useHostUserDetailStore();
 
+  /** 当前后端存储的壁纸序号 */
+  const currentThemeIndex = computed(
+    () => hostUserDetailStore.userHostDetail?.theme ?? 1,
+  );
+
+  /** 预览壁纸序号，null 表示无预览，使用后端主题 */
+  const previewIndex = ref<number | null>(null);
+
   /** 根据 theme 值选择对应的背景图片 */
   const bgStyle = computed(() => {
-    const theme = hostUserDetailStore.userHostDetail?.theme ?? 1;
+    const theme = previewIndex.value ?? currentThemeIndex.value;
     const url = bgImageMap[theme];
     return url ? { backgroundImage: `url(${url})` } : {};
   });
 
+  /** 预览壁纸：index 为 null 时清除预览 */
+  function setPreviewWallpaper(index: number | null) {
+    previewIndex.value = index;
+  }
+
   const activeRouteName = computed(() => route.name as string);
 
-  /** 搜索关键词 */
-  const keyword = ref("");
+  /** 搜索关键词（与 route.query.keyword 双向同步） */
+  const keyword = ref((route.query.keyword as string) || "");
 
   /** 是否展示用户信息编辑页面 */
   const showEditor = ref(false);
 
+  const showBgImgEditor = ref(false);
+
+  const hideUi = ref(false);
+
   /* ————————方法———————— */
 
   function navigateTo(item: NavItem) {
-    router.push({ name: item.routeName });
+    const query: Record<string, string> = {};
+    // 跳转到投稿页时携带 keyword
+    if (item.routeName === "userUpload" && keyword.value.trim()) {
+      query.keyword = keyword.value.trim().substring(0, 100);
+    }
+    router.push({ name: item.routeName, query });
+  }
+
+  /** 搜索：当前在 upload 页则 replace，否则导航到 upload */
+  function searchVideos() {
+    const trimmed = keyword.value.trim();
+    const query = trimmed ? { keyword: trimmed.substring(0, 100) } : {};
+
+    if (activeRouteName.value === "userUpload") {
+      router.replace({ name: "userUpload", query });
+    } else {
+      router.push({ name: "userUpload", query });
+    }
   }
 
   function viewFollowing() {
-    if (!isMySelf) {
+    if (!isMySelf.value) {
       return;
     }
-    // TODO 待实现
+    router.push({ name: "userFollowingList" });
   }
 
   function viewFollower() {
-    if (!isMySelf) {
+    if (!isMySelf.value) {
       return;
     }
-
-    // TODO 待实现
+    router.push({ name: "userFollowerList" });
   }
 
   function reloadUserInfo() {
@@ -155,13 +188,26 @@ export function useUserHome() {
     loadUserDetail();
   });
 
+  // 当从其他页面通过路由跳转回来时，同步 keyword
+  watch(
+    () => route.query.keyword,
+    newVal => {
+      keyword.value = (newVal as string) || "";
+    },
+  );
+
   return {
+    hideUi,
     isMySelf,
     bgStyle,
     navItems,
     activeRouteName,
     keyword,
     showEditor,
+    showBgImgEditor,
+    currentThemeIndex,
+    setPreviewWallpaper,
+    searchVideos,
     subscribe,
     unsubscribe,
     navigateTo,
