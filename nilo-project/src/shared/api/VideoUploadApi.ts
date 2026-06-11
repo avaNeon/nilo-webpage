@@ -4,15 +4,11 @@ import type { AxiosProgressEvent } from "axios";
 import type { VideoUpload } from "@/pages/creativeCenter/features/videoUpload/model/VideoUpload";
 
 export const videoUploadApi = {
-  async preUploadVideo(
-    chunkSize: number,
-    signal?: AbortSignal,
-  ): Promise<string | null> {
+  async preUploadVideo(chunkSize: number): Promise<string | null> {
     const result = await request({
       method: "post",
       url: Api.preUploadVideo,
       params: { chunkSize },
-      signal,
     });
     if (!result) return null;
     return String(result.data);
@@ -23,7 +19,6 @@ export const videoUploadApi = {
     chunkIndex: number,
     uploadId: string,
     uploadProgressCallback?: (event: AxiosProgressEvent) => void,
-    signal?: AbortSignal,
   ): Promise<boolean> {
     const result = await request({
       method: "post",
@@ -32,17 +27,6 @@ export const videoUploadApi = {
       data: { chunkFile },
       dataType: "form",
       uploadProgressCallback,
-      signal,
-    });
-    return result !== null;
-  },
-
-  async deleteVideo(uploadId: string, signal?: AbortSignal): Promise<boolean> {
-    const result = await request({
-      method: "delete",
-      url: Api.delUploadVideo,
-      params: { uploadId },
-      signal,
     });
     return result !== null;
   },
@@ -58,4 +42,3 @@ export const videoUploadApi = {
     return result.code === 200;
   },
 };
-

@@ -20,8 +20,6 @@ export interface PreuploadVideoFile {
   status: "pending" | "preuploading" | "uploading" | "done" | "error";
   /** Error message when status is 'error' */
   errorMsg?: string;
-  /** AbortController to cancel ongoing upload */
-  abortController?: AbortController;
   /** Existing file from published video (edit mode) */
   isExisting?: boolean;
   /**

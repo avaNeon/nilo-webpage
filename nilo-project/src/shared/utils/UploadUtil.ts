@@ -36,7 +36,6 @@ export const UploadUtil = {
       uploadId: null,
       uploadedBytes: 0,
       status: "pending",
-      abortController: new AbortController(),
       isExisting: false,
     };
   },

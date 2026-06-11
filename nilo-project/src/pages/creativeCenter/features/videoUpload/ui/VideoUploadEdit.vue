@@ -22,7 +22,6 @@ const {
   form,
   closeDanmaku,
   closeComment,
-  readyUploadFileList,
   hasMissingExistingUploadId,
   tagList,
   isFormValid,
@@ -46,6 +45,8 @@ const {
 
 function onContinueUpload()
 {
+  if (submitting.value) return
+
   submitState.value = false
   cleanupAll()
   router.replace({ query: { ...route.query, mode: undefined, videoId: undefined } })
@@ -53,15 +54,26 @@ function onContinueUpload()
 
 function updateTags(tags: string[] | null | undefined)
 {
+  if (submitting.value) return
+
   if (tags)
   {
     form.tags = tags.join(",")
   }
 }
 
+function updateCoverBlob(blob: Blob | null)
+{
+  if (submitting.value) return
+
+  coverBlob.value = blob
+}
+
 /** 简介输入框实时截断：按等效字符数（\n 计 2）限制在 MAX_INTRODUCTION_LENGTH 内 */
 function onIntroductionInput()
 {
+  if (submitting.value) return
+
   let text = form.introduction ?? ''
   let count = text.length + (text.match(/\n/g)?.length ?? 0)
   while (count > MAX_INTRODUCTION_LENGTH && text.length > 0)
@@ -80,7 +92,7 @@ function onIntroductionInput()
   <div class="content">
     <div v-if="!submitState" class="upload-panel">
       <div v-if="!hasFileSelected" class="upload-panel">
-        <VideoUpload @file-selected="onFileSelected" />
+        <VideoUpload :disabled="submitting" @file-selected="onFileSelected" />
       </div>
 
       <div v-else class="edit-panel">
@@ -90,7 +102,8 @@ function onIntroductionInput()
           <span class="file-count">共 {{ preuploadList.length }} 个分P</span>
         </div>
 
-        <draggable v-model="preuploadList" item-key="uid" class="preupload-list" handle=".drag-handle" :animation="200">
+        <draggable v-model="preuploadList" item-key="uid" class="preupload-list" handle=".drag-handle" :animation="200"
+          :disabled="submitting">
           <template #item="{ element, index }">
             <div class="preupload-item">
               <div class="item-left">
@@ -104,7 +117,8 @@ function onIntroductionInput()
               </div>
 
               <div class="item-right">
-                <el-input v-model="element.filename" placeholder="视频文件名" class="filename-input" clearable />
+                <el-input v-model="element.filename" placeholder="视频文件名" class="filename-input" clearable
+                  :disabled="submitting" />
 
                 <div class="progress-info">
                   <span class="progress-text">
@@ -122,6 +136,8 @@ function onIntroductionInput()
                   <span v-if="element.status === 'error'" class="error-badge">上传失败</span>
                   <span v-else-if="element.status === 'done'" class="done-badge">已完成</span>
                   <span v-else-if="element.status === 'uploading'" class="uploading-badge">上传中</span>
+                  <span v-else-if="element.status === 'preuploading'" class="uploading-badge">准备上传</span>
+                  <span v-else-if="element.status === 'pending'" class="pending-badge">待提交</span>
                 </div>
 
                 <el-progress :percentage="uploadProgress(element)" :stroke-width="8"
@@ -130,7 +146,7 @@ function onIntroductionInput()
               </div>
 
               <div class="item-delete">
-                <el-button type="danger" plain size="small" @click="removeItem(element.uid)">
+                <el-button type="danger" plain size="small" :disabled="submitting" @click="removeItem(element.uid)">
                   删除文件
                 </el-button>
               </div>
@@ -139,7 +155,7 @@ function onIntroductionInput()
         </draggable>
 
         <div class="add-more-wrapper">
-          <VideoUpload :fold="true" @file-selected="onFileSelected" class="add-more-upload" />
+          <VideoUpload :fold="true" :disabled="submitting" @file-selected="onFileSelected" class="add-more-upload" />
         </div>
 
         <!-- ==================== 视频信息表单 ==================== -->
@@ -150,7 +166,8 @@ function onIntroductionInput()
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>封面</span>
             <div class="form-input">
-              <CoverUpload :initial-cover-path="form.coverPath" @update:cover-blob="(blob) => coverBlob = blob" />
+              <CoverUpload :initial-cover-path="form.coverPath" :disabled="submitting"
+                @update:cover-blob="updateCoverBlob" />
             </div>
           </div>
 
@@ -159,7 +176,7 @@ function onIntroductionInput()
             <span class="form-label"><span class="required-star">*</span>标题</span>
             <div class="form-input">
               <el-input v-model="form.videoTitle" placeholder="请输入视频标题（最多100个字符）" maxlength="100" show-word-limit
-                clearable />
+                clearable :disabled="submitting" />
             </div>
           </div>
 
@@ -167,12 +184,12 @@ function onIntroductionInput()
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>类型</span>
             <div class="form-input">
-              <el-radio-group v-model="form.postType">
+              <el-radio-group v-model="form.postType" :disabled="submitting">
                 <el-radio :value="1">自制</el-radio>
                 <el-radio :value="2">转载</el-radio>
               </el-radio-group>
               <el-input v-if="form.postType === 2" v-model="form.originInfo" placeholder="请填写原资源说明" class="origin-input"
-                clearable />
+                clearable :disabled="submitting" />
             </div>
           </div>
 
@@ -180,7 +197,7 @@ function onIntroductionInput()
           <div class="form-row">
             <span class="form-label">标签</span>
             <div class="form-input">
-              <VideoTag :tags="tagList" @update:tags="updateTags" />
+              <VideoTag :tags="tagList" :disabled="submitting" @update:tags="updateTags" />
             </div>
           </div>
 
@@ -189,11 +206,11 @@ function onIntroductionInput()
             <span class="form-label"><span class="required-star">*</span>分区</span>
             <div class="form-input category-selects">
               <el-select v-model="selectedParentNumber" placeholder="请选择一级分区" class="category-select"
-                :teleported="false" @change="onParentCategoryChange">
+                :teleported="false" :disabled="submitting" @change="onParentCategoryChange">
                 <el-option v-for="p in categoryOptions" :key="p.value" :label="p.label" :value="p.value" />
               </el-select>
               <el-select v-model="selectedChildNumber" placeholder="请选择二级分区" class="category-select" :teleported="false"
-                :disabled="!selectedParentNumber || childCategoryOptions.length === 0" @change="onChildCategoryChange">
+                :disabled="submitting || !selectedParentNumber || childCategoryOptions.length === 0" @change="onChildCategoryChange">
                 <el-option v-for="c in childCategoryOptions" :key="c.value" :label="c.label" :value="c.value" />
               </el-select>
             </div>
@@ -204,7 +221,7 @@ function onIntroductionInput()
             <span class="form-label">简介</span>
             <div class="form-input">
               <el-input v-model="form.introduction" type="textarea" placeholder="请输入视频简介（最多2000个字符）" :rows="4"
-                resize="vertical" @input="onIntroductionInput" />
+                resize="vertical" :disabled="submitting" @input="onIntroductionInput" />
               <span class="intro-char-count">{{ introductionCharCount }} / {{ MAX_INTRODUCTION_LENGTH }}</span>
             </div>
           </div>
@@ -213,8 +230,8 @@ function onIntroductionInput()
           <div class="form-row">
             <span class="form-label">互动设置</span>
             <div class="form-input">
-              <el-checkbox v-model="closeDanmaku">关闭弹幕</el-checkbox>
-              <el-checkbox v-model="closeComment" style="margin-left: 24px">关闭评论</el-checkbox>
+              <el-checkbox v-model="closeDanmaku" :disabled="submitting">关闭弹幕</el-checkbox>
+              <el-checkbox v-model="closeComment" style="margin-left: 24px" :disabled="submitting">关闭评论</el-checkbox>
             </div>
           </div>
 
@@ -223,18 +240,18 @@ function onIntroductionInput()
             <span class="form-label"></span>
             <div class="form-input">
               <el-button type="primary" :loading="submitting" @click="submitVideo"
-                :disabled="!isFormValid || readyUploadFileList.length === 0 || hasMissingExistingUploadId">
-                {{ readyUploadFileList.length === 0 ? '等待视频上传完成' : isEditMode ? '提交修改' : '提交视频' }}
+                :disabled="submitting || !isFormValid || preuploadList.length === 0 || hasMissingExistingUploadId">
+                {{ isEditMode ? '提交修改' : '提交视频' }}
               </el-button>
-              <el-button plain @click="returnToUploadPanel">返回上传界面</el-button>
-              <span v-if="!isFormValid && readyUploadFileList.length > 0" class="submit-hint">
+              <el-button plain :disabled="submitting" @click="returnToUploadPanel">返回上传界面</el-button>
+              <span v-if="!isFormValid && preuploadList.length > 0" class="submit-hint">
                 请完善必填信息后再提交
               </span>
               <span v-else-if="hasMissingExistingUploadId" class="submit-hint">
                 存在旧分P数据损坏，请尝试删除旧分P
               </span>
-              <span v-else-if="readyUploadFileList.length === 0" class="submit-hint">
-                请等待所有视频文件上传完成后再提交
+              <span v-else-if="preuploadList.length === 0" class="submit-hint">
+                请选择视频文件后再提交
               </span>
             </div>
           </div>
@@ -451,6 +468,15 @@ function onIntroductionInput()
         font-weight: 600;
         color: $color-badge-blue;
         background: $color-badge-blue-bg;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+
+      .pending-badge {
+        font-size: 12px;
+        font-weight: 600;
+        color: $color-badge-orange;
+        background: $color-badge-orange-bg;
         padding: 2px 8px;
         border-radius: 4px;
       }
