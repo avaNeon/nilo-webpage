@@ -7,14 +7,20 @@ import message from "@/shared/lib/message";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
 import { UserHomeSharedApi } from "@/pages/userHome/shared/api/UserHomeSharedApi";
 import { useHostUserDetailStore } from "@/shared/store/HostUserDetailStore";
+import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
 
 export function useHomeVideoSeries() {
   const hostUserDetailStore = useHostUserDetailStore();
+  const systemConfigStore = useSystemConfigStore();
 
   /* ——————常量—————— */
 
   const maxSeriesNumber = 50;
-  const maxVideosNumber = 100;
+  const maxVideosNumber = computed(() =>
+    systemConfigStore.maxSerieVideosNumber > 0
+      ? systemConfigStore.maxSerieVideosNumber
+      : 100,
+  );
 
   /* ——————工具—————— */
 
