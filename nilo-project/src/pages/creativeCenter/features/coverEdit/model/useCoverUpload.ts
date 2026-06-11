@@ -1,7 +1,7 @@
 import { useFileUpload } from "@/shared/composables/useFileUpload";
-import { onUnmounted, ref, watch } from "vue";
+import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
+import { computed, onUnmounted, ref, watch } from "vue";
 
-const COVER_MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPT = [
   "image/jpeg",
   "image/png",
@@ -20,6 +20,12 @@ const ACCEPT = [
 ].join(", ");
 
 export function useCoverUpload() {
+  const systemConfigStore = useSystemConfigStore();
+  const imageMaxSize = computed(() => {
+    const mb = systemConfigStore.imageMaxSize;
+    return mb > 0 ? mb * 1024 * 1024 : 10 * 1024 * 1024;
+  });
+
   const editVisible = ref(false);
   const originalCoverUrl = ref("");
   const originalCoverBlob = ref<Blob | null>(null);
@@ -28,8 +34,7 @@ export function useCoverUpload() {
 
   const { uploadItems, selectFile } = useFileUpload({
     accept: ACCEPT,
-    maxSize: COVER_MAX_SIZE,
-    autoUpload: false,
+    maxSize: imageMaxSize,
   });
 
   // ==================== 内部方法 ====================

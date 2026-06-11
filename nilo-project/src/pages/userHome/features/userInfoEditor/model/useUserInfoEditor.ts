@@ -5,9 +5,14 @@ import { imageApi } from "@/shared/api/ImageApi";
 import { imgRequestUrl } from "@/shared/utils/ImgUtil";
 import defaultAvatar from "@/assets/user.svg";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
+import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
+import message from "@/shared/lib/message";
+
+const PENDING_AVATAR_PLACEHOLDER = "__pending_avatar__";
 
 export function useUserInfoEditor() {
   const loginStateStore = useLoginStateStore();
+  const systemConfigStore = useSystemConfigStore();
 
   /* ————————表单———————— */
   const formRef = useTemplateRef<FormInstance>("formRef");
@@ -65,10 +70,22 @@ export function useUserInfoEditor() {
   /* ————————头像上传———————— */
   /** 上传进度百分比，null 表示未在上传中 */
   const uploadProgress = ref<number | null>(null);
+  const pendingAvatarFile = ref<File | null>(null);
+  const pendingAvatarUrl = ref("");
+  const imageMaxSize = computed(() => {
+    const mb = systemConfigStore.imageMaxSize;
+    return mb > 0 ? mb * 1024 * 1024 : 10 * 1024 * 1024;
+  });
 
   /** 头像预览的完整请求 URL */
   const avatarPreviewUrl = computed(() => {
+    if (pendingAvatarUrl.value) {
+      return pendingAvatarUrl.value;
+    }
     if (formData.avatar) {
+      if (formData.avatar === PENDING_AVATAR_PLACEHOLDER) {
+        return defaultAvatar;
+      }
       if (formData.avatar === loginStateStore.userInfo?.avatar) {
         return imgRequestUrl(formData.avatar);
       } else {
@@ -78,22 +95,58 @@ export function useUserInfoEditor() {
     return defaultAvatar;
   });
 
-  /**
-   * 上传头像文件，更新 formData.avatar 并触发字段校验
-   * @param file 图片文件
-   */
-  async function handleAvatarUpload(file: File) {
+  function clearPendingAvatarUpload() {
+    if (pendingAvatarUrl.value) {
+      URL.revokeObjectURL(pendingAvatarUrl.value);
+    }
+    pendingAvatarFile.value = null;
+    pendingAvatarUrl.value = "";
+  }
+
+  function validateAvatarFileSize(file: File): boolean {
+    if (file.size <= imageMaxSize.value) {
+      return true;
+    }
+
+    const mb = (imageMaxSize.value / (1024 * 1024)).toFixed(1);
+    message.error(`"${file.name}" 超过大小限制（${mb}MB）`);
+    return false;
+  }
+
+  function setPendingAvatarUpload(file: File): boolean {
+    if (!validateAvatarFileSize(file)) {
+      return false;
+    }
+
+    clearPendingAvatarUpload();
+    pendingAvatarFile.value = file;
+    pendingAvatarUrl.value = URL.createObjectURL(file);
+    formData.avatar = PENDING_AVATAR_PLACEHOLDER;
+    formRef.value?.validateField("avatar");
+    return true;
+  }
+
+  async function uploadPendingAvatar(): Promise<boolean> {
+    if (!pendingAvatarFile.value) {
+      return true;
+    }
+
     uploadProgress.value = 0;
     try {
-      const path = await imageApi.uploadImage(file, false, event => {
+      const path = await imageApi.uploadImage(pendingAvatarFile.value, false, event => {
         if (event.total) {
           uploadProgress.value = Math.round((event.loaded / event.total) * 100);
         }
       });
       if (path) {
         formData.avatar = path;
+        clearPendingAvatarUpload();
         formRef.value?.validateField("avatar");
+        return true;
       }
+      return false;
+    } catch {
+      return false;
     } finally {
       uploadProgress.value = null;
     }
@@ -107,7 +160,13 @@ export function useUserInfoEditor() {
     avatarPreviewUrl,
     /** 头像上传进度百分比，null 表示未在上传中 */
     uploadProgress,
-    /** 触发头像文件上传 */
-    handleAvatarUpload,
+    /** 校验头像文件大小 */
+    validateAvatarFileSize,
+    /** 暂存待保存时上传的头像文件 */
+    setPendingAvatarUpload,
+    /** 保存前上传暂存头像 */
+    uploadPendingAvatar,
+    /** 清理暂存头像 */
+    clearPendingAvatarUpload,
   };
 }

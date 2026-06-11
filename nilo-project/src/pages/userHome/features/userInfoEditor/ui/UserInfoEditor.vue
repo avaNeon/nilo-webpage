@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus';
 import { UserInfoEditorApi } from '../api/UserInfoEditorApi';
 import { useUserInfoEditor } from '../model/useUserInfoEditor';
 import { useHostUserDetailStore } from '@/shared/store/HostUserDetailStore';
+import { useSystemConfigStore } from '@/shared/store/SystemConfigStore';
 import AvatarEdit from './AvatarEdit.vue';
 
 /* ———————— 父组件通信 ———————— */
@@ -22,11 +23,15 @@ const {
     rules,
     avatarPreviewUrl,
     uploadProgress,
-    handleAvatarUpload,
+    validateAvatarFileSize,
+    setPendingAvatarUpload,
+    uploadPendingAvatar,
+    clearPendingAvatarUpload,
 } = useUserInfoEditor();
 
 /* ———————— 数据源 ———————— */
 const hostUserDetailStore = useHostUserDetailStore();
+const systemConfigStore = useSystemConfigStore();
 
 /* ———————— 头像文件选择 ———————— */
 const avatarInputRef = ref<HTMLInputElement>();
@@ -44,6 +49,11 @@ async function onAvatarFileChange(e: Event)
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    if (!validateAvatarFileSize(file))
+    {
+        input.value = '';
+        return;
+    }
 
     revokeSelectedAvatarUrl();
     selectedAvatarUrl.value = URL.createObjectURL(file);
@@ -73,7 +83,7 @@ async function handleAvatarCrop(blob: Blob)
     try
     {
         const file = new File([blob], 'avatar.png', { type: blob.type || 'image/png' });
-        await handleAvatarUpload(file);
+        setPendingAvatarUpload(file);
     }
     finally
     {
@@ -97,6 +107,13 @@ async function handleSave()
 
     try
     {
+        const avatarUploaded = await uploadPendingAvatar();
+        if (!avatarUploaded)
+        {
+            ElMessage.error('头像上传失败，请稍后重试');
+            return;
+        }
+
         const result = await UserInfoEditorApi.updateUserInfo({ ...formData });
 
         if (result !== false)
@@ -117,6 +134,7 @@ async function handleSave()
 
 function handleCancel()
 {
+    clearPendingAvatarUpload();
     emit('update:visible', false);
 }
 
@@ -127,6 +145,7 @@ watch(
     {
         if (val)
         {
+            clearPendingAvatarUpload();
             const detail = hostUserDetailStore.userHostDetail;
             if (detail)
             {
@@ -143,6 +162,7 @@ watch(
         else
         {
             cancelAvatarCrop();
+            clearPendingAvatarUpload();
         }
     },
 );
@@ -150,6 +170,7 @@ watch(
 onBeforeUnmount(() =>
 {
     revokeSelectedAvatarUrl();
+    clearPendingAvatarUpload();
 });
 </script>
 
@@ -162,7 +183,7 @@ onBeforeUnmount(() =>
         <el-form ref="formRef" :model="formData" :rules="rules" label-width="90px">
             <el-form-item label="昵称" prop="nickName">
                 <el-input v-model="formData.nickName" maxlength="20" show-word-limit placeholder="请输入昵称" />
-                <span class="hint">修改昵称需要花费1个硬币</span>
+                <span class="hint">修改昵称需要花费{{ systemConfigStore.modifyNickNameCost }}个硬币</span>
             </el-form-item>
 
             <el-form-item label="头像" prop="avatar">

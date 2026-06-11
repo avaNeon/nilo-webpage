@@ -9,6 +9,7 @@ const emit = defineEmits<{
 }>()
 const props = defineProps<{
   initialCoverPath?: string
+  disabled?: boolean
 }>()
 
 const {
@@ -51,10 +52,10 @@ watch(() => props.initialCoverPath, async (coverPath) => {
 
         <!-- 操作按钮区（始终显示在预览图下方） -->
         <div class="cover-actions">
-            <el-button type="primary" @click="selectFile">
+            <el-button type="primary" :disabled="disabled" @click="selectFile">
                 {{ currentCoverUrl ? '替换封面' : '选择封面' }}
             </el-button>
-            <el-button v-if="currentCoverUrl" @click="openCropper">
+            <el-button v-if="currentCoverUrl" :disabled="disabled" @click="openCropper">
                 裁剪封面
             </el-button>
         </div>
