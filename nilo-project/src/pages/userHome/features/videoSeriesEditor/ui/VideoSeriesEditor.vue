@@ -61,6 +61,11 @@ function handleCheckboxToggle(videoId: string | null | undefined, checked: unkno
 
     if (checked === true)
     {
+        if (props.maxVideosNumber && addedVideoList.value.length >= props.maxVideosNumber)
+        {
+            message.warning(`每个系列最多只能添加 ${props.maxVideosNumber} 个视频`)
+            return
+        }
         addVideo(videoId)
         moveVideoToAddedArea(videoId)
     }
