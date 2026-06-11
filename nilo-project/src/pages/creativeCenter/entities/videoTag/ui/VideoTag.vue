@@ -4,6 +4,7 @@ import { ref, watch } from 'vue';
 interface Props
 {
     tags?: string[]
+    disabled?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,7 +28,8 @@ watch(() => props.tags, (next) => {
 <template>
     <div class="content">
         <el-input-tag v-model="tagList" tag-type="primary" tag-effect="plain" :max="MAX_TAG_NUMBER"
-            :placeholder="`请使用回车进行分隔，最多添加${MAX_TAG_NUMBER}个标签`" maxlength="29" @blur="emit('update:tags', tagList)">
+            :placeholder="`请使用回车进行分隔，最多添加${MAX_TAG_NUMBER}个标签`" maxlength="29"
+            :disabled="disabled" @blur="emit('update:tags', tagList)">
             <template #tag="{ value }">
                 <div class="flex items-center">
                     <span>{{ value }}</span>
