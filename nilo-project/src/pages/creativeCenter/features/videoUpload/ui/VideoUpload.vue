@@ -6,7 +6,7 @@ import message from '@/shared/lib/message'
 
 const systemConfig = useSystemConfigStore()
 
-const props = withDefaults(defineProps<{ fold?: boolean }>(), { fold: false })
+const props = withDefaults(defineProps<{ fold?: boolean, disabled?: boolean }>(), { fold: false, disabled: false })
 
 const emit = defineEmits<{
     'file-selected': [file: File]
@@ -31,6 +31,8 @@ function isValidExtension(name: string): boolean
 
 function handleChange(uploadFile: UploadFile)
 {
+    if (props.disabled) return
+
     if (uploadFile.status === 'ready' && uploadFile.raw)
     {
         if (!isValidExtension(uploadFile.name))
@@ -46,13 +48,14 @@ function handleChange(uploadFile: UploadFile)
 <template>
     <div class="content">
         <el-upload v-if="fold" action="" multiple :auto-upload="false" :show-file-list="false" :accept="ACCEPT"
+            :disabled="disabled"
             @change="handleChange">
             <div class="upload-handler">
-                <el-button type="primary">上传更多文件</el-button>
+                <el-button type="primary" :disabled="disabled">上传更多文件</el-button>
             </div>
         </el-upload>
         <el-upload v-else class="upload-demo" action="" drag multiple :auto-upload="false" :show-file-list="false"
-            :accept="ACCEPT" @change="handleChange">
+            :accept="ACCEPT" :disabled="disabled" @change="handleChange">
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
             <div class="el-upload__text">
                 <p>
@@ -63,7 +66,7 @@ function handleChange(uploadFile: UploadFile)
                 </p>
             </div>
             <div class="upload-handler">
-                <el-button type="primary">上传文件</el-button>
+                <el-button type="primary" :disabled="disabled">上传文件</el-button>
             </div>
             <template #tip>
                 <div class="tips">
@@ -80,13 +83,6 @@ function handleChange(uploadFile: UploadFile)
                                 ">
                                     {{ systemConfig.videoFileMaxSize }}MB
                                 </em>
-                            </p>
-                            <p>
-                                内容时长最多<em style="
-                                font-weight: 600;
-                                color: #00AEEC;
-                                font-style: normal;
-                                ">{{ systemConfig.maxPartitionDuration }}分钟</em>
                             </p>
                             <p>如果视频较长建议分P上传</p>
                         </el-popover>

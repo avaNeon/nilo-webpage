@@ -8,10 +8,11 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
       videoMaxEpisodes: 0,
       registerCoin: 0,
       rewardsPreUpload: 0,
-      maxPartitionDuration: 0,
+      maxSerieVideosNumber: 0,
       maxResolutionRatio: "",
       maxBitRate: 0,
       imageMaxSize: 0,
+      modifyNickNameCost: 0,
     } as SystemConfig;
   },
   actions: {
@@ -27,8 +28,8 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     setRewardsPreUpload(rewards: number) {
       this.rewardsPreUpload = rewards;
     },
-    setMaxPartitionDuration(duration: number) {
-      this.maxPartitionDuration = duration;
+    setMaxSerieVideosNumber(count: number) {
+      this.maxSerieVideosNumber = count;
     },
     setMaxResolutionRatio(ratio: string) {
       this.maxResolutionRatio = ratio;
@@ -39,6 +40,9 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     setImageMaxSize(size: number) {
       this.imageMaxSize = size;
     },
+    setModifyNickNameCost(cost: number) {
+      this.modifyNickNameCost = cost;
+    },
     /**
      * 批量设置系统配置
      */
@@ -47,10 +51,11 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
       this.videoMaxEpisodes = config.videoMaxEpisodes;
       this.registerCoin = config.registerCoin;
       this.rewardsPreUpload = config.rewardsPreUpload;
-      this.maxPartitionDuration = config.maxPartitionDuration;
+      this.maxSerieVideosNumber = config.maxSerieVideosNumber;
       this.maxResolutionRatio = config.maxResolutionRatio;
       this.maxBitRate = config.maxBitRate;
       this.imageMaxSize = config.imageMaxSize;
+      this.modifyNickNameCost = config.modifyNickNameCost;
     },
   },
 });
