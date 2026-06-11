@@ -58,13 +58,16 @@ const {
     isUploading,
     selectFile,
     removeItem,
+    uploadAll,
+    reset,
 } = useFileUpload({
     accept: 'image/*',
-    maxSize: imageMaxSize.value,
-    autoUpload: true,
+    maxSize: imageMaxSize,
     uploadFn: (file: File, onProgress?: (event: AxiosProgressEvent) => void) =>
         imageApi.uploadImage(file, true, onProgress),
 })
+
+const isPosting = ref(false)
 
 // ========== Emoji 选择 ==========
 const emojiPanelVisible = ref(false)
@@ -85,7 +88,11 @@ function onDocumentClick(e: MouseEvent)
 }
 
 onMounted(() => document.addEventListener('click', onDocumentClick))
-onUnmounted(() => document.removeEventListener('click', onDocumentClick))
+onUnmounted(() =>
+{
+    document.removeEventListener('click', onDocumentClick)
+    reset()
+})
 
 const activeCategoryIndex = ref(0)
 const categoryTabsRef = ref<HTMLElement | null>(null)
@@ -127,7 +134,7 @@ function insertEmoji(emoji: string)
 
 function selectImage()
 {
-    if (uploadItems.value.length > MAX_IMAGE_UPLOAD_COUNT)
+    if (uploadItems.value.length >= MAX_IMAGE_UPLOAD_COUNT)
     {
         message.warning(`每条评论最多只能上传 ${MAX_IMAGE_UPLOAD_COUNT} 张图片`)
     } else
@@ -138,6 +145,8 @@ function selectImage()
 
 async function postComment()
 {
+    if (isPosting.value) return
+
     if (userCommentText.value.length > MAX_COMMENT_LENGTH)
     {
         message.warning(`评论内容不能超过 ${MAX_COMMENT_LENGTH} 字`)
@@ -156,38 +165,56 @@ async function postComment()
     if (uploadItems.value.length > MAX_IMAGE_UPLOAD_COUNT)
     {
         message.warning(`每条评论最多只能上传 ${MAX_IMAGE_UPLOAD_COUNT} 张图片`)
+        return
     }
+
+    isPosting.value = true
+    const uploadSuccess = await uploadAll()
+    if (!uploadSuccess)
+    {
+        isPosting.value = false
+        message.warning('图片上传失败，请重试')
+        return
+    }
+
     const content = userCommentText.value;
     const imgPaths = uploadItems.value ? uploadItems.value.map(item => item.relativePath).filter(Boolean).join(",") : '';
-    const commentId = await CommentPostApi.postComment(route.params.videoId as string,
-        content,
-        imgPaths == '' ? undefined : imgPaths,
-        props.parentCommentId);
-    if (commentId)
+    try
     {
-        message.success('评论发布成功！')
-        emit('commentPosted', {
-            commentId: commentId,
-            parentCommentId: props.parentCommentId,
-            content: userCommentText.value,
-            imgPaths: imgPaths,
-            userId: loginStateStore.userInfo?.userId ?? '',
-            topType: 0,
-            postTime: new Date(),
-            upvoteCount: 0,
-            downvoteCount: 0,
-            replyCount: 0,
-            deleted: 0,
-            childCommentList: [],
-            hasMoreChildren: false,
-            isUpvoted: false,
-            isDownvoted: false,
-            nickName: loginStateStore.userInfo?.nickName ?? '',
-            avatar: loginStateStore.userInfo?.avatar ?? '',
-            currentUserAction: null,
-        })
-        userCommentText.value = ''
-        uploadItems.value = []
+        const commentId = await CommentPostApi.postComment(route.params.videoId as string,
+            content,
+            imgPaths == '' ? undefined : imgPaths,
+            props.parentCommentId);
+        if (commentId)
+        {
+            message.success('评论发布成功！')
+            emit('commentPosted', {
+                commentId: commentId,
+                parentCommentId: props.parentCommentId,
+                content: userCommentText.value,
+                imgPaths: imgPaths,
+                userId: loginStateStore.userInfo?.userId ?? '',
+                topType: 0,
+                postTime: new Date(),
+                upvoteCount: 0,
+                downvoteCount: 0,
+                replyCount: 0,
+                deleted: 0,
+                childCommentList: [],
+                hasMoreChildren: false,
+                isUpvoted: false,
+                isDownvoted: false,
+                nickName: loginStateStore.userInfo?.nickName ?? '',
+                avatar: loginStateStore.userInfo?.avatar ?? '',
+                currentUserAction: null,
+            })
+            userCommentText.value = ''
+            reset()
+        }
+    }
+    finally
+    {
+        isPosting.value = false
     }
 }
 </script>
@@ -244,7 +271,8 @@ async function postComment()
                     </div>
                 </div>
                 <div class="submit">
-                    <el-button type="primary" round @click="postComment" :disabled="!available">发布</el-button>
+                    <el-button type="primary" round @click="postComment" :disabled="!available || isPosting"
+                        :loading="isPosting">发布</el-button>
                 </div>
             </div>
 
@@ -257,6 +285,9 @@ async function postComment()
                         :thumbnail="true" />
                     <!-- 上传中显示进度条 -->
                     <el-progress v-if="item.status === 'uploading'" :percentage="item.progress" :stroke-width="6" />
+                    <span v-else-if="item.status === 'selected'" class="pending-text">
+                        待发布
+                    </span>
                     <!-- 上传失败显示错误信息 -->
                     <span v-else-if="item.status === 'error'" class="error-text">
                         {{ item.errorMsg }}
@@ -526,6 +557,11 @@ $icon-size: 24px;
             color: #f56c6c;
             max-width: 200px;
             text-align: center;
+        }
+
+        .pending-text {
+            font-size: 12px;
+            color: #909399;
         }
     }
 }

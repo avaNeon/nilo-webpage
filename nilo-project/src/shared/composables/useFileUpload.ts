@@ -1,4 +1,4 @@
-import { ref, type Ref, nextTick } from "vue";
+import { ref, type MaybeRefOrGetter, type Ref, nextTick, toValue } from "vue";
 import message from "@/shared/lib/message";
 import type { AxiosProgressEvent } from "axios";
 
@@ -39,9 +39,7 @@ interface UseFileUploadOptions {
   /** 允许的 MIME 类型，默认 "* / *"（全部类型） */
   accept?: string;
   /** 最大文件大小（字节），默认 10MB */
-  maxSize?: number;
-  /** 是否在选择后立即自动上传 */
-  autoUpload?: boolean;
+  maxSize?: MaybeRefOrGetter<number>;
   /** 上传函数，若不传需手动调用 startUpload（此时不会执行上传逻辑） */
   uploadFn?: UploadFunction;
 }
@@ -53,7 +51,6 @@ export function useFileUpload(options?: UseFileUploadOptions) {
   const resolved: UseFileUploadOptions = options ?? {};
   const accept = resolved.accept ?? "*/*";
   const maxSize = resolved.maxSize ?? 10 * 1024 * 1024;
-  const autoUpload = resolved.autoUpload ?? false;
   const uploadFn = resolved.uploadFn;
 
   /** 上传项列表 */
@@ -120,8 +117,9 @@ export function useFileUpload(options?: UseFileUploadOptions) {
       }
 
       // 大小校验
-      if (file.size > maxSize) {
-        const mb = (maxSize / (1024 * 1024)).toFixed(1);
+      const currentMaxSize = toValue(maxSize);
+      if (file.size > currentMaxSize) {
+        const mb = (currentMaxSize / (1024 * 1024)).toFixed(1);
         message.error(`"${file.name}" 超过大小限制（${mb}MB）`);
         continue;
       }
@@ -134,11 +132,6 @@ export function useFileUpload(options?: UseFileUploadOptions) {
         progress: 0,
       };
       uploadItems.value.push(item);
-
-      // 自动上传
-      if (autoUpload) {
-        startUpload(item);
-      }
     }
 
     // 重置 input，允许重复选择同一个文件
@@ -149,17 +142,18 @@ export function useFileUpload(options?: UseFileUploadOptions) {
    * 开始上传指定项
    * @param item 上传项（从 uploadItems 中取）
    */
-  async function startUpload(item: UploadItem) {
+  async function startUpload(item: UploadItem): Promise<boolean> {
     if (!uploadFn) {
       message.warning("未配置上传函数，无法上传");
-      return;
+      return false;
     }
 
     // 必须从响应式数组中取出对应的 Proxy 对象再修改，
     // 直接修改传入的普通对象引用不会触发 Vue 的响应式更新。
     const reactiveItem = uploadItems.value.find(i => i.id === item.id);
-    if (!reactiveItem) return;
-    if (reactiveItem.status === "uploading") return;
+    if (!reactiveItem) return false;
+    if (reactiveItem.status === "done") return true;
+    if (reactiveItem.status === "uploading") return false;
 
     isUploading.value = true;
     reactiveItem.status = "uploading";
@@ -191,25 +185,30 @@ export function useFileUpload(options?: UseFileUploadOptions) {
         await nextTick();
         reactiveItem.status = "done";
         reactiveItem.relativePath = serverPath;
+        return true;
       } else {
         reactiveItem.status = "error";
         reactiveItem.errorMsg = "上传失败，服务器返回为空";
+        return false;
       }
     } catch (err: any) {
       reactiveItem.status = "error";
       reactiveItem.errorMsg = err?.msg ?? err?.message ?? "上传异常";
+      return false;
     } finally {
       isUploading.value = false;
     }
   }
 
-  /** 上传所有处于 selected 状态的项 */
-  async function uploadAll() {
+  /** 上传所有处于 selected/error 状态的项 */
+  async function uploadAll(): Promise<boolean> {
     for (const item of uploadItems.value) {
-      if (item.status === "selected") {
-        await startUpload(item);
+      if (item.status === "selected" || item.status === "error") {
+        const success = await startUpload(item);
+        if (!success) return false;
       }
     }
+    return true;
   }
 
   /** 移除指定上传项（同时释放本地预览 URL） */
