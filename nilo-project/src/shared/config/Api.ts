@@ -17,7 +17,6 @@ const Api = {
   // ——————视频——————
   preUploadVideo: "/file/videoTag",
   uploadVideo: "/file/video",
-  delUploadVideo: "/file/video",
   postVideo: "/creativeCenter/video",
   uploadImage: "/file/image",
   // ——————创作中心——————
