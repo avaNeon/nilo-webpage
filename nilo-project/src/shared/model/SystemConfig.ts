@@ -16,9 +16,9 @@ export interface SystemConfig {
    */
   rewardsPreUpload: number;
   /**
-   * max duration per partition，unit:min
+   * max video count per series
    */
-  maxPartitionDuration: number;
+  maxSerieVideosNumber: number;
   /**
    * max resolution ratio support
    */
@@ -31,4 +31,8 @@ export interface SystemConfig {
    * max image size，unit:MB
    */
   imageMaxSize: number;
+  /**
+   * coin cost for changing nickname
+   */
+  modifyNickNameCost: number;
 }

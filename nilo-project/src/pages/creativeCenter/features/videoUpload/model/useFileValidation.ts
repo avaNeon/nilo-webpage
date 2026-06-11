@@ -1,7 +1,6 @@
 import message from "@/shared/lib/message";
 import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
 import { FileUtil } from "@/shared/utils/FileUtil";
-import { MediaUtil } from "@/shared/utils/MediaUtil";
 
 export function useFileValidation() {
   // ==================== stores ====================
@@ -32,19 +31,6 @@ export function useFileValidation() {
       return false;
     }
 
-    // 3. Duration limit (config is in minutes)
-    const maxDurationSeconds = systemConfigStore.maxPartitionDuration * 60;
-    if (systemConfigStore.maxPartitionDuration > 0) {
-      const durationSec = await MediaUtil.getVideoDuration(file);
-      if (durationSec > 0 && durationSec > maxDurationSeconds) {
-        const durationMin = Math.round(durationSec / 60);
-        message.error(
-          `"${file.name}" 时长过长（${durationMin}分钟），` +
-            `最大允许 ${systemConfigStore.maxPartitionDuration}分钟`,
-        );
-        return false;
-      }
-    }
     return true;
   }
 
