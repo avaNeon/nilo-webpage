@@ -31,12 +31,11 @@ export const VideoPlayHistoryApi = {
   /**
    * 删除单条播放历史
    * @param videoId 视频ID
-   * @param fileIndex 文件索引
    */
-  async deleteHistory(videoId: string, fileIndex?: number) {
+  async deleteHistory(videoId: string) {
     return request({
       method: "delete",
-      url: `${Api.history}/${videoId}${fileIndex ? `/${fileIndex}` : ""}`,
+      url: `${Api.history}/${videoId}`,
     });
   },
 
