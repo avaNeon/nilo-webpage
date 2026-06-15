@@ -4,21 +4,18 @@ export interface SystemConfig {
    */
   videoFileMaxSize: number;
   /**
-   * max partition numver per video
+   * max image size，unit:MB
    */
-  videoMaxEpisodes: number;
+  imageMaxSize: number;
   /**
-   * initial coin number for new user
+   * per user daily video upload quota，unit：MB
    */
-  registerCoin: number;
+  dailyVideoUploadSize: number;
   /**
-   * coin bonus for per uploaded video
+   * per user daily image upload quota，unit：MB
    */
-  rewardsPreUpload: number;
-  /**
-   * max video count per series
-   */
-  maxSerieVideosNumber: number;
+  dailyImageUploadSize: number;
+
   /**
    * max resolution ratio support
    */
@@ -27,10 +24,24 @@ export interface SystemConfig {
    * max bit rate support，unit:fps
    */
   maxBitRate: number;
+
   /**
-   * max image size，unit:MB
+   * max partition numver per video
    */
-  imageMaxSize: number;
+  videoMaxEpisodes: number;
+  /**
+   * max video count per series
+   */
+  maxSerieVideosNumber: number;
+  /**
+   * max series number
+   */
+  maxSeriesNumber: number;
+
+  /**
+   * coin bonus for per uploaded video
+   */
+  rewardsPreUpload: number;
   /**
    * coin cost for changing nickname
    */
