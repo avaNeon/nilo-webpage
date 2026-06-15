@@ -6,12 +6,14 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     return {
       videoFileMaxSize: 0,
       videoMaxEpisodes: 0,
-      registerCoin: 0,
       rewardsPreUpload: 0,
       maxSerieVideosNumber: 0,
+      maxSeriesNumber: 0,
       maxResolutionRatio: "",
       maxBitRate: 0,
       imageMaxSize: 0,
+      dailyVideoUploadSize: 0,
+      dailyImageUploadSize: 0,
       modifyNickNameCost: 0,
     } as SystemConfig;
   },
@@ -22,14 +24,14 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     setVideoMaxEpisodes(episodes: number) {
       this.videoMaxEpisodes = episodes;
     },
-    setRegisterCoin(coin: number) {
-      this.registerCoin = coin;
-    },
     setRewardsPreUpload(rewards: number) {
       this.rewardsPreUpload = rewards;
     },
     setMaxSerieVideosNumber(count: number) {
       this.maxSerieVideosNumber = count;
+    },
+    setMaxSeriesNumber(count: number) {
+      this.maxSeriesNumber = count;
     },
     setMaxResolutionRatio(ratio: string) {
       this.maxResolutionRatio = ratio;
@@ -40,6 +42,12 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     setImageMaxSize(size: number) {
       this.imageMaxSize = size;
     },
+    setDailyVideoUploadSize(size: number) {
+      this.dailyVideoUploadSize = size;
+    },
+    setDailyImageUploadSize(size: number) {
+      this.dailyImageUploadSize = size;
+    },
     setModifyNickNameCost(cost: number) {
       this.modifyNickNameCost = cost;
     },
@@ -49,12 +57,14 @@ export const useSystemConfigStore = defineStore("systemConfigStore", {
     setSystemConfig(config: SystemConfig) {
       this.videoFileMaxSize = config.videoFileMaxSize;
       this.videoMaxEpisodes = config.videoMaxEpisodes;
-      this.registerCoin = config.registerCoin;
       this.rewardsPreUpload = config.rewardsPreUpload;
       this.maxSerieVideosNumber = config.maxSerieVideosNumber;
+      this.maxSeriesNumber = config.maxSeriesNumber;
       this.maxResolutionRatio = config.maxResolutionRatio;
       this.maxBitRate = config.maxBitRate;
       this.imageMaxSize = config.imageMaxSize;
+      this.dailyVideoUploadSize = config.dailyVideoUploadSize;
+      this.dailyImageUploadSize = config.dailyImageUploadSize;
       this.modifyNickNameCost = config.modifyNickNameCost;
     },
   },

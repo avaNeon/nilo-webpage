@@ -1,5 +1,3 @@
-import { ServiceType } from "@/shared/model/ServiceType";
-
 //单服务版本
 const Api = {
   // ——————Backend System configuration——————
@@ -36,6 +34,8 @@ const Api = {
   delDanmaku: "/danmaku/danmaku",
   ccDeleteVideo: "/creativeCenter/video/",
   ccVideoInteraction: "/creativeCenter/video/interaction/",
+  ccVideoUploadQuota: "/creativeCenter/video/uploadQuota",
+  ccImageUploadQuota: "/creativeCenter/image/uploadQuota",
   playCount: "/video",
   //获取视频列表
   getFirstLevelCommentCount: "/comment/count",
@@ -119,18 +119,15 @@ const Api = {
   videoSearch: "/video-serach",
 };
 
-// 区分不同的微服务
-const ServicePrefixMap = {
-  [ServiceType.web]: "/web",
-  [ServiceType.admin]: "/admin",
-};
+/** Web 服务路径前缀 */
+const WEB_SERVICE_PREFIX = "/web";
 
 /**
  * Build the browser-reachable absolute base URL for the web service module.
  * Must be absolute so that Hls.js and other relative-URL resolvers work correctly.
  */
 function getWebBaseUrl() {
-  return `${window.location.origin}${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap[ServiceType.web] || ""}`;
+  return `${window.location.origin}${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}`;
 }
 
-export { Api, getWebBaseUrl, ServicePrefixMap };
+export { Api, getWebBaseUrl, WEB_SERVICE_PREFIX };
