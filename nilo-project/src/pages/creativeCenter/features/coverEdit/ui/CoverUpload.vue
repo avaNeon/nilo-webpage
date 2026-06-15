@@ -6,6 +6,7 @@ import { imgRequestUrl } from '@/shared/utils/ImgUtil'
 
 const emit = defineEmits<{
   (e: 'update:coverBlob', blob: Blob | null): void
+  (e: 'update:coverQuotaBytes', bytes: number): void
 }>()
 const props = defineProps<{
   initialCoverPath?: string
@@ -17,6 +18,7 @@ const {
     originalCoverUrl,
     currentCoverUrl,
     currentCoverBlob,
+    currentCoverQuotaBytes,
     selectFile,
     updateImgUrl,
     openCropper,
@@ -26,6 +28,10 @@ const {
 // 每次 currentCoverBlob 变化（选择新文件 / 裁剪确认）时同步到父组件
 watch(currentCoverBlob, (blob) => {
   emit('update:coverBlob', blob)
+})
+
+watch(currentCoverQuotaBytes, (bytes) => {
+  emit('update:coverQuotaBytes', bytes)
 })
 
 watch(() => props.initialCoverPath, async (coverPath) => {

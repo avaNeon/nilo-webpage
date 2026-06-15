@@ -8,9 +8,11 @@ import videoIcon from '@/assets/icon/img/video.svg'
 import CoverUpload from '@/pages/creativeCenter/features/coverEdit/ui/CoverUpload.vue'
 import VideoTag from '@/pages/creativeCenter/entities/videoTag/ui/VideoTag.vue'
 import UploadSuccess from './UploadSuccess.vue'
+import { useSystemConfigStore } from '@/shared/store/SystemConfigStore'
 
 const router = useRouter()
 const route = useRoute()
+const systemConfigStore = useSystemConfigStore()
 
 const { MAX_INTRODUCTION_LENGTH } = useVideoUploadConfig()
 
@@ -19,10 +21,17 @@ const {
   isEditMode,
   preuploadList,
   submitState,
+  formResetKey,
   form,
   closeDanmaku,
   closeComment,
   hasMissingExistingUploadId,
+  maxVideoEpisodes,
+  hasExceededVideoEpisodes,
+  remainingVideoQuotaMiB,
+  remainingImageQuotaMiB,
+  videoQuotaPercent,
+  imageQuotaPercent,
   tagList,
   isFormValid,
   submitting,
@@ -41,6 +50,8 @@ const {
   onChildCategoryChange,
   introductionCharCount,
   cleanupAll,
+  setCoverQuotaBytes,
+  formatMiB,
 } = useVideoUpload()
 
 function onContinueUpload()
@@ -69,6 +80,11 @@ function updateCoverBlob(blob: Blob | null)
   coverBlob.value = blob
 }
 
+function updateCoverQuotaBytes(bytes: number)
+{
+  setCoverQuotaBytes(bytes)
+}
+
 /** 简介输入框实时截断：按等效字符数（\n 计 2）限制在 MAX_INTRODUCTION_LENGTH 内 */
 function onIntroductionInput()
 {
@@ -90,6 +106,27 @@ function onIntroductionInput()
 
 <template>
   <div class="content">
+    <div class="quota-panel">
+      <div class="quota-item">
+        <div class="quota-header">
+          <span class="quota-title">今日视频上传额度</span>
+          <span class="quota-value">
+            {{ formatMiB(remainingVideoQuotaMiB) }} / {{ formatMiB(systemConfigStore.dailyVideoUploadSize) }} MiB
+          </span>
+        </div>
+        <el-progress :percentage="videoQuotaPercent" :stroke-width="8" />
+      </div>
+      <div class="quota-item">
+        <div class="quota-header">
+          <span class="quota-title">今日图片上传额度</span>
+          <span class="quota-value">
+            {{ formatMiB(remainingImageQuotaMiB) }} / {{ formatMiB(systemConfigStore.dailyImageUploadSize) }} MiB
+          </span>
+        </div>
+        <el-progress :percentage="imageQuotaPercent" :stroke-width="8" />
+      </div>
+    </div>
+
     <div v-if="!submitState" class="upload-panel">
       <div v-if="!hasFileSelected" class="upload-panel">
         <VideoUpload :disabled="submitting" @file-selected="onFileSelected" />
@@ -166,8 +203,8 @@ function onIntroductionInput()
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>封面</span>
             <div class="form-input">
-              <CoverUpload :initial-cover-path="form.coverPath" :disabled="submitting"
-                @update:cover-blob="updateCoverBlob" />
+              <CoverUpload :key="formResetKey" :initial-cover-path="form.coverPath" :disabled="submitting"
+                @update:cover-blob="updateCoverBlob" @update:cover-quota-bytes="updateCoverQuotaBytes" />
             </div>
           </div>
 
@@ -244,7 +281,10 @@ function onIntroductionInput()
                 {{ isEditMode ? '提交修改' : '提交视频' }}
               </el-button>
               <el-button plain :disabled="submitting" @click="returnToUploadPanel">返回上传界面</el-button>
-              <span v-if="!isFormValid && preuploadList.length > 0" class="submit-hint">
+              <span v-if="hasExceededVideoEpisodes" class="submit-hint">
+                单个视频最多只能提交 {{ maxVideoEpisodes }} 个分P
+              </span>
+              <span v-else-if="!isFormValid && preuploadList.length > 0" class="submit-hint">
                 请完善必填信息后再提交
               </span>
               <span v-else-if="hasMissingExistingUploadId" class="submit-hint">
@@ -267,6 +307,35 @@ function onIntroductionInput()
 <style lang="scss" scoped>
 .content {
   width: 100%;
+}
+
+.quota-panel {
+  max-width: 900px;
+  margin: 0 auto 24px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  row-gap: 16px;
+
+  .quota-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    column-gap: 16px;
+  }
+
+  .quota-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .quota-value {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+  }
 }
 
 .edit-panel {

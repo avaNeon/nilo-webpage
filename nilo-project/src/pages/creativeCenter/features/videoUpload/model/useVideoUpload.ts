@@ -14,6 +14,8 @@ import { useVideoUploadEditFlow } from "./useVideoUploadEditFlow";
 import { useVideoUploadConfig } from "./useVideoUploadConfig";
 import { useCategoryTag } from "./useCategoryTag";
 import { useFileValidation } from "./useFileValidation";
+import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
+import { useUploadQuota } from "./useUploadQuota";
 
 /**
  * @name useVideoUpload
@@ -36,6 +38,7 @@ export function useVideoUpload() {
   } = useCategoryTag();
 
   const { validateVideoFile } = useFileValidation();
+  const systemConfigStore = useSystemConfigStore();
 
   const route = useRoute();
   const router = useRouter();
@@ -49,8 +52,23 @@ export function useVideoUpload() {
   const preuploadList = ref<PreuploadVideoFile[]>([]);
   const submitState = ref(false);
   const submitting = ref(false);
+  const formResetKey = ref(0);
 
   let uidCounter = 0;
+
+  function createEmptyForm(): VideoUploadType {
+    return {
+      coverPath: "",
+      videoTitle: "",
+      categoryNumber: "",
+      postType: 1,
+      tags: "",
+      introduction: "",
+      originInfo: "",
+      interaction: "",
+      videoFileUploadList: [],
+    };
+  }
 
   // ==================== 状态：编辑模式 ====================
 
@@ -67,17 +85,7 @@ export function useVideoUpload() {
 
   // ==================== 状态：表单 ====================
 
-  const form = reactive<VideoUploadType>({
-    coverPath: "",
-    videoTitle: "",
-    categoryNumber: "",
-    postType: 1,
-    tags: "",
-    introduction: "",
-    originInfo: "",
-    interaction: "",
-    videoFileUploadList: [],
-  });
+  const form = reactive<VideoUploadType>(createEmptyForm());
 
   const tagList = ref<string[]>([]);
   const closeDanmaku = ref(false);
@@ -108,6 +116,32 @@ export function useVideoUpload() {
     ),
   );
 
+  const maxVideoEpisodes = computed(() =>
+    systemConfigStore.videoMaxEpisodes > 0
+      ? systemConfigStore.videoMaxEpisodes
+      : 0,
+  );
+
+  const hasExceededVideoEpisodes = computed(
+    () =>
+      maxVideoEpisodes.value > 0 &&
+      preuploadList.value.length > maxVideoEpisodes.value,
+  );
+
+  const {
+    remainingVideoQuotaMiB,
+    remainingImageQuotaMiB,
+    videoQuotaPercent,
+    imageQuotaPercent,
+    usedVideoQuotaBytes,
+    usedImageQuotaBytes,
+    shouldUploadCover,
+    loadUploadQuota,
+    hasEnoughVideoQuota,
+    setCoverQuotaBytes,
+    formatMiB,
+  } = useUploadQuota(preuploadList, coverBlob);
+
   /**
    * 简介有效字符数：将每个真实换行符 \n 计为 2 个字符（对应转义后 \\n），
    * 与提交时发送给后端的实际长度一致。
@@ -120,27 +154,25 @@ export function useVideoUpload() {
   const isFormValid = computed(() => {
     // 封面 - 必填
     if (coverBlob.value === null) {
-      console.log("等待上传封面");
       return false;
     }
     // 视频标题 - 必填且不能为空白
     if (!form.videoTitle.trim()) {
-      console.log("视频标题不能为空");
       return false;
     }
     // 分类 - 必填（至少选择一级分类）
     if (!form.categoryNumber) {
-      console.log("请选择分区");
       return false;
     }
     // 类型 - 如果是转载，必须填写来源说明
     if (form.postType === 2 && !form.originInfo?.trim()) {
-      console.log("转载视频请填写原资源说明");
       return false;
     }
     // 简介长度（计入换行符转义后的等效长度）
     if (introductionCharCount.value > MAX_INTRODUCTION_LENGTH) {
-      console.log("简介长度超出限制");
+      return false;
+    }
+    if (hasExceededVideoEpisodes.value) {
       return false;
     }
     return true;
@@ -188,6 +220,10 @@ export function useVideoUpload() {
     // Validate before accepting the file
     const valid = await validateVideoFile(file);
     if (!valid) return;
+    if (!hasEnoughVideoQuota(file)) {
+      message.warning(`"${file.name}" 超出今日剩余视频上传额度`);
+      return;
+    }
 
     hasFileSelected.value = true;
     const item = buildPreuploadFile(file);
@@ -221,6 +257,16 @@ export function useVideoUpload() {
 
     preuploadList.value = [];
     hasFileSelected.value = false;
+    modifiedVideoId.value = null;
+    coverBlob.value = null;
+    tagList.value = [];
+    closeDanmaku.value = false;
+    closeComment.value = false;
+    selectedParentNumber.value = "";
+    selectedChildNumber.value = "";
+    Object.assign(form, createEmptyForm());
+    setCoverQuotaBytes(0);
+    formResetKey.value++;
   }
 
   /** Check whether there are any items that have data to lose */
@@ -394,6 +440,10 @@ export function useVideoUpload() {
       message.error("请选择视频文件");
       return false;
     }
+    if (hasExceededVideoEpisodes.value) {
+      message.error(`单个视频最多只能提交 ${maxVideoEpisodes.value} 个分P`);
+      return false;
+    }
     if (isEditMode.value && hasMissingExistingUploadId.value) {
       message.error(
         "存在旧分P缺少 uploadId，暂无法提交编辑，请联系后端确认接口返回",
@@ -433,14 +483,17 @@ export function useVideoUpload() {
       return;
     }
 
-    // 上传封面图片（校验通过后仅在此处上传，避免用户反复调整时浪费带宽和存储）
-    if (coverBlob.value) {
+    // 仅上传本次新选择/裁剪的封面；编辑模式加载的原封面已在 form.coverPath 中，无需重复上传。
+    if (shouldUploadCover.value && coverBlob.value) {
       try {
         // coverBlob 本身已携带 MIME type（autoCropToCover 编码为 image/jpeg），无需额外检测
         const coverFile = new File([coverBlob.value], "cover.jpg", {
           type: coverBlob.value.type || "image/jpeg",
         });
+
+        // 获取相对路径
         const coverPath = await imageApi.uploadImage(coverFile);
+
         if (coverPath) {
           form.coverPath = String(coverPath);
         } else {
@@ -512,7 +565,10 @@ export function useVideoUpload() {
 
   // ==================== 生命周期 ====================
 
-  onMounted(initEditVideoFromRoute);
+  onMounted(() => {
+    initEditVideoFromRoute();
+    loadUploadQuota();
+  });
 
   // ==================== return ====================
 
@@ -521,6 +577,7 @@ export function useVideoUpload() {
     hasFileSelected,
     preuploadList,
     submitState,
+    formResetKey,
     isEditMode,
     tagList,
     // state — form
@@ -531,6 +588,14 @@ export function useVideoUpload() {
     // state — derived
     readyUploadFileList,
     hasMissingExistingUploadId,
+    maxVideoEpisodes,
+    hasExceededVideoEpisodes,
+    remainingVideoQuotaMiB,
+    remainingImageQuotaMiB,
+    videoQuotaPercent,
+    imageQuotaPercent,
+    usedVideoQuotaBytes,
+    usedImageQuotaBytes,
     isFormValid,
     introductionCharCount,
     // state — submit
@@ -553,5 +618,7 @@ export function useVideoUpload() {
     returnToUploadPanel,
     cleanupAll,
     hasPendingData,
+    setCoverQuotaBytes,
+    formatMiB,
   };
 }
