@@ -133,7 +133,6 @@ export function useVideoHistory() {
     try {
       const result = await VideoPlayHistoryApi.deleteHistory(
         history.videoId,
-        history.fileIndex,
       );
 
       if (result?.code === 200) {

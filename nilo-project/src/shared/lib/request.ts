@@ -3,8 +3,7 @@ import { ElLoading } from "element-plus";
 import message from "@/shared/lib/message";
 import Cookies from "js-cookie";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
-import { ServiceType } from "@/shared/model/ServiceType";
-import { ServicePrefixMap } from "@/shared/config/Api";
+import { WEB_SERVICE_PREFIX } from "@/shared/config/Api";
 import type { BaseResponse } from "@/shared/model/BaseResponse";
 
 const contentTypeForm = "application/x-www-form-urlencoded;charset=UTF-8";
@@ -112,8 +111,6 @@ interface RequestConfig {
   uploadProgressCallback?: (event: AxiosProgressEvent) => void;
   /** 业务错误回调，响应 code 非 200 且非 1005 时触发 */
   errorCallback?: (data: any) => void;
-  /** 目标服务类型，默认 ServiceType.web */
-  serviceType?: ServiceType;
   /** 用于终止请求 */
   signal?: AbortSignal;
 }
@@ -135,7 +132,6 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     showError = true,
     uploadProgressCallback,
     errorCallback,
-    serviceType = ServiceType.web, // 默认 web 服务
     signal,
   } = config;
 
@@ -146,8 +142,8 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     token: token || "",
   };
 
-  // 拼接二级前缀，兼容 Vite 代理
-  const prefix = `${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap[serviceType] || ""}`;
+  // 拼接二级前缀，兼容 Vite 代理（当前只有 web 服务）
+  const prefix = `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}`;
   const completeUrl = prefix + url;
 
   // 构建 axios 配置（所有方法共用）

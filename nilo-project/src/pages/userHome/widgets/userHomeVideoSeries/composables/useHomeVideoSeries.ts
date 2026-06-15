@@ -15,7 +15,11 @@ export function useHomeVideoSeries() {
 
   /* ——————常量—————— */
 
-  const maxSeriesNumber = 50;
+  const maxSeriesNumber = computed(() =>
+    systemConfigStore.maxSeriesNumber > 0
+      ? systemConfigStore.maxSeriesNumber
+      : 50,
+  );
   const maxVideosNumber = computed(() =>
     systemConfigStore.maxSerieVideosNumber > 0
       ? systemConfigStore.maxSerieVideosNumber
