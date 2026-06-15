@@ -59,7 +59,7 @@ const props = withDefaults(defineProps<{
                 </div>
             </div>
         </div>
-        <div class="others">
+        <!-- <div class="others"> -->
             <!-- <div class="online-user-count"> -->
             <!-- <img class="user-count-img" src="@/assets/bilibili_tv.jpg" alt="bilibili"> -->
             <!-- <span class="count-text">在线人数：</span> -->
@@ -69,7 +69,7 @@ const props = withDefaults(defineProps<{
             <!-- <img class="read-img" src="@/assets/document.svg" alt="document"> -->
             <!-- <span class="read-text">专栏</span> -->
             <!-- </RouterLink> -->
-        </div>
+        <!-- </div> -->
     </div>
     <div class="category-bar folded" v-else @mouseenter="isFoldedHovered = true" @mouseleave="isFoldedHovered = false"
         :style="{
