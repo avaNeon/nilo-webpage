@@ -126,6 +126,20 @@ function handleChange(uploadFile: UploadFile)
                             </p>
                         </el-popover>
                     </div>
+                    <div class="reward-limit">
+                        <el-popover placement="bottom-start" :width="300">
+                            <template #reference>
+                                <span class="tip-text">视频奖励</span>
+                            </template>
+                            <p>
+                                每个审核通过的视频奖励<em style="
+                                font-weight: 600;
+                                color: #00AEEC;
+                                font-style: normal;
+                                ">{{ systemConfig.rewardsPreUpload }}个硬币</em>
+                            </p>
+                        </el-popover>
+                    </div>
                 </div>
             </template>
         </el-upload>

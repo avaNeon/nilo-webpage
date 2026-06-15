@@ -31,6 +31,7 @@ export function useCoverUpload() {
   const originalCoverBlob = ref<Blob | null>(null);
   const currentCoverUrl = ref("");
   const currentCoverBlob = ref<Blob | null>(null);
+  const currentCoverQuotaBytes = ref(0);
 
   const { uploadItems, selectFile } = useFileUpload({
     accept: ACCEPT,
@@ -126,6 +127,7 @@ export function useCoverUpload() {
     originalCoverUrl.value = URL.createObjectURL(blob);
     currentCoverBlob.value = blob;
     currentCoverUrl.value = URL.createObjectURL(blob);
+    currentCoverQuotaBytes.value = 0;
   }
 
   /**
@@ -136,6 +138,7 @@ export function useCoverUpload() {
     clearImgObj();
     currentCoverUrl.value = URL.createObjectURL(blob);
     currentCoverBlob.value = blob;
+    currentCoverQuotaBytes.value = blob.size;
     editVisible.value = false;
   }
 
@@ -180,9 +183,11 @@ export function useCoverUpload() {
         const croppedBlob = await autoCropToCover(latest.file);
         currentCoverUrl.value = URL.createObjectURL(croppedBlob);
         currentCoverBlob.value = croppedBlob;
+        currentCoverQuotaBytes.value = croppedBlob.size;
       } catch {
         currentCoverUrl.value = latest.localUrl;
         currentCoverBlob.value = latest.file;
+        currentCoverQuotaBytes.value = latest.file.size;
       }
 
       uploadItems.value = [];
@@ -200,6 +205,7 @@ export function useCoverUpload() {
     originalCoverBlob,
     currentCoverUrl,
     currentCoverBlob,
+    currentCoverQuotaBytes,
     selectFile,
     updateImgUrl,
     openCropper,
