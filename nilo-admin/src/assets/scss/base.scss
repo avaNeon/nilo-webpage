@@ -1,0 +1,82 @@
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: $color-scrollbar-track;
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: $color-scrollbar-thumb;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: $color-scrollbar-thumb;
+}
+
+::-webkit-scrollbar-corner {
+    background: $color-scrollbar-thumb;
+}
+
+:root {
+    --text: #18191C;
+    --text2: #61666D;
+    --text3: #9499a0;
+    --blue: #{$color-bilibili-blue};
+    --blue2: #{$color-link};
+    --blue3: #{$color-link-strong};
+    --bodyPadding: 150px;
+
+    // ========== Element Plus 主题色覆盖 ==========
+    // 将 Element Plus 默认蓝色 #409EFF 替换为项目品牌色 #00AEEC
+    --el-color-primary: #{$color-bilibili-blue};
+    --el-color-primary-light-3: #{mix($color-bilibili-blue, #ffffff, 70%)};
+    --el-color-primary-light-5: #{mix($color-bilibili-blue, #ffffff, 50%)};
+    --el-color-primary-light-7: #{mix($color-bilibili-blue, #ffffff, 30%)};
+    --el-color-primary-light-8: #{mix($color-bilibili-blue, #ffffff, 20%)};
+    --el-color-primary-light-9: #{mix($color-bilibili-blue, #ffffff, 10%)};
+    --el-color-primary-dark-2: #{mix($color-bilibili-blue, #000000, 80%)};
+}
+
+/* @media (min-width: 1560px) and (max-width: 2059.9px) {
+    :root {
+        --layout-padding: 140px;
+    }
+}
+ */
+
+body {
+    margin: 0px;
+    padding: 0px;
+    font-size: 14px;
+}
+
+* {
+    box-sizing: border-box;
+    font-family: PingFang SC,
+        HarmonyOS_Regular,
+        Helvetica Neue,
+        Microsoft YaHei,
+        sans-serif;
+    ;
+}
+
+.disable {
+    color: $color-neutral-2 !important;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.a-link {
+    text-decoration: none;
+    color: $color-link;
+    text-decoration: none;
+}
+
+//去除下拉菜单 黑边
+.el-tooltip__trigger:focus-visible {
+    outline: unset;
+}
