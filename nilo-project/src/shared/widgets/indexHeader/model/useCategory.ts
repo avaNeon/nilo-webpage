@@ -1,4 +1,4 @@
-import { ServicePrefixMap, Api } from "@/shared/config/Api";
+import { WEB_SERVICE_PREFIX, Api } from "@/shared/config/Api";
 import useCategoryStore from "@/shared/store/CategoryStore";
 
 export function useCategory() {
@@ -11,7 +11,7 @@ export function useCategory() {
             return ''
         }
         else {
-            return `${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap.web}${Api.sourcePath}${iconPath}`
+            return `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}${Api.sourcePath}${iconPath}`
         }
     }
 

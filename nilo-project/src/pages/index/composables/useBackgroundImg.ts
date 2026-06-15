@@ -1,5 +1,5 @@
 import useCategoryStore from "@/shared/store/CategoryStore"
-import { ServicePrefixMap, Api } from "@/shared/config/Api"
+import { WEB_SERVICE_PREFIX, Api } from "@/shared/config/Api"
 import { computed } from "vue"
 
 /**
@@ -16,7 +16,7 @@ export function useBackgroundImg() {
         if (!path) return null
         // 直接把后端接口地址和图片路径拼接起来
         // 浏览器会自动发出 GET 请求获取图片流
-        return `${import.meta.env.VITE_APP_BASE_URL}${ServicePrefixMap.web}${Api.sourcePath}${path}`
+        return `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}${Api.sourcePath}${path}`
     })
 
     return { bgImgUrl }
