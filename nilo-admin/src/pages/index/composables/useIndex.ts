@@ -47,10 +47,7 @@ export function useIndex() {
   // 菜单点击切换路由
   function onMenuSelect(index: string) {
     activeMenu.value = index;
-    if (index === "home") {
-      router.push({ name: "home" });
-    }
-    // 其他菜单项路由后续添加
+    router.push({ name: index });
   }
 
   // 路由切换时同步菜单选中状态
