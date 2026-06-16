@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import useCategoryStore from '@/shared/store/CategoryStore';
 import { BODY_PADDING } from '@/shared/config/Config';
 import { useTimer } from '../model/useTimer';
-import { useRipple } from '../model/useRipple';
 
 const categoryStore = useCategoryStore();
 const { isUnfoldedHovered, isFoldedHovered, itemHover, subItemsDalayAndTransition, waitAndChange, waitAndLeave } = useTimer();
-const rippleLayerRef = ref<HTMLElement | null>(null)
-const { onItemMousedown } = useRipple(rippleLayerRef)
 
 const props = withDefaults(defineProps<{
     folded?: boolean
@@ -36,7 +32,7 @@ const props = withDefaults(defineProps<{
                 v-for="categoryItem in categoryStore.categoryList" :key="categoryItem.categoryNumber"
                 @mouseenter="waitAndChange($event)" @mouseleave="waitAndLeave($event)">
                 <RouterLink draggable="false" class="category-item" :to="`/c/${categoryItem.categoryNumber}`"
-                    @mousedown="(e) => onItemMousedown(e, categoryItem.color)" :style="{
+                    :style="{
                         '--category-color': categoryItem.color,
                         '--category-hover-bg': categoryItem.color + '50',
                     }">
@@ -96,9 +92,6 @@ const props = withDefaults(defineProps<{
         <img class="down-arrow" :class="{ rotated: isFoldedHovered }" src="@/assets/down_arrow.svg" alt="展开箭头" />
     </div>
 
-    <Teleport to="body">
-        <div class="category-page-ripple-layer" ref="rippleLayerRef"></div>
-    </Teleport>
 </template>
 
 <style lang="scss" scoped>
@@ -421,40 +414,3 @@ const props = withDefaults(defineProps<{
 }
 </style>
 
-<style lang="scss">
-.category-page-ripple-layer {
-    position: fixed;
-    left: 0;
-    width: 100%;
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 300;
-    /* top 和 height 由 useRipple 在每次 mousedown 时动态设置 */
-}
-
-.category-ripple-press {
-    position: absolute;
-    border-radius: 50%;
-    /* background-color 由 useRipple 内联设置，支持自定义颜色 */
-    pointer-events: none;
-    transform: scale(0);
-    animation: category-ripple-press 0.8s ease-out forwards;
-}
-
-@keyframes category-ripple-press {
-    0% {
-        transform: scale(0);
-        opacity: 0.2;
-    }
-
-    60% {
-        transform: scale(1);
-        opacity: 0.12;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 0;
-    }
-}
-</style>
