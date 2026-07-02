@@ -29,6 +29,7 @@ export function useIndex() {
       subItems: [
         { index: "category", icon: Collection, label: "分类管理" },
         { index: "upload", icon: Document, label: "稿件管理" },
+        { index: "archive", icon: Document, label: "存档管理" },
       ],
     },
     {
@@ -40,8 +41,8 @@ export function useIndex() {
         { index: "danmaku", icon: ChatLineSquare, label: "弹幕管理" },
       ],
     },
-    { index: "users", icon: UserFilled, label: "用户管理" },
-    { index: "settings", icon: Setting, label: "系统设置" },
+    { index: "user", icon: UserFilled, label: "用户管理" },
+    { index: "setting", icon: Setting, label: "系统设置" },
   ];
 
   // 菜单点击切换路由
