@@ -53,15 +53,9 @@ onMounted(() => {
 <style lang="scss" scoped>
 .video-list-panel {
     width: 100%;
-    max-height: 100%;
     background-color: #f0eded;
     border-radius: 10px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-
-
-    // ↓ has been included in html, but keep it here for better readability
-    // display: flex;
-    flex-direction: column;
 
     .top-bar {
         height: 50px;

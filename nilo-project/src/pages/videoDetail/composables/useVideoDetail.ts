@@ -25,6 +25,12 @@ export function useVideoDetail() {
     () => videoStateStore.videoInfo.userInfo?.avatar ?? "",
   );
 
+  // 页面加载状态：初始为 true，loadVideoInfo 完成后置 false
+  const loading = ref(true);
+
+  // 视频不存在状态
+  const notFound = ref(false);
+
   // 关注相关状态
   const haveFollowed = ref(false);
   const followerCount = ref(0);
@@ -40,10 +46,20 @@ export function useVideoDetail() {
       method: "get",
       url: Api.loadVideoInfo + `/${videoId}`,
       params: { sessionId },
+      showError: false,
+      errorCallback: responseData => {
+        if (responseData.code === 404) {
+          notFound.value = true;
+        } else {
+          message.error(responseData.info);
+        }
+      },
     });
+    loading.value = false;
     if (!result) {
       return;
     }
+    notFound.value = false;
     videoStateStore.setVideoInfo(result.data);
   }
 
@@ -254,6 +270,8 @@ export function useVideoDetail() {
     currentPage,
     PAGE_SIZE,
     currentSortType,
+    loading,
+    notFound,
     // 方法
     loadVideoInfo,
     loadMoreChildren,
