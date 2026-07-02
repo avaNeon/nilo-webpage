@@ -11,10 +11,12 @@ const props = withDefaults(defineProps<{
     lazy: boolean,
     userPanel?: boolean,
     mobile?: boolean,
+    requireLogin?: boolean,
 }>(), {
     userId: null,
     userPanel: true,
     mobile: true,
+    requireLogin: true,
 })
 
 const { loginStateStore, clickLogin, logout } = useAvatar()
@@ -22,7 +24,8 @@ const { loginStateStore, clickLogin, logout } = useAvatar()
 
 <template>
     <!-- 如果用户已登录，则显示用户头像，如果找不到用户头像则显示默认头像 -->
-    <div class="onLogin" v-if="loginStateStore.loginState">
+    <!-- requireLogin=false 时（如展示视频发布者/评论者头像），始终显示头像，不检查登录状态 -->
+    <div class="onLogin" v-if="loginStateStore.loginState || !requireLogin">
         <RouterLink :class="{ 'avatar': true, 'mobile': mobile }" :to="`/user/${userId}`" target="_blank">
             <Cover :src="src" :lazy="lazy" :default-src="userSvg" :width="width" :scale="1" fit="cover"
                 border-radius="50%" border="1px #bfbfbf solid">

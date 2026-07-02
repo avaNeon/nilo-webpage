@@ -4,6 +4,7 @@ import { CommentActionApi } from "../api/CommentActionApi"
 import { CommentApi as LocalCommentApi } from "../api/CommmentApi"
 import { CommentApi } from "@/shared/api/CommentApi"
 import message from "@/shared/lib/message"
+import { useLoginStateStore } from "@/shared/store/LoginStateStore"
 import { ref, computed, onBeforeUnmount } from "vue"
 
 // ----- 不适宜指数（II）检测词典 -----
@@ -97,9 +98,21 @@ export function useVideoCommentItem() {
     const COMMENT_IMG_WIDTH = 200
     const AVATAR_WIDTH = 64
 
+    const loginStateStore = useLoginStateStore()
+
+    function checkLogin(): boolean {
+        if (loginStateStore.loginState === false) {
+            message.warning("请先登录")
+            loginStateStore.showPanel = true
+            return false
+        }
+        return true
+    }
+
     // ----- 点赞/点踩 -----
 
     function upvote(videoId: string, videoComment: VideoComment) {
+        if (!checkLogin()) return
         CommentActionApi.commentAction(videoId, videoComment.commentId, 1)
         videoComment.isUpvoted = !videoComment.isUpvoted
         if (videoComment.isUpvoted) {
@@ -114,6 +127,7 @@ export function useVideoCommentItem() {
     }
 
     function downvote(videoId: string, videoComment: VideoComment) {
+        if (!checkLogin()) return
         CommentActionApi.commentAction(videoId, videoComment.commentId, 2)
         videoComment.isDownvoted = !videoComment.isDownvoted
         if (videoComment.isDownvoted) {
@@ -225,6 +239,7 @@ export function useVideoCommentItem() {
     return {
         COMMENT_IMG_WIDTH,
         AVATAR_WIDTH,
+        checkLogin,
         upvote,
         downvote,
         calcVoteResult,

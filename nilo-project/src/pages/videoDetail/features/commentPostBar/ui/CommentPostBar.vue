@@ -147,6 +147,13 @@ async function postComment()
 {
     if (isPosting.value) return
 
+    if (!loginStateStore.loginState)
+    {
+        message.warning("请先登录")
+        loginStateStore.showPanel = true
+        return
+    }
+
     if (userCommentText.value.length > MAX_COMMENT_LENGTH)
     {
         message.warning(`评论内容不能超过 ${MAX_COMMENT_LENGTH} 字`)
