@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import { useIndex } from './composables/useIndex';
 
 
@@ -9,8 +8,6 @@ const {
     defaultOpeneds,
     onMenuSelect,
 } = useIndex()
-
-const loginState = useLoginStateStore()
 
 </script>
 
@@ -22,15 +19,6 @@ const loginState = useLoginStateStore()
                 <div class="header-brand">
                     <span class="brand-logo">N</span>
                     <span class="brand-title">Nilo 管理界面</span>
-                </div>
-                <div class="header-actions">
-                    <el-tag type="success" size="normal" effect="dark" round>
-                        <template #default>
-                            <span style="font-size: 15px; padding: 2px;">
-                                {{ loginState.adminInfo?.account }}
-                            </span>
-                        </template>
-                    </el-tag>
                 </div>
             </el-header>
 
