@@ -9,6 +9,7 @@ import Account from '@/shared/features/account/ui/Account.vue';
 import Player from '@/pages/videoDetail/features/player/ui/Player.vue';
 import useVideoStateStore from '../store/VideoStateStore';
 import VideoPartitionList from '@/pages/videoDetail/entities/videoPartitonList/ui/VideoPartitionList.vue';
+import NotFound from '@/shared/entities/notFound/ui/NotFound.vue';
 import DanmakuList from '@/pages/videoDetail/entities/danmakuList/ui/DanmakuList.vue';
 import VideoActionItem from '@/pages/videoDetail/features/videoAction/ui/VideoActionItem.vue';
 import CoinDialog from '@/pages/videoDetail/features/videoAction/ui/CoinDialog.vue';
@@ -26,6 +27,8 @@ const {
     followerCount,
     currentPage,
     PAGE_SIZE,
+    loading,
+    notFound,
     loadVideoInfo,
     loadMoreChildren,
     loadCommentsBySortType,
@@ -58,7 +61,27 @@ onMounted(() =>
 <template>
     <Account />
     <CoinDialog @action-done="afterCoinAction" />
-    <div :class="['page-content', videoStateStore.displayMode]" :style="{
+    <div v-if="notFound" class="not-found-page">
+        <header class="header" :style="{
+            'max-width': mainContentMaxWidth + 'px',
+            'min-width': mainContentMinWidth + 'px',
+        }">
+            <IndexHeader theme="dark" />
+        </header>
+        <NotFound title="视频不存在" hint="该视频可能已被删除或链接有误" />
+    </div>
+    <div v-else-if="loading" class="loading-page">
+        <header class="header" :style="{
+            'max-width': mainContentMaxWidth + 'px',
+            'min-width': mainContentMinWidth + 'px',
+        }">
+            <IndexHeader theme="dark" />
+        </header>
+        <div class="loading-content">
+            <img src="@/assets/loading.gif" alt="Loading..." />
+        </div>
+    </div>
+    <div v-else :class="['page-content', videoStateStore.displayMode]" :style="{
         'max-width': mainContentMaxWidth + 'px',
         'min-width': mainContentMinWidth + 'px',
     }">
@@ -90,7 +113,7 @@ onMounted(() =>
                             'height': avatarSize + 'px',
                         }" :user-id="videoStateStore.videoInfo?.userInfo?.userId || null"
                             :src="imgRequestUrl(avatarUrl)" :width="avatarSize" :lazy="true" :user-panel="false"
-                            :mobile="false">
+                            :mobile="false" :require-login="false">
                         </Avatar>
                         <div class="user-detail">
                             <RouterLink class="user-name-router-link"
@@ -126,23 +149,11 @@ onMounted(() =>
                 </div>
             </div>
 
-            <div class="main-content">
-                <div class="left">
+            <div class="content-body">
+                <div class="player-area">
                     <Player :danmaku-available="isDanmakuAvailable()"></Player>
                 </div>
-                <div class="right">
-                    <DanmakuList v-if="isCommentAvailable()" class="danmaku-list"></DanmakuList>
-                    <VideoPartitionList></VideoPartitionList>
-                    <div v-if="recommendVideoList.length > 0" class="recommend-video-list">
-                        <VideoItem v-for="(videoInfo, index) in recommendVideoList" :key="videoInfo.videoId ?? index"
-                            class="recommend-video-item" :video-info="videoInfo" type="vertical" width="40%" title-font-size="16px" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- only display in theater mode -->
-            <div class="bottom-content">
-                <div class="left">
+                <div class="action-area">
                     <VideoActionItem @action-done="() => loadVideoInfo(route.params.videoId as string)" />
                     <VideoIntroduction :introduction="videoStateStore.videoInfo?.introduction || ''"
                         :tags="videoStateStore.videoInfo.tags || []" />
@@ -158,12 +169,12 @@ onMounted(() =>
                             :total="firstLevelCommentCount" />
                     </div>
                 </div>
-                <div class="right">
-                    <DanmakuList class="danmaku-list"></DanmakuList>
+                <div class="sidebar">
+                    <DanmakuList v-if="isCommentAvailable()" class="danmaku-list"></DanmakuList>
                     <VideoPartitionList></VideoPartitionList>
                     <div v-if="recommendVideoList.length > 0" class="recommend-video-list">
                         <VideoItem v-for="(videoInfo, index) in recommendVideoList" :key="videoInfo.videoId ?? index"
-                            class="recommend-video-item" :video-info="videoInfo" type="vertical" width="40%" />
+                            class="recommend-video-item" :video-info="videoInfo" type="vertical" width="40%" title-font-size="16px" />
                     </div>
                 </div>
             </div>
@@ -177,6 +188,42 @@ $info-font-size: 16px;
 
 $left-content-max-width: 70%;
 $right-content-max-width: 28%;
+
+.not-found-page {
+    min-height: 100vh;
+    background-color: white;
+
+    .header {
+        position: sticky;
+        top: 0;
+        z-index: 600;
+        width: 100%;
+    }
+}
+
+.loading-page {
+    min-height: 100vh;
+    background-color: white;
+
+    .header {
+        position: sticky;
+        top: 0;
+        z-index: 600;
+        width: 100%;
+    }
+
+    .loading-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 70vh;
+
+        img {
+            width: 60px;
+            height: auto;
+        }
+    }
+}
 
 .page-content {
     min-height: 150vh;
@@ -309,22 +356,41 @@ $right-content-max-width: 28%;
 
         }
 
-        .main-content {
+        .content-body {
             margin: 10px 0;
 
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: $left-content-max-width $right-content-max-width;
+            column-gap: 2%;
+            align-items: start;
 
-            .left {
-                flex: 1;
-
-                max-width: $left-content-max-width;
+            .player-area {
+                grid-column: 1;
+                grid-row: 1;
+                margin-bottom: 40px;
             }
 
-            .right {
-                flex: 1;
+            .action-area {
+                grid-column: 1;
+                grid-row: 2;
+                margin-top: 40px;
 
-                max-width: $right-content-max-width;
+                .comment-list {
+                    margin: 40px 0;
+
+                    .video-comment {
+                        margin: 20px 0;
+                    }
+
+                    .pagination {
+                        margin-top: 30px;
+                    }
+                }
+            }
+
+            .sidebar {
+                grid-column: 2;
+                grid-row: 1 / span 2;
 
                 .danmaku-list {
                     margin-bottom: 10px;
@@ -343,48 +409,6 @@ $right-content-max-width: 28%;
                     }
                 }
             }
-
-        }
-
-        .bottom-content {
-            margin-top: 40px;
-
-            display: flex;
-            justify-content: space-between;
-
-            .left {
-                margin-top: 15px;
-                flex: 1;
-
-                max-width: $left-content-max-width;
-                transition: height 0.2s ease;
-
-                .comment-list {
-                    margin: 40px 0;
-
-                    .video-comment {
-                        margin: 20px 0;
-                    }
-
-                    .pagination {
-                        margin-top: 30px;
-                    }
-                }
-            }
-
-            .right {
-                flex: 1;
-
-                display: flex;
-                flex-direction: column;
-                row-gap: 10px;
-
-                max-width: $right-content-max-width;
-                max-height: 0;
-                overflow: hidden;
-                opacity: 0;
-                transition: max-height 0.2s ease, opacity 0.2s ease, margin-top 0.2s ease;
-            }
         }
     }
 
@@ -398,23 +422,23 @@ $right-content-max-width: 28%;
             }
         }
 
-        .main-content {
-
-            .left {
-                max-width: 100%;
+        .content-body {
+            .player-area {
+                grid-column: 1 / span 2;
+                grid-row: 1;
             }
 
-            .right {
-                max-width: 0%;
-                opacity: 0;
+            .action-area {
+                grid-column: 1;
+                grid-row: 2;
             }
-        }
 
-        .bottom-content {
-            .right {
-                max-height: 600px;
-                opacity: 1;
+            .sidebar {
+                grid-column: 2;
+                grid-row: 2;
                 margin-top: 20px;
+                max-height: 600px;
+                overflow: hidden;
             }
         }
     }

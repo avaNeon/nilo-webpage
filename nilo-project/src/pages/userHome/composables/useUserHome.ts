@@ -63,6 +63,12 @@ export function useUserHome() {
   /* ————————状态———————— */
   const hostUserDetailStore = useHostUserDetailStore();
 
+  // 页面加载状态：初始为 true，loadUserDetail 完成后置 false
+  const loading = ref(true);
+
+  // 用户不存在状态
+  const notFound = ref(false);
+
   /** 当前后端存储的壁纸序号 */
   const currentThemeIndex = computed(
     () => hostUserDetailStore.userHostDetail?.theme ?? 1,
@@ -142,7 +148,17 @@ export function useUserHome() {
     const hostUserId = route.params.userId as string;
     if (!hostUserId) return;
 
-    const detail = await UserHomeApi.getUserDetail(hostUserId);
+    const detail = await UserHomeApi.getUserDetail(hostUserId, {
+      showError: false,
+      errorCallback: responseData => {
+        if (responseData.code === 404) {
+          notFound.value = true;
+        } else {
+          message.error(responseData.info);
+        }
+      },
+    });
+    loading.value = false;
     if (detail) {
       hostUserDetailStore.setUserDetail(detail);
     }
@@ -206,6 +222,8 @@ export function useUserHome() {
     showEditor,
     showBgImgEditor,
     currentThemeIndex,
+    loading,
+    notFound,
     setPreviewWallpaper,
     searchVideos,
     subscribe,

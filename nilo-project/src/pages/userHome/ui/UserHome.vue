@@ -9,6 +9,7 @@ import femaleSrc from '@/assets/icon/img/female.svg'
 import editSrc from '@/assets/icon/img/edit.svg'
 import UserInfoEditor from '../features/userInfoEditor/ui/UserInfoEditor.vue';
 import UserHomeBgImg from '../features/userHomeBgImg/ui/UserHomeBgImg.vue';
+import NotFound from '@/shared/entities/notFound/ui/NotFound.vue';
 import message from '@/shared/lib/message.ts';
 
 const hostUserDetailStore = useHostUserDetailStore();
@@ -22,6 +23,8 @@ const {
     showEditor,
     showBgImgEditor,
     currentThemeIndex,
+    loading,
+    notFound,
     setPreviewWallpaper,
     searchVideos,
     subscribe,
@@ -49,109 +52,117 @@ function saveTheme(index: number)
 <template>
     <div class="user-home-page" :style="bgStyle">
         <IndexHeader />
-        <UserInfoEditor v-model:visible="showEditor" @reload="reloadUserInfo" />
-        <UserHomeBgImg v-model:show="showBgImgEditor" :current-theme-index="currentThemeIndex"
-            @preview="setPreviewWallpaper" @save-theme="saveTheme" />
-        <div v-if="!hideUi" class="user-profile">
-            <div class="profile">
-                <img class="avatar"
-                    :src="hostUserDetailStore.userHostDetail?.avatar ? imgRequestUrl(hostUserDetailStore.userHostDetail.avatar) : defaultAvatar" />
-                <div class="user-detail">
-                    <div class="name">
-                        <div class="nickName">{{ hostUserDetailStore.userHostDetail?.nickName }}</div>
-                        <img class="gender" v-if="hostUserDetailStore.userHostDetail?.gender != 2"
-                            :src="hostUserDetailStore.userHostDetail?.gender == 0 ? femaleSrc : maleSrc" alt="gender">
-                        <el-tooltip content="编辑个人信息" placement="top">
-                            <button v-if="isMySelf" class="edit-button glass" @click="showEditor = true">
-                                <img class="edit" :src="editSrc" alt="edit">
-                            </button>
-                        </el-tooltip>
+        <NotFound class="not-found" v-if="notFound" title="用户不存在" hint="该用户可能不存在或链接有误" />
+        <div v-else-if="loading" class="loading-content">
+            <img src="@/assets/loading.gif" alt="Loading..." />
+        </div>
+        <template v-else>
+            <UserInfoEditor v-model:visible="showEditor" @reload="reloadUserInfo" />
+            <UserHomeBgImg v-model:show="showBgImgEditor" :current-theme-index="currentThemeIndex"
+                @preview="setPreviewWallpaper" @save-theme="saveTheme" />
+            <div v-if="!hideUi" class="user-profile">
+                <div class="profile">
+                    <img class="avatar"
+                        :src="hostUserDetailStore.userHostDetail?.avatar ? imgRequestUrl(hostUserDetailStore.userHostDetail.avatar) : defaultAvatar" />
+                    <div class="user-detail">
+                        <div class="name">
+                            <div class="nickName">{{ hostUserDetailStore.userHostDetail?.nickName }}</div>
+                            <img class="gender" v-if="hostUserDetailStore.userHostDetail?.gender != 2"
+                                :src="hostUserDetailStore.userHostDetail?.gender == 0 ? femaleSrc : maleSrc"
+                                alt="gender">
+                            <el-tooltip content="编辑个人信息" placement="top">
+                                <button v-if="isMySelf" class="edit-button glass" @click="showEditor = true">
+                                    <img class="edit" :src="editSrc" alt="edit">
+                                </button>
+                            </el-tooltip>
+                        </div>
+                        <div class="bio">{{ hostUserDetailStore.userHostDetail?.personalIntroduction }}</div>
                     </div>
-                    <div class="bio">{{ hostUserDetailStore.userHostDetail?.personalIntroduction }}</div>
                 </div>
-            </div>
-            <div class="operation">
-                <el-tooltip content="隐藏界面" placement="top">
-                    <button class="theme-btn glass" @click="hideUi = true">
-                        <span class="iconfont icon-theme">😶‍🌫️</span>
-                    </button>
-                </el-tooltip>
-                <el-tooltip content="更换壁纸" placement="top">
-                    <button v-if="isMySelf" class="theme-btn glass" @click="showBgImgEditor = true">
-                        <span class="iconfont icon-theme">🎨</span>
-                    </button>
-                </el-tooltip>
-                <div class="follow">
-                    <el-dropdown class="follow-panel" v-if="hostUserDetailStore.userHostDetail?.hasFollowed">
-                        <el-button class="follow-button" size="large">
-                            <span class="text">已关注</span>
+                <div class="operation">
+                    <el-tooltip content="隐藏界面" placement="top">
+                        <button class="theme-btn glass" @click="hideUi = true">
+                            <span class="iconfont icon-theme">😶‍🌫️</span>
+                        </button>
+                    </el-tooltip>
+                    <el-tooltip content="更换壁纸" placement="top">
+                        <button v-if="isMySelf" class="theme-btn glass" @click="showBgImgEditor = true">
+                            <span class="iconfont icon-theme">🎨</span>
+                        </button>
+                    </el-tooltip>
+                    <div class="follow">
+                        <el-dropdown class="follow-panel" v-if="hostUserDetailStore.userHostDetail?.hasFollowed">
+                            <el-button class="follow-button" size="large">
+                                <span class="text">已关注</span>
+                                <span class="number">{{ hostUserDetailStore.userHostDetail?.followerCount }}</span>
+                            </el-button>
+                            <template #dropdown>
+                                <el-dropdown-menu>
+                                    <el-dropdown-item @click="unsubscribe">取消关注</el-dropdown-item>
+                                </el-dropdown-menu>
+                            </template>
+                        </el-dropdown>
+                        <el-button v-else class="follow-button" size="large" type="primary" @click="subscribe">
+                            <img class="icon" src="@/assets/plus.svg" />
+                            <span class="text">关注</span>
                             <span class="number">{{ hostUserDetailStore.userHostDetail?.followerCount }}</span>
                         </el-button>
-                        <template #dropdown>
-                            <el-dropdown-menu>
-                                <el-dropdown-item @click="unsubscribe">取消关注</el-dropdown-item>
-                            </el-dropdown-menu>
-                        </template>
-                    </el-dropdown>
-                    <el-button v-else class="follow-button" size="large" type="primary" @click="subscribe">
-                        <img class="icon" src="@/assets/plus.svg" />
-                        <span class="text">关注</span>
-                        <span class="number">{{ hostUserDetailStore.userHostDetail?.followerCount }}</span>
-                    </el-button>
-                </div>
-            </div>
-        </div>
-        <div v-if="!hideUi" class="main-content glass">
-            <div class="top-bar">
-                <div class="items">
-                    <nav v-for="item in navItems" :key="item.routeName"
-                        :class="[item.routePath, { active: activeRouteName === item.routeName }]"
-                        @click="navigateTo(item)">
-                        <span class="item-text" :class="['iconfont', item.icon]">{{ item.label }}</span>
-                    </nav>
-                    <input class="search" v-model="keyword" style="width:240px; margin-bottom: 10px;" placeholder="搜索视频"
-                        clearable @keyup.enter="searchVideos" />
-                </div>
-                <div class="countable-info">
-                    <div :class="['count-item', 'folllowing-count', isMySelf ? 'active' : '']" @click="viewFollowing">
-                        <div class="count-text">关注数</div>
-                        <div class="count-number">
-                            {{ hostUserDetailStore.userHostDetail != null ?
-                                hostUserDetailStore.userHostDetail.followingCount : '-' }}
-                        </div>
-                    </div>
-                    <div :class="['count-item', 'folllower-count', isMySelf ? 'active' : '']" @click="viewFollower">
-                        <div class="count-text">粉丝数</div>
-                        <div class="count-item count-number">
-                            {{ hostUserDetailStore.userHostDetail != null ?
-                                hostUserDetailStore.userHostDetail.followerCount : '-' }}
-                        </div>
-                    </div>
-                    <div class="count-item folllowing-count">
-                        <div class="count-text">获赞量</div>
-                        <div class="count-number">
-                            {{ hostUserDetailStore.userHostDetail != null ?
-                                hostUserDetailStore.userHostDetail.likeCount : '-' }}
-                        </div>
-                    </div>
-                    <div class="folllower-count">
-                        <div class="count-text">播放数</div>
-                        <div class="count-item count-number">
-                            {{ hostUserDetailStore.userHostDetail != null ?
-                                hostUserDetailStore.userHostDetail.playCount : '-' }}
-                        </div>
                     </div>
                 </div>
             </div>
-            <RouterView class="router-link" />
-        </div>
-        <div class="bottom">
-        </div>
-        <el-tooltip v-if="hideUi" content="显示界面" placement="top">
-            <button class="hide-button glass" @click="hideUi = false">
-                <span class="iconfont icon-theme">😀</span>
-            </button>
-        </el-tooltip>
+            <div v-if="!hideUi" class="main-content glass">
+                <div class="top-bar">
+                    <div class="items">
+                        <nav v-for="item in navItems" :key="item.routeName"
+                            :class="[item.routePath, { active: activeRouteName === item.routeName }]"
+                            @click="navigateTo(item)">
+                            <span class="item-text" :class="['iconfont', item.icon]">{{ item.label }}</span>
+                        </nav>
+                        <input class="search" v-model="keyword" style="width:240px; margin-bottom: 10px;"
+                            placeholder="搜索视频" clearable @keyup.enter="searchVideos" />
+                    </div>
+                    <div class="countable-info">
+                        <div :class="['count-item', 'folllowing-count', isMySelf ? 'active' : '']"
+                            @click="viewFollowing">
+                            <div class="count-text">关注数</div>
+                            <div class="count-number">
+                                {{ hostUserDetailStore.userHostDetail != null ?
+                                    hostUserDetailStore.userHostDetail.followingCount : '-' }}
+                            </div>
+                        </div>
+                        <div :class="['count-item', 'folllower-count', isMySelf ? 'active' : '']" @click="viewFollower">
+                            <div class="count-text">粉丝数</div>
+                            <div class="count-item count-number">
+                                {{ hostUserDetailStore.userHostDetail != null ?
+                                    hostUserDetailStore.userHostDetail.followerCount : '-' }}
+                            </div>
+                        </div>
+                        <div class="count-item folllowing-count">
+                            <div class="count-text">获赞量</div>
+                            <div class="count-number">
+                                {{ hostUserDetailStore.userHostDetail != null ?
+                                    hostUserDetailStore.userHostDetail.likeCount : '-' }}
+                            </div>
+                        </div>
+                        <div class="folllower-count">
+                            <div class="count-text">播放数</div>
+                            <div class="count-item count-number">
+                                {{ hostUserDetailStore.userHostDetail != null ?
+                                    hostUserDetailStore.userHostDetail.playCount : '-' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <RouterView class="router-link" />
+            </div>
+            <div class="bottom">
+            </div>
+            <el-tooltip v-if="hideUi" content="显示界面" placement="top">
+                <button class="hide-button glass" @click="hideUi = false">
+                    <span class="iconfont icon-theme">😀</span>
+                </button>
+            </el-tooltip>
+        </template>
     </div>
 </template>
 
@@ -166,6 +177,31 @@ $avatar-size: 70px;
     background-attachment: fixed;
 
     overflow: hidden; // 防止出现margin塌陷
+
+    .not-found {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 460px;
+        margin: 60px auto;
+        padding: 20px 20px 30px;
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .loading-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 70vh;
+
+        img {
+            width: 60px;
+            height: auto;
+        }
+    }
 
     .user-profile {
         width: 90%;
