@@ -410,7 +410,7 @@ export function usePlayer() {
       aspectRatio: true,
       fullscreen: true,
       fullscreenWeb: true,
-      subtitleOffset: true,
+      subtitleOffset: false,
       miniProgressBar: true,
       mutex: true,
       backdrop: true,
@@ -422,75 +422,6 @@ export function usePlayer() {
       moreVideoAttr: {
         crossOrigin: "anonymous",
       },
-      settings: [
-        {
-          width: 200,
-          html: "Subtitle",
-          tooltip: "Bilingual",
-          icon: '<img width="22" height="22" src="/assets/img/subtitle.svg">',
-          selector: [
-            {
-              html: "Display",
-              tooltip: "Show",
-              switch: true,
-              onSwitch(item) {
-                item.tooltip = item.switch ? "Hide" : "Show";
-                if (art.value) {
-                  art.value.subtitle.show = !item.switch;
-                }
-                return !item.switch;
-              },
-            },
-            {
-              default: true,
-              html: "Bilingual",
-              url: "/assets/sample/subtitle.srt",
-            },
-            {
-              html: "Chinese",
-              url: "/assets/sample/subtitle.cn.srt",
-            },
-            {
-              html: "Japanese",
-              url: "/assets/sample/subtitle.jp.srt",
-            },
-          ],
-          onSelect(item) {
-            art.value?.subtitle.switch(item.url, {
-              name: item.html,
-            });
-            return item.html;
-          },
-        },
-        {
-          html: "Switcher",
-          icon: `<img width="22" height="22" src="${stateSrc}">`,
-          tooltip: "OFF",
-          switch: false,
-          onSwitch(item) {
-            item.tooltip = item.switch ? "OFF" : "ON";
-            console.info("You clicked on the custom switch", item.switch);
-            return !item.switch;
-          },
-        },
-        {
-          html: "Slider",
-          icon: `<img width="22" height="22" src="${stateSrc}">`,
-          tooltip: "5x",
-          range: [5, 1, 10, 0.1],
-          onRange(item) {
-            return `${item.range[0]}x`;
-          },
-        },
-        {
-          html: "Button",
-          icon: `<img width="22" height="22" src="${stateSrc}">`,
-          tooltip: "tooltip",
-          onClick() {
-            return "Button clicked";
-          },
-        },
-      ],
       contextmenu: [
         {
           html: "Custom menu",

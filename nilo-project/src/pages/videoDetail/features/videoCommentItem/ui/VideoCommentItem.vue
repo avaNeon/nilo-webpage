@@ -27,7 +27,7 @@ const emit = defineEmits<{
     (e: 'addCommentCount'): void
 }>()
 
-const { COMMENT_IMG_WIDTH, AVATAR_WIDTH, upvote, downvote, deleteComment, calcVoteResult, isConfirming, cooldownActive, borderProgress, deleteButtonText, topComment, cancelTopComment } = useVideoCommentItem()
+const { COMMENT_IMG_WIDTH, AVATAR_WIDTH, checkLogin, upvote, downvote, deleteComment, calcVoteResult, isConfirming, cooldownActive, borderProgress, deleteButtonText, topComment, cancelTopComment } = useVideoCommentItem()
 const route = useRoute()
 
 const loginStateStore = useLoginStateStore()
@@ -65,6 +65,7 @@ const isReplyFolded = ref(true)
 
 function toggleReplyFoldState()
 {
+    if (!checkLogin()) return
     isReplyFolded.value = !isReplyFolded.value
 }
 
@@ -134,7 +135,7 @@ const foldBadgeLabel = computed(() =>
         </div>
         <!-- 正常态：显示用户头像 -->
         <Avatar v-else class="avatar" :user-id="videoComment.userId" :src="imgRequestUrl(videoComment.avatar)"
-            :width="AVATAR_WIDTH" :lazy="true" :user-panel="false" :mobile="false" />
+            :width="AVATAR_WIDTH" :lazy="true" :user-panel="false" :mobile="false" :require-login="false" />
         <div class="info">
             <div class="top-info" @click="switchFold">
                 <span class="user-name-text">{{ videoComment.nickName }}</span>
