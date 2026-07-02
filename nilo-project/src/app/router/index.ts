@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { getAutoLoginPromise } from "@/app/composables/useAutoLogin";
+import { isPublicRoute } from "@/app/router/publicRoutes";
 import Index from "@/pages/index/ui/Index.vue";
 import RecommendVideo from "@/pages/index/widgets/recommendVideo/ui/RecommendVideo.vue";
 import SubCategoryBanner from "@/pages/index/widgets/subCategoryBanner/ui/SubCategoryBanner.vue";
@@ -20,6 +22,7 @@ import VideoHistory from "@/pages/videoHistory/ui/VideoHistory.vue";
 import MessageCenter from "@/pages/messageCenter/ui/MessageCenter.vue";
 import HotRanking from "@/pages/hotRanking/ui/HotRanking.vue";
 import VideoSearch from "@/pages/videoSearch/ui/VideoSearch.vue";
+import Unlogged from "@/pages/unlogged/ui/Unlogged.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -146,7 +149,22 @@ const router = createRouter({
       name: "video-search",
       component: VideoSearch,
     },
+    {
+      path: "/unlogged",
+      name: "unlogged",
+      component: Unlogged,
+    },
   ],
+});
+
+// 在路由守卫中进行自动登录检查，如果没有登录且访问的不是公开路由，则重定向到未登录页面
+router.beforeEach(async (to, _from, next) => {
+  const loggedIn = await getAutoLoginPromise();
+  if (!loggedIn && !isPublicRoute(to)) {
+    next({ name: "unlogged", replace: true });
+    return;
+  }
+  next();
 });
 
 export default router;
