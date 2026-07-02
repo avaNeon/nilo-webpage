@@ -1,26 +1,44 @@
-import useCategoryStore from '@/shared/store/CategoryStore'
-import type { VideoInfo } from '@/shared/model/VideoInfo'
+import useCategoryStore from "@/shared/store/CategoryStore";
+import type { VideoInfo } from "@/shared/model/VideoInfo";
 
-const DEFAULT_RIPPLE_COLOR = '#3b394c'
+const DEFAULT_RIPPLE_COLOR = "#3b394c";
 
 export function useVideoItemRipple() {
-    const categoryStore = useCategoryStore()
+  const categoryStore = useCategoryStore();
 
-    function getRippleStyle(videoInfo: VideoInfo) {
-        const pCatNum = videoInfo.pCategoryNumber
-        const catNum = videoInfo.categoryNumber
-        // pCategoryNumber 为 null 时，视频属于一级分类，用 categoryNumber 查找
-        // pCategoryNumber 不为 null 时，视频属于子分类，用 pCategoryNumber 查找一级分类
-        const primaryNum = (pCatNum == null) ? catNum : pCatNum
-        const color = primaryNum != null
-            ? (categoryStore.categoryMap[primaryNum]?.color ?? DEFAULT_RIPPLE_COLOR)
-            : DEFAULT_RIPPLE_COLOR
-        return {
-            '--ripple-color': color + 'A0',
-        } as Record<string, string>
+  /**
+   * 根据视频的 categoryNumber 查找对应的一级分类主题色
+   * 查找优先级：
+   *   1. categoryNumber 本身是一级分类 → 直接用其 color
+   *   2. categoryNumber 是二级分类 → 遍历 categoryList 找父分类，取父分类的 color
+   *   3. 都找不到 → 使用默认色
+   */
+  function getRippleStyle(videoInfo: VideoInfo) {
+    const catNum = videoInfo.categoryNumber;
+    let color = DEFAULT_RIPPLE_COLOR;
+
+    if (catNum != null) {
+      // 1. 先尝试直接当一级分类查
+      const cat = categoryStore.categoryMap[catNum];
+      if (cat?.color) {
+        color = cat.color;
+      } else {
+        // 2. 不是一级分类，遍历 categoryList 找它的父分类
+        const parent = categoryStore.categoryList.find(p =>
+          p.children?.some(c => c.categoryNumber === catNum),
+        );
+        if (parent?.color) {
+          color = parent.color;
+        }
+      }
     }
 
     return {
-        getRippleStyle,
-    }
+      "--ripple-color": color + "A0",
+    } as Record<string, string>;
+  }
+
+  return {
+    getRippleStyle,
+  };
 }
