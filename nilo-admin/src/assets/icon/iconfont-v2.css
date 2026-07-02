@@ -1,0 +1,59 @@
+@font-face {
+  font-family: "iconfont";
+  /* Project id 5138468 */
+  src: url('iconfont-v2.woff2?t=1777881265690') format('woff2'),
+    url('iconfont-v2.woff?t=1777881265690') format('woff'),
+    url('iconfont-v2.ttf?t=1777881265690') format('truetype');
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-Chat-1:before {
+  content: "\e646";
+}
+
+.icon-zhuanqu_huabanfuben:before {
+  content: "\e7a0";
+}
+
+.icon-file-management:before {
+  content: "\e659";
+}
+
+.icon-home:before {
+  content: "\e6bc";
+}
+
+.icon-emoji:before {
+  content: "\e663";
+}
+
+.icon-pin-fill:before {
+  content: "\e87a";
+}
+
+.icon-unpin-fill:before {
+  content: "\eb5e";
+}
+
+.icon-delete:before {
+  content: "\e62b";
+}
+
+.icon-reply:before {
+  content: "\e60e";
+}
+
+.icon-downvote:before {
+  content: "\e77b";
+}
+
+.icon-upvote:before {
+  content: "\e843";
+}
