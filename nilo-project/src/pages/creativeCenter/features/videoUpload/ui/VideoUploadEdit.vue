@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import VideoUpload from './VideoUpload.vue'
 import draggable from 'vuedraggable'
@@ -54,6 +55,26 @@ const {
   formatMiB,
 } = useVideoUpload()
 
+/** 正常可用的分P列表（排除转码失败文件，支持拖拽排序写回） */
+const activePreuploadList = computed({
+  get: () =>
+    preuploadList.value.filter(
+      item => !(item.isExisting && item.transferResult === 2),
+    ),
+  set: (newActiveList) =>
+  {
+    const failedItems = preuploadList.value.filter(
+      item => item.isExisting && item.transferResult === 2,
+    )
+    preuploadList.value = [...newActiveList, ...failedItems]
+  },
+})
+
+/** 转码失败的文件列表 */
+const failedTransferList = computed(() =>
+  preuploadList.value.filter(item => item.isExisting && item.transferResult === 2),
+)
+
 function onContinueUpload()
 {
   if (submitting.value) return
@@ -106,7 +127,9 @@ function onIntroductionInput()
 
 <template>
   <div class="content">
+    <!-- ========== 上传额度面板 ========== -->
     <div class="quota-panel">
+      <!-- 视频额度 -->
       <div class="quota-item">
         <div class="quota-header">
           <span class="quota-title">今日视频上传额度</span>
@@ -116,6 +139,7 @@ function onIntroductionInput()
         </div>
         <el-progress :percentage="videoQuotaPercent" :stroke-width="8" />
       </div>
+      <!-- 图片额度 -->
       <div class="quota-item">
         <div class="quota-header">
           <span class="quota-title">今日图片上传额度</span>
@@ -128,48 +152,61 @@ function onIntroductionInput()
     </div>
 
     <div v-if="!submitState" class="upload-panel">
+      <!-- ========== 初始文件选择区域 ========== -->
       <div v-if="!hasFileSelected" class="upload-panel">
         <VideoUpload :disabled="submitting" @file-selected="onFileSelected" />
       </div>
 
+      <!-- ========== 编辑面板 ========== -->
       <div v-else class="edit-panel">
-        <!-- ==================== 分P管理区域 ==================== -->
+
+        <!-- ===== 分P管理区域 ===== -->
         <div class="panel-header">
           <h2 class="panel-title">视频分P管理</h2>
-          <span class="file-count">共 {{ preuploadList.length }} 个分P</span>
+          <!-- 分P计数 -->
+          <span class="file-count">共 {{ activePreuploadList.length }} 个分P</span>
         </div>
 
-        <draggable v-model="preuploadList" item-key="uid" class="preupload-list" handle=".drag-handle" :animation="200"
-          :disabled="submitting">
+        <!-- 可拖拽排序的分P列表 -->
+        <draggable v-model="activePreuploadList" item-key="uid" class="preupload-list" handle=".drag-handle"
+          :animation="200" :disabled="submitting">
           <template #item="{ element, index }">
             <div class="preupload-item">
+              <!-- 左侧：拖拽手柄 + 视频图标 + P序号 -->
               <div class="item-left">
+                <!-- 拖拽手柄 -->
                 <div class="drag-handle" title="拖拽排序">
                   <span class="drag-icon">⠿</span>
                 </div>
+                <!-- 视频图标 + 分P标签 -->
                 <div class="video-icon-wrapper">
                   <img :src="videoIcon" alt="video" class="video-icon" />
                   <span class="part-label">P{{ index + 1 }}</span>
                 </div>
               </div>
 
+              <!-- 中间：文件名输入 + 进度信息 + 进度条 -->
               <div class="item-right">
+                <!-- 文件名输入框 -->
                 <el-input v-model="element.filename" placeholder="视频文件名" class="filename-input" clearable
                   :disabled="submitting" />
 
                 <div class="progress-info">
+                  <!-- 文件上传大小展示 -->
                   <span class="progress-text">
                     {{ formatMB(element.uploadedBytes) }}MB / {{ formatMB(element.fileSize) }}MB
                   </span>
+                  <!-- 上传百分比 -->
                   <span class="progress-percent">{{ uploadProgress(element) }}%</span>
-                  <!-- 转码状态（仅旧文件） -->
+                  <!-- 转码状态徽标（仅旧文件） -->
                   <span v-if="element.isExisting && element.transferResult === 0" class="transcoding-badge">转码中</span>
-                  <span v-else-if="element.isExisting && element.transferResult === 1"
-                    class="transfer-done-badge">转码成功</span>
-                  <span v-else-if="element.isExisting && element.transferResult === 2"
-                    class="transfer-fail-badge">转码失败</span>
-                  <span v-else-if="element.isExisting" class="existing-badge">原文件（未获取到状态）</span>
-                  <!-- 上传状态 -->
+                  <span v-else-if="element.isExisting && element.transferResult === 1" class="transfer-done-badge">
+                    转码成功
+                  </span>
+                  <span v-else-if="element.isExisting" class="existing-badge">
+                    原文件（未获取到状态）
+                  </span>
+                  <!-- 上传状态徽标 -->
                   <span v-if="element.status === 'error'" class="error-badge">上传失败</span>
                   <span v-else-if="element.status === 'done'" class="done-badge">已完成</span>
                   <span v-else-if="element.status === 'uploading'" class="uploading-badge">上传中</span>
@@ -177,11 +214,13 @@ function onIntroductionInput()
                   <span v-else-if="element.status === 'pending'" class="pending-badge">待提交</span>
                 </div>
 
+                <!-- 上传进度条 -->
                 <el-progress :percentage="uploadProgress(element)" :stroke-width="8"
                   :status="element.status === 'error' ? 'exception' : element.status === 'done' ? 'success' : undefined"
                   class="progress-bar" />
               </div>
 
+              <!-- 右侧：删除文件按钮 -->
               <div class="item-delete">
                 <el-button type="danger" plain size="small" :disabled="submitting" @click="removeItem(element.uid)">
                   删除文件
@@ -191,15 +230,40 @@ function onIntroductionInput()
           </template>
         </draggable>
 
+        <!-- ===== 转码失败文件区域（纯展示，不参与编辑/提交） ===== -->
+        <div v-if="failedTransferList.length > 0" class="failed-transfer-section">
+          <h3 class="failed-title">转码失败的文件</h3>
+          <div class="failed-transfer-list">
+            <!-- 每个失败项：小图标 + 文件名 + 大小 + 失败徽标 -->
+            <div v-for="item in failedTransferList" :key="item.uid" class="failed-transfer-item">
+              <div class="failed-left">
+                <!-- 小视频图标 -->
+                <div class="video-icon-wrapper small">
+                  <img :src="videoIcon" alt="video" class="video-icon" />
+                </div>
+                <!-- 文件名 -->
+                <span class="failed-filename">{{ item.filename }}</span>
+              </div>
+              <div class="failed-right">
+                <!-- 文件大小 -->
+                <span class="failed-size">{{ formatMB(item.fileSize) }}MB</span>
+                <!-- 转码失败徽标 -->
+                <span class="transfer-fail-badge">转码失败</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 添加更多分P的入口 -->
         <div class="add-more-wrapper">
           <VideoUpload :fold="true" :disabled="submitting" @file-selected="onFileSelected" class="add-more-upload" />
         </div>
 
-        <!-- ==================== 视频信息表单 ==================== -->
+        <!-- ===== 视频信息表单 ===== -->
         <div class="video-info-section">
           <h2 class="section-title">视频信息</h2>
 
-          <!-- 封面 -->
+          <!-- 封面上传（CoverUpload 子组件） -->
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>封面</span>
             <div class="form-input">
@@ -208,7 +272,7 @@ function onIntroductionInput()
             </div>
           </div>
 
-          <!-- 标题 -->
+          <!-- 视频标题 -->
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>标题</span>
             <div class="form-input">
@@ -217,7 +281,7 @@ function onIntroductionInput()
             </div>
           </div>
 
-          <!-- 类型（自制/转载） -->
+          <!-- 类型：自制 / 转载 -->
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>类型</span>
             <div class="form-input">
@@ -225,12 +289,13 @@ function onIntroductionInput()
                 <el-radio :value="1">自制</el-radio>
                 <el-radio :value="2">转载</el-radio>
               </el-radio-group>
+              <!-- 转载时显示原资源说明输入框 -->
               <el-input v-if="form.postType === 2" v-model="form.originInfo" placeholder="请填写原资源说明" class="origin-input"
                 clearable :disabled="submitting" />
             </div>
           </div>
 
-          <!-- 标签 -->
+          <!-- 标签选择（VideoTag 子组件） -->
           <div class="form-row">
             <span class="form-label">标签</span>
             <div class="form-input">
@@ -238,16 +303,19 @@ function onIntroductionInput()
             </div>
           </div>
 
-          <!-- 分区 -->
+          <!-- 分区选择（一级 + 二级） -->
           <div class="form-row">
             <span class="form-label"><span class="required-star">*</span>分区</span>
             <div class="form-input category-selects">
+              <!-- 一级分区 -->
               <el-select v-model="selectedParentNumber" placeholder="请选择一级分区" class="category-select"
                 :teleported="false" :disabled="submitting" @change="onParentCategoryChange">
                 <el-option v-for="p in categoryOptions" :key="p.value" :label="p.label" :value="p.value" />
               </el-select>
+              <!-- 二级分区 -->
               <el-select v-model="selectedChildNumber" placeholder="请选择二级分区" class="category-select" :teleported="false"
-                :disabled="submitting || !selectedParentNumber || childCategoryOptions.length === 0" @change="onChildCategoryChange">
+                :disabled="submitting || !selectedParentNumber || childCategoryOptions.length === 0"
+                @change="onChildCategoryChange">
                 <el-option v-for="c in childCategoryOptions" :key="c.value" :label="c.label" :value="c.value" />
               </el-select>
             </div>
@@ -259,11 +327,12 @@ function onIntroductionInput()
             <div class="form-input">
               <el-input v-model="form.introduction" type="textarea" placeholder="请输入视频简介（最多2000个字符）" :rows="4"
                 resize="vertical" :disabled="submitting" @input="onIntroductionInput" />
+              <!-- 简介字符计数器 -->
               <span class="intro-char-count">{{ introductionCharCount }} / {{ MAX_INTRODUCTION_LENGTH }}</span>
             </div>
           </div>
 
-          <!-- 互动设置 -->
+          <!-- 互动设置：弹幕 / 评论开关 -->
           <div class="form-row">
             <span class="form-label">互动设置</span>
             <div class="form-input">
@@ -272,25 +341,28 @@ function onIntroductionInput()
             </div>
           </div>
 
-          <!-- 提交按钮 -->
+          <!-- 提交按钮行 -->
           <div class="form-row submit-row">
             <span class="form-label"></span>
             <div class="form-input">
+              <!-- 提交 / 提交修改 -->
               <el-button type="primary" :loading="submitting" @click="submitVideo"
-                :disabled="submitting || !isFormValid || preuploadList.length === 0 || hasMissingExistingUploadId">
+                :disabled="submitting || !isFormValid || activePreuploadList.length === 0 || hasMissingExistingUploadId">
                 {{ isEditMode ? '提交修改' : '提交视频' }}
               </el-button>
+              <!-- 返回上传界面 -->
               <el-button plain :disabled="submitting" @click="returnToUploadPanel">返回上传界面</el-button>
+              <!-- 提交提示信息（各条件互斥展示） -->
               <span v-if="hasExceededVideoEpisodes" class="submit-hint">
                 单个视频最多只能提交 {{ maxVideoEpisodes }} 个分P
               </span>
-              <span v-else-if="!isFormValid && preuploadList.length > 0" class="submit-hint">
+              <span v-else-if="!isFormValid && activePreuploadList.length > 0" class="submit-hint">
                 请完善必填信息后再提交
               </span>
               <span v-else-if="hasMissingExistingUploadId" class="submit-hint">
                 存在旧分P数据损坏，请尝试删除旧分P
               </span>
-              <span v-else-if="preuploadList.length === 0" class="submit-hint">
+              <span v-else-if="activePreuploadList.length === 0 && failedTransferList.length === 0" class="submit-hint">
                 请选择视频文件后再提交
               </span>
             </div>
@@ -298,6 +370,7 @@ function onIntroductionInput()
         </div>
       </div>
     </div>
+    <!-- 提交成功展示 -->
     <div v-else class="submit-success">
       <UploadSuccess @continue-upload="onContinueUpload" />
     </div>
@@ -583,6 +656,76 @@ function onIntroductionInput()
 
     :deep(.upload-handler) {
       margin-bottom: 10px;
+    }
+  }
+}
+
+// ==================== 转码失败文件区域 ====================
+
+.failed-transfer-section {
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+
+  .failed-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #999;
+    margin: 0 0 12px;
+  }
+}
+
+.failed-transfer-list {
+  display: flex;
+  flex-direction: column;
+  row-gap: 8px;
+}
+
+.failed-transfer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+
+  .failed-left {
+    display: flex;
+    align-items: center;
+    column-gap: 10px;
+    min-width: 0;
+    flex: 1;
+
+    .video-icon-wrapper.small {
+      width: 28px;
+      height: 24px;
+      flex-shrink: 0;
+
+      .video-icon {
+        width: 24px;
+        height: 21px;
+      }
+    }
+
+    .failed-filename {
+      font-size: 13px;
+      color: #999;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .failed-right {
+    display: flex;
+    align-items: center;
+    column-gap: 12px;
+    flex-shrink: 0;
+    margin-left: 16px;
+
+    .failed-size {
+      font-size: 12px;
+      color: #bbb;
     }
   }
 }
