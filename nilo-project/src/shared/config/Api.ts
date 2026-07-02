@@ -116,7 +116,7 @@ const Api = {
   // ——————热门视频——————
   loadHotVideo: "/video/hot/",
   // ——————视频搜索——————
-  videoSearch: "/video-serach",
+  videoSearch: "/video-search",
 };
 
 /** Web 服务路径前缀 */

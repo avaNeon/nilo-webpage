@@ -168,7 +168,8 @@ function toggleOptionsPanel()
             <div class="top-info">
                 <div class="video-name" @click="routerToNewPage(videoPath)">
                     <span v-if="props.renderTitleHtml" :title="videoNameText" v-html="videoNameHtml"></span>
-                    <span v-else :title="props.videoInfo.videoName || ''" :style="{fontSize: titleFontSize ? titleFontSize : '15px'}">
+                    <span v-else :title="props.videoInfo.videoName || ''"
+                        :style="{ fontSize: titleFontSize ? titleFontSize : '15px' }">
                         {{ props.videoInfo.videoName }}
                     </span>
                 </div>
