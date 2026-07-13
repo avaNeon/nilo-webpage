@@ -27,7 +27,8 @@ const dateRowVisible = computed(() => currentDataType.value === 0);
                     @click="changeDataType(type.value)">
                     <span class="name">
                         <el-icon style="margin-right: 10px;">
-                            <component :is="type.icon" />
+                            <component v-if="typeof type.icon !== 'string'" :is="type.icon" />
+                            <i v-else :class="type.icon"></i>
                         </el-icon>
                         {{ type.name }}
                     </span>

@@ -3,7 +3,6 @@ import {
   VideoPlay,
   ChatDotRound,
   ChatLineRound,
-  StarFilled,
   FolderOpened,
   Money,
 } from "@element-plus/icons-vue";
@@ -13,7 +12,7 @@ import type { Component } from "vue";
 export interface StatisticsType {
   name: string;
   value: number;
-  icon: Component;
+  icon: Component | string;
 }
 
 /**
@@ -25,7 +24,7 @@ export const TypeInfo: StatisticsType[] = [
   { name: "播放", value: DataType.PLAY, icon: VideoPlay },
   { name: "评论", value: DataType.COMMENT, icon: ChatDotRound },
   { name: "弹幕", value: DataType.DANMAKU, icon: ChatLineRound },
-  { name: "点赞", value: DataType.LIKE, icon: StarFilled },
+  { name: "点赞", value: DataType.LIKE, icon: "iconfont icon-like-solid" },
   { name: "收藏", value: DataType.COLLECT, icon: FolderOpened },
   { name: "投币", value: DataType.COIN, icon: Money },
 ];

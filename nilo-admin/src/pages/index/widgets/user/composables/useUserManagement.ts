@@ -35,7 +35,7 @@ export function useUserManagement() {
   /** 当前页用户列表 */
   const userList = ref<UserInfo[]>([]);
 
-  /** 当前页号（从 1 开始） */
+  /** 当前页号（UI 从 1 开始；请求后端时转为 0 起） */
   const currentPage = ref(1);
 
   /** 每页条数 */
@@ -64,11 +64,11 @@ export function useUserManagement() {
     return query;
   }
 
-  /** 构建带分页的列表查询参数 */
+  /** 构建带分页的列表查询参数（后端 pageNo 从 0 起） */
   function buildListQuery(): UserInfoQuery {
     return {
       ...buildFilterQuery(),
-      pageNo: currentPage.value,
+      pageNo: Math.max(0, currentPage.value - 1),
       pageSize: pageSize.value,
     };
   }

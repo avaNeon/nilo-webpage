@@ -66,7 +66,8 @@ export function useCommentManagement() {
     } else {
       const comment = commentList.value.find(c => c.commentId === commentId);
       if (comment) {
-        comment.deleted = 1;
+        // 管理员软删对应 DeleteType.DELETED_BY_ADMIN
+        comment.deleted = 3;
       }
     }
 

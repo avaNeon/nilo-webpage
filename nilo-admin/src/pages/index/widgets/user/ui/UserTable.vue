@@ -108,20 +108,12 @@ async function handleToggleStatusClick(row: UserInfo)
 <template>
   <div class="user-table">
     <div class="table-scroll-wrapper">
-      <el-table
-        v-loading="loading"
-        :data="userList || []"
-        stripe
-        border
-        size="large"
-        row-key="userId"
-        highlight-current-row
-        class="user-data-table"
-      >
+      <el-table v-loading="loading" :data="userList || []" stripe border size="large" row-key="userId"
+        highlight-current-row class="user-data-table">
         <!-- 头像 -->
         <el-table-column label="头像" width="100" align="center">
           <template #default="{ row }">
-            <el-avatar :src="imgRequestUrl(row.avatar)" :size="48">
+            <el-avatar :src="imgRequestUrl(row.avatar, true)" :size="48">
               <span class="avatar-fallback">{{ row.nickName?.charAt(0) ?? "?" }}</span>
             </el-avatar>
           </template>
@@ -186,12 +178,8 @@ async function handleToggleStatusClick(row: UserInfo)
         <!-- 禁用 / 解禁，固定在最右侧 -->
         <el-table-column label="切换状态" width="110" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button
-              :type="row.status === UserStatusEnum.Disable ? 'success' : 'danger'"
-              size="small"
-              link
-              @click="handleToggleStatusClick(row)"
-            >
+            <el-button :type="row.status === UserStatusEnum.Disable ? 'success' : 'danger'" size="small" link
+              @click="handleToggleStatusClick(row)">
               {{ getToggleStatusAction(row.status).label }}
             </el-button>
           </template>
@@ -201,16 +189,9 @@ async function handleToggleStatusClick(row: UserInfo)
 
     <!-- 分页 -->
     <div v-if="showPagination" class="pagination-wrapper">
-      <el-pagination
-        background
-        :total="localTotalCount"
-        :page-sizes="[5, 10, 15, 20]"
-        :page-size="localPageSize"
-        :current-page="localCurrentPage"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handlePageSizeChange"
-        @current-change="handlePageNoChange"
-      />
+      <el-pagination background :total="localTotalCount" :page-sizes="[5, 10, 15, 20]" :page-size="localPageSize"
+        :current-page="localCurrentPage" layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handlePageSizeChange" @current-change="handlePageNoChange" />
     </div>
   </div>
 </template>

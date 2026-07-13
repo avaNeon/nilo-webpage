@@ -1,40 +1,55 @@
-import { ADMIN_SERVICE_PREFIX, Api } from "@/shared/config/Api";
+import { getAdminBaseUrl, Api } from "@/shared/config/Api";
+import { publicHlsMasterUrl } from "@/shared/config/Minio";
+import { VideoStatusEnum } from "@/pages/index/widgets/content/upload/model/enum/VideoStatusEnum";
+
+/** 与后端 UpdateType 一致：0 无更新，1 有更新 */
+const UpdateType = {
+  NoUpdate: 0,
+  Updated: 1,
+} as const;
 
 /**
- * 构建 HLS master.m3u8 播放地址（普通视频）
- * @param videoId 视频ID
- * @param index   分P索引（从1开始）
+ * 上传稿件 HLS：
+ * - 待审核 + 有更新(updateType=1) → admin 鉴权代理（MinIO pending/）
+ * - 待审核 + 未更新(updateType=0) → MinIO public/（二次投稿未改动的分 P 仍在公开桶）
+ * - 审核通过 → MinIO public/
+ * - 其余状态 → 不可播放（空串）
  */
-export function getHlsMasterUrl(videoId: string, index: number = 1): string {
-  return `${ADMIN_SERVICE_PREFIX}${Api.hlsMaster}/${videoId}/${index}/master.m3u8`;
+export function getHlsMasterUrl(
+  videoId: string,
+  index: number = 1,
+  options?: {
+    status?: number | null;
+    filePath?: string | null;
+    updateType?: number | null;
+  },
+): string {
+  if (!videoId) return "";
+
+  const status = Number(options?.status);
+  const filePath = options?.filePath;
+  const updateType = Number(options?.updateType);
+
+  if (status === VideoStatusEnum.PendingReview) {
+    // 有更新：新转码结果在 pending，走鉴权代理
+    if (updateType === UpdateType.Updated) {
+      return `${getAdminBaseUrl()}${Api.hlsMaster}/${videoId}/${index}/master.m3u8`;
+    }
+    // 未更新：文件仍在 public（首次投稿待审时分 P 均为有更新，不会走到这里）
+    return filePath ? publicHlsMasterUrl(filePath) : "";
+  }
+
+  if (status === VideoStatusEnum.Passed) {
+    return filePath ? publicHlsMasterUrl(filePath) : "";
+  }
+
+  return "";
 }
 
-/**
- * 构建存档 HLS master.m3u8 播放地址
- * @param videoId 视频ID
- * @param index   分P索引（从1开始）
- */
-export function getArchiveHlsMasterUrl(videoId: string, index: number = 1): string {
-  return `${ADMIN_SERVICE_PREFIX}${Api.archiveHlsMaster}/${videoId}/${index}/master.m3u8`;
-}
-
-/**
- * 构建存档 HLS 分辨率播放列表地址（playlist.m3u8）
- * @param videoId    视频ID
- * @param index      分P索引（从1开始）
- * @param resolution 分辨率（高度像素值，如 720, 1080）
- */
-export function getArchiveHlsPlaylistUrl(videoId: string, index: number, resolution: number): string {
-  return `${ADMIN_SERVICE_PREFIX}${Api.archiveHlsPlaylist}/${videoId}/${index}/playlist/${resolution}.m3u8`;
-}
-
-/**
- * 构建存档 HLS 分片地址（segment.ts）
- * @param videoId    视频ID
- * @param index      分P索引（从1开始）
- * @param resolution 分辨率（高度像素值）
- * @param segment    分片文件名
- */
-export function getArchiveHlsSegmentUrl(videoId: string, index: number, resolution: number, segment: string): string {
-  return `${ADMIN_SERVICE_PREFIX}${Api.archiveHlsSegment}/${videoId}/${index}/segment/${resolution}/${segment}`;
+/** 存档 HLS（仍走 archive 代理） */
+export function getArchiveHlsMasterUrl(
+  videoId: string,
+  index: number = 1,
+): string {
+  return `${getAdminBaseUrl()}${Api.archiveHlsMaster}/${videoId}/${index}/master.m3u8`;
 }

@@ -21,7 +21,10 @@ export interface Comment {
   /** 视频ID */
   videoId: string;
 
-  /** 逻辑删除标记：0-未删除，1-已删除 */
+  /**
+   * 逻辑删除标记：
+   * 0-未删除，1-用户自己删除，2-视频发布者删除，3-管理员删除
+   */
   deleted: number;
 
   /** 视频名称 */
