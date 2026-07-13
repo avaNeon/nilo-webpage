@@ -1,24 +1,24 @@
-import { ADMIN_SERVICE_PREFIX } from "@/shared/config/Api";
+import { publicImageUrl, publicImageThumbUrl, thumbKey } from "@/shared/config/Minio";
+import { FileApi } from "@/shared/api/FileApi";
 
-/**
- * 构造图片完整请求 URL<hr/>
- * 仅适用于 admin 后台系统
- *
- * @param path      图片相对路径（来自后端 uploadImage 的返回值）
- * @param tmp       是否为临时文件，默认 false
- * @returns 完整的浏览器可访问图片 URL
- */
-function imgRequestUrl(path: string | null, tmp?: boolean): string {
-  if (!path) {
-    return "";
-  }
-  const base = `${import.meta.env.VITE_APP_BASE_URL ?? ""}${ADMIN_SERVICE_PREFIX}`;
-  const separator = path.includes("?") ? "&" : "?";
-  if (tmp) {
-    return `${base}/file/image${separator}sourceName=${encodeURIComponent(path)}`;
-  } else {
-    return `${base}/file/image${separator}sourceName=${encodeURIComponent(path)}`;
-  }
+/** 已公开图片 URL；thumb=true 时用缩略图 */
+function imgRequestUrl(
+  path: string | null | undefined,
+  thumb = false,
+): string {
+  if (!path) return "";
+  return thumb ? publicImageThumbUrl(path) : publicImageUrl(path);
 }
 
-export { imgRequestUrl };
+/** 私有图：走后端预签名；thumb=true 时签缩略图 key */
+async function resolveImageUrl(
+  plainKey: string | null | undefined,
+  thumb = false,
+): Promise<string> {
+  if (!plainKey) return "";
+  const key = thumb ? thumbKey(plainKey) : plainKey;
+  const url = await FileApi.getPresignedImageUrl(key);
+  return url ?? "";
+}
+
+export { imgRequestUrl, resolveImageUrl };

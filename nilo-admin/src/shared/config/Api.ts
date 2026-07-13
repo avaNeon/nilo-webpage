@@ -43,12 +43,10 @@ const Api = {
   uploadImage: "/file/image",
   /** 获取图片 */
   downloadImage: "/file/image",
-  /** 下载HLS主播放列表 */
+  /** HLS master（pending/ 审核预览，需登录） */
   hlsMaster: "/file/video/hls",
-  /** 下载HLS分辨率播放列表 */
+  /** HLS 分辨率 playlist */
   hlsPlaylist: "/file/video/hls",
-  /** 下载HLS分片 */
-  hlsSegment: "/file/video/hls",
 
   // ——————视频管理——————
   /** 获取视频列表 */
@@ -79,8 +77,6 @@ const Api = {
   archiveHlsMaster: "/archive/video/hls",
   /** 下载存档HLS分辨率播放列表 */
   archiveHlsPlaylist: "/archive/video/hls",
-  /** 下载存档HLS分片 */
-  archiveHlsSegment: "/archive/video/hls",
 
   // ——————评论管理——————
   /** 获取评论管理信息数量 */
@@ -107,7 +103,12 @@ const Api = {
   systemConfig: "/system/config",
 };
 
-/** 后端 Web 服务前缀（与 vite proxy 配置对应） */
-const ADMIN_SERVICE_PREFIX = "/api/admin";
+/** Admin 服务路径前缀（与 VITE_APP_BASE_URL 拼接后为 /api/admin） */
+const ADMIN_SERVICE_PREFIX = "/admin";
 
-export { Api, ADMIN_SERVICE_PREFIX };
+/** admin 服务绝对根地址（Hls.js 等需要绝对/完整路径） */
+function getAdminBaseUrl() {
+  return `${import.meta.env.VITE_APP_BASE_URL ?? ""}${ADMIN_SERVICE_PREFIX}`;
+}
+
+export { Api, getAdminBaseUrl, ADMIN_SERVICE_PREFIX };
