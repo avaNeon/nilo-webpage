@@ -4,14 +4,12 @@ import type { UpdatedUserInfo } from "../model/UpdatedUserInfo";
 import { imageApi } from "@/shared/api/ImageApi";
 import { imgRequestUrl } from "@/shared/utils/ImgUtil";
 import defaultAvatar from "@/assets/user.svg";
-import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
 import message from "@/shared/lib/message";
 
 const PENDING_AVATAR_PLACEHOLDER = "__pending_avatar__";
 
 export function useUserInfoEditor() {
-  const loginStateStore = useLoginStateStore();
   const systemConfigStore = useSystemConfigStore();
 
   /* ————————表单———————— */
@@ -86,11 +84,7 @@ export function useUserInfoEditor() {
       if (formData.avatar === PENDING_AVATAR_PLACEHOLDER) {
         return defaultAvatar;
       }
-      if (formData.avatar === loginStateStore.userInfo?.avatar) {
-        return imgRequestUrl(formData.avatar);
-      } else {
-        return imgRequestUrl(formData.avatar, true);
-      }
+      return imgRequestUrl(formData.avatar, true);
     }
     return defaultAvatar;
   });
@@ -127,20 +121,31 @@ export function useUserInfoEditor() {
   }
 
   async function uploadPendingAvatar(): Promise<boolean> {
+    // formData.avatar 不是占位符，说明没有待上传的头像，或者已经上传成功过（避免重复上传同一文件）
+    if (formData.avatar !== PENDING_AVATAR_PLACEHOLDER) {
+      return true;
+    }
     if (!pendingAvatarFile.value) {
       return true;
     }
 
     uploadProgress.value = 0;
     try {
-      const path = await imageApi.uploadImage(pendingAvatarFile.value, false, event => {
-        if (event.total) {
-          uploadProgress.value = Math.round((event.loaded / event.total) * 100);
-        }
-      });
+      const path = await imageApi.uploadImage(
+        pendingAvatarFile.value,
+        event => {
+          if (event.total) {
+            uploadProgress.value = Math.round(
+              (event.loaded / event.total) * 100,
+            );
+          }
+        },
+      );
       if (path) {
         formData.avatar = path;
-        clearPendingAvatarUpload();
+        // 此处不清理本地预览 URL：保存流程（updateUserInfo）尚未完成，
+        // 继续用本地 blob 预览即可，避免额外的网络请求。
+        // 待整个保存流程结束（成功关闭对话框 / 取消）时统一清理。
         formRef.value?.validateField("avatar");
         return true;
       }

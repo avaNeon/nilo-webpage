@@ -10,7 +10,10 @@ import editSrc from '@/assets/icon/img/edit.svg'
 import UserInfoEditor from '../features/userInfoEditor/ui/UserInfoEditor.vue';
 import UserHomeBgImg from '../features/userHomeBgImg/ui/UserHomeBgImg.vue';
 import NotFound from '@/shared/entities/notFound/ui/NotFound.vue';
+import Cover from '@/shared/ui/Cover.vue';
 import message from '@/shared/lib/message.ts';
+
+const AVATAR_SIZE = 70
 
 const hostUserDetailStore = useHostUserDetailStore();
 const {
@@ -62,8 +65,18 @@ function saveTheme(index: number)
                 @preview="setPreviewWallpaper" @save-theme="saveTheme" />
             <div v-if="!hideUi" class="user-profile">
                 <div class="profile">
-                    <img class="avatar"
-                        :src="hostUserDetailStore.userHostDetail?.avatar ? imgRequestUrl(hostUserDetailStore.userHostDetail.avatar) : defaultAvatar" />
+                    <Cover
+                        v-if="hostUserDetailStore.userHostDetail?.avatar"
+                        class="avatar"
+                        :src="imgRequestUrl(hostUserDetailStore.userHostDetail.avatar)"
+                        :width="AVATAR_SIZE"
+                        :preview="true"
+                        :thumbnail="true"
+                        fit="cover"
+                        border-radius="50%"
+                        :lazy="false"
+                    />
+                    <img v-else class="avatar" :src="defaultAvatar" alt="avatar" />
                     <div class="user-detail">
                         <div class="name">
                             <div class="nickName">{{ hostUserDetailStore.userHostDetail?.nickName }}</div>
@@ -220,7 +233,10 @@ $avatar-size: 70px;
             .avatar {
                 background-color: white;
                 width: $avatar-size;
+                height: $avatar-size;
                 border-radius: 50%;
+                flex-shrink: 0;
+                overflow: hidden;
             }
 
             .user-detail {
