@@ -1,16 +1,20 @@
 import request from "@/shared/lib/request";
 import { Api } from "@/shared/config/Api";
 import type { TokenUserInfo } from "@/shared/model/TokenUserInfo";
+import type {
+  EmailCodeScene,
+  LoginRequest,
+  RegisterRequest,
+  ResetPasswordRequest,
+  SendEmailCodeRequest,
+} from "../model/LoginInfo";
 
 export const AccountApi = {
   /**
-   * login
-   * @param data request body
-   * @param errorCallback request failed callback
-   * @returns
+   * 登录（图形验证码）
    */
   async login(
-    data: any,
+    data: LoginRequest,
     errorCallback?: () => void,
   ): Promise<TokenUserInfo | null> {
     const result = await request({
@@ -23,19 +27,57 @@ export const AccountApi = {
     if (!result) return null;
     return result.data;
   },
+
   /**
-   * register
-   * @param data request body
-   * @param errorCallback request failed callback
-   * @returns
+   * 申请邮箱验证码。
+   * @returns 实际生效场景（以后端 data 为准），失败返回 null
    */
-  async register(data: any, errorCallback?: () => void): Promise<void> {
-    await request({
+  async sendEmailCode(
+    data: SendEmailCodeRequest,
+    errorCallback?: (data: any) => void,
+  ): Promise<EmailCodeScene | null> {
+    const result = await request({
+      method: "post",
+      url: Api.sendEmailCode,
+      data,
+      dataType: "json",
+      errorCallback,
+    });
+    if (!result) return null;
+    return result.data as EmailCodeScene;
+  },
+
+  /**
+   * 注册（邮箱验证码，不再传 captchaKey/code）
+   */
+  async register(
+    data: RegisterRequest,
+    errorCallback?: (data: any) => void,
+  ): Promise<boolean> {
+    const result = await request({
       method: "post",
       url: Api.register,
       data,
       dataType: "json",
       errorCallback,
     });
+    return Boolean(result);
+  },
+
+  /**
+   * 忘记密码重置
+   */
+  async resetPassword(
+    data: ResetPasswordRequest,
+    errorCallback?: (data: any) => void,
+  ): Promise<boolean> {
+    const result = await request({
+      method: "post",
+      url: Api.resetPassword,
+      data,
+      dataType: "json",
+      errorCallback,
+    });
+    return Boolean(result);
   },
 } as const;
