@@ -26,15 +26,22 @@ const props = withDefaults(
   },
 );
 
-/** 开启 thumbnail 时优先加载缩略图，避免原图撑爆页面。 */
+/** thumbnail 时在路径扩展名前插 `_thumb`（保留 query/hash） */
 const displaySrc = computed(() => {
   if (!props.src) return "";
   if (!props.thumbnail) return props.src;
   if (props.src.includes(THUMBNAIL_SUFFIX)) return props.src;
-  return props.src.replace(/\.\w+$/, ext => THUMBNAIL_SUFFIX + ext);
+  const q = props.src.indexOf("?");
+  const h = props.src.indexOf("#");
+  let end = props.src.length;
+  if (q >= 0) end = Math.min(end, q);
+  if (h >= 0) end = Math.min(end, h);
+  const path = props.src.slice(0, end);
+  const suffix = props.src.slice(end);
+  return path.replace(/\.\w+$/, ext => THUMBNAIL_SUFFIX + ext) + suffix;
 });
 
-/** 预览始终回退到原图。 */
+/** 预览用原图 */
 const previewList = computed(() => {
   if (!props.preview || !props.src) return [];
   return [props.src.replace(THUMBNAIL_SUFFIX, "")];
