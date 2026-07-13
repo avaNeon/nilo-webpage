@@ -27,7 +27,7 @@ const activeMenuIndex = computed(() =>
             </div>
             <div class="right">
                 <nav class="avatar">
-                    <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar) : ''"
+                    <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar, true) : ''"
                         :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
                         :width="48" :user-panel="false" :mobile="false">
                     </Avatar>

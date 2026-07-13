@@ -31,7 +31,7 @@ const {
 
 <style lang="scss" scoped>
 .content {
-    margin: 30px 150px 0;
+    margin: 30px 130px 0;
 
     .box-list {
         margin-bottom: 20px;
@@ -39,11 +39,11 @@ const {
         .box-inner {
             display: flex;
             flex-wrap: wrap;
-            column-gap: 20px;
-            row-gap: 20px;
+            column-gap: 30px;
+            row-gap: 15px;
 
             .box-item {
-                width: 240px;
+                width: 220px;
                 border: 1px solid $color-border;
                 border-radius: 15px;
                 font-weight: 600;
@@ -80,11 +80,11 @@ const {
 
     .statistics-chart {
         .chart-inner {
-            padding: 20px;
+            padding: 10px;
 
             .chart {
                 width: 100%;
-                height: 360px;
+                height: 350px;
             }
         }
     }
