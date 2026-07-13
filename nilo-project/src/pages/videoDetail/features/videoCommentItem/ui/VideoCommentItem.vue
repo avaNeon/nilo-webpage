@@ -94,7 +94,9 @@ const deletedBy = computed(() =>
     switch (props.videoComment.deleted)
     {
         case 1: return '用户';
-        case 2: return '视频制作者';
+        case 2: return '视频发布者';
+        case 3: return '管理员';
+        default: return '';
     }
 })
 
@@ -120,7 +122,9 @@ const foldBadgeLabel = computed(() =>
         case DefaultFoldReason.LOW_VOTES:
             return `该评论被大量点踩（${voteResult.value}）`
         case DefaultFoldReason.DELETED_LOW_VOTES:
-            return '该评论已被删除'
+            return deletedBy.value
+                ? `该评论已被${deletedBy.value}删除`
+                : '该评论已被删除'
         default:
             return ''
     }
@@ -134,7 +138,7 @@ const foldBadgeLabel = computed(() =>
             <img :src="unfoldSvg" alt="展开" class="unfold-icon" />
         </div>
         <!-- 正常态：显示用户头像 -->
-        <Avatar v-else class="avatar" :user-id="videoComment.userId" :src="imgRequestUrl(videoComment.avatar)"
+        <Avatar v-else class="avatar" :user-id="videoComment.userId" :src="imgRequestUrl(videoComment.avatar, true)"
             :width="AVATAR_WIDTH" :lazy="true" :user-panel="false" :mobile="false" :require-login="false" />
         <div class="info">
             <div class="top-info" @click="switchFold">

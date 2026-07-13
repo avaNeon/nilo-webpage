@@ -1,4 +1,5 @@
 import request from "@/shared/lib/request"
+import { Api } from "@/shared/config/Api"
 
 export const CommentApi = {
     /**
@@ -8,7 +9,7 @@ export const CommentApi = {
     topComment(commentId: string) {
         return request({
             method: 'post',
-            url: '/comment/top',
+            url: Api.topComment,
             params: {
                 commentId
             }
@@ -22,7 +23,7 @@ export const CommentApi = {
     cancelTopComment(commentId: string) {
         return request({
             method: 'delete',
-            url: '/comment/top',
+            url: Api.topComment,
             params: {
                 commentId
             }
