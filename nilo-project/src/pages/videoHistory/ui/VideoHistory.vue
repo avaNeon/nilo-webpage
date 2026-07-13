@@ -6,6 +6,7 @@ import { BODY_PADDING } from '@/shared/config/Config'
 import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue'
 import { useVideoHistory } from '../composables/useVideoHistory'
 import wrongSrc from '@/assets/icon/img/wrong.svg'
+import { calculateRelativeTime } from '@/shared/utils/DateUtil'
 
 // 获取内容部分最大最小宽度
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
@@ -59,7 +60,18 @@ const {
                                 title="删除历史记录" @click.stop="deleteHistoryItem(item.history)">
                                 <img :src="wrongSrc" alt="删除历史记录">
                             </button>
-                            <VideoItem class="history-video-item" :video-info="item.videoInfo" type="horizontal"
+                            <div v-if="item.deleted" class="deleted-history-card">
+                                <div class="deleted-cover">
+                                    <span class="deleted-cover-label">视频已失效</span>
+                                </div>
+                                <div class="deleted-info">
+                                    <div class="deleted-title">该视频已删除</div>
+                                    <div class="deleted-meta">
+                                        观看于 {{ calculateRelativeTime(item.history.lastUpdateTime) }}
+                                    </div>
+                                </div>
+                            </div>
+                            <VideoItem v-else class="history-video-item" :video-info="item.videoInfo" type="horizontal"
                                 date-description="观看于 " :date="item.history.lastUpdateTime" :show-stats="false"
                                 :show-duration="false" :file-index="item.history.fileIndex" />
                         </div>
@@ -169,8 +181,53 @@ body {
                     }
                 }
 
-                .history-video-item {
+                .history-video-item,
+                .deleted-history-card {
                     height: 100%;
+                }
+
+                .deleted-history-card {
+                    display: flex;
+                    flex-direction: column;
+                    border-radius: 15px;
+                    overflow: hidden;
+                    background-color: #fff;
+
+                    .deleted-cover {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 15px;
+                        background: linear-gradient(160deg, #eceff3 0%, #d7dde5 100%);
+
+                        .deleted-cover-label {
+                            padding: 6px 12px;
+                            border-radius: 999px;
+                            background-color: rgba(0, 0, 0, 0.45);
+                            color: #fff;
+                            font-size: 13px;
+                            font-weight: 600;
+                        }
+                    }
+
+                    .deleted-info {
+                        flex: 0 0 auto;
+                        padding: 10px 10px 12px;
+
+                        .deleted-title {
+                            font-size: 15px;
+                            font-weight: 500;
+                            color: $color-text-secondary;
+                        }
+
+                        .deleted-meta {
+                            margin-top: 6px;
+                            font-size: 14px;
+                            color: $color-text-muted;
+                        }
+                    }
                 }
             }
         }

@@ -42,17 +42,27 @@ export function useVideoHistory() {
 
   /* ————————方法———————— */
 
+  /** 视频归档删除后 LEFT JOIN video_info 无行，封面/标题均为空 */
+  function isDeletedHistory(history: VideoPlayHistory) {
+    return !history.videoName && !history.videoCover;
+  }
+
   function toVideoInfo(history: VideoPlayHistory): VideoInfo {
+    const hasAuthor =
+      history.userId != null && !!history.nickName?.trim();
+
     return {
       videoId: history.videoId,
       videoCover: history.videoCover,
       videoName: history.videoName,
-      briefUserInfo: {
-        userId: String(history.userId),
-        nickName: history.nickName,
-        avatar: "",
-        personalIntroduction: "",
-      },
+      briefUserInfo: hasAuthor
+        ? {
+            userId: String(history.userId),
+            nickName: history.nickName!.trim(),
+            avatar: "",
+            personalIntroduction: "",
+          }
+        : null,
       userInfo: null,
       createTime: null,
       lastUpdateTime: history.lastUpdateTime,
@@ -78,6 +88,7 @@ export function useVideoHistory() {
     return {
       history,
       videoInfo: toVideoInfo(history),
+      deleted: isDeletedHistory(history),
     };
   }
 
