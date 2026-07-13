@@ -28,6 +28,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/web/, ''),
       },
+      // 用户端评论微服务（/comment/**、/user/commentAction/**）
+      "/api/comment": {
+        target: "http://localhost:7075/",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/comment/, ''),
+      },
     }
   },
 })

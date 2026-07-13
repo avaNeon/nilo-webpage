@@ -3,7 +3,7 @@ import { ElLoading } from "element-plus";
 import message from "@/shared/lib/message";
 import Cookies from "js-cookie";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
-import { WEB_SERVICE_PREFIX } from "@/shared/config/Api";
+import { resolveServicePrefix } from "@/shared/config/Api";
 import type { BaseResponse } from "@/shared/model/BaseResponse";
 
 const contentTypeForm = "application/x-www-form-urlencoded;charset=UTF-8";
@@ -142,8 +142,8 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     token: token || "",
   };
 
-  // 拼接二级前缀，兼容 Vite 代理（当前只有 web 服务）
-  const prefix = `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}`;
+  // 拼接二级前缀，兼容 Vite 代理（web / comment）
+  const prefix = `${import.meta.env.VITE_APP_BASE_URL}${resolveServicePrefix(url)}`;
   const completeUrl = prefix + url;
 
   // 构建 axios 配置（所有方法共用）
