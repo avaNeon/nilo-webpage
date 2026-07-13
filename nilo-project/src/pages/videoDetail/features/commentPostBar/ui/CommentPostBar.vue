@@ -64,7 +64,7 @@ const {
     accept: 'image/*',
     maxSize: imageMaxSize,
     uploadFn: (file: File, onProgress?: (event: AxiosProgressEvent) => void) =>
-        imageApi.uploadImage(file, true, onProgress),
+        imageApi.uploadImage(file, onProgress),
 })
 
 const isPosting = ref(false)
@@ -213,7 +213,6 @@ async function postComment()
                 isDownvoted: false,
                 nickName: loginStateStore.userInfo?.nickName ?? '',
                 avatar: loginStateStore.userInfo?.avatar ?? '',
-                currentUserAction: null,
             })
             userCommentText.value = ''
             reset()
@@ -229,7 +228,7 @@ async function postComment()
 <template>
     <div class="comment-post-bar" ref="commentPostBarRef">
         <Avatar class="user-avatar" :user-id="loginStateStore.userInfo?.userId ?? null"
-            :src="imgRequestUrl(loginStateStore.userInfo?.avatar ?? '')" :width="AVATAR_WIDTH" :lazy="true"
+            :src="imgRequestUrl(loginStateStore.userInfo?.avatar ?? '', true)" :width="AVATAR_WIDTH" :lazy="true"
             :user-panel="false" :mobile="false" />
         <div class="comment-section">
             <el-input class="textarea" v-model="userCommentText" :maxlength="MAX_COMMENT_LENGTH"
@@ -287,7 +286,7 @@ async function postComment()
             <div v-if="uploadItems.length > 0" class="preview-images">
                 <div class="preview-image" v-for="item in uploadItems" :key="item.id">
                     <!-- 上传成功后显示服务器路径，否则显示本地预览 -->
-                    <Cover :src="item.relativePath ? imgRequestUrl(item.relativePath, true) : item.localUrl"
+                    <Cover :src="item.relativePath ? imgRequestUrl(item.relativePath) : item.localUrl"
                         :width="PREVIEW_IMAGE_WIDTH" fit="scale-down" :preview="!!item.relativePath" :auto-height="true"
                         :thumbnail="true" />
                     <!-- 上传中显示进度条 -->

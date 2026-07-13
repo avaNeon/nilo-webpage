@@ -1,5 +1,3 @@
-import type { UserCommentAction } from "./UserCommentAction";
-
 export interface VideoComment {
     /**
      * 评论ID【对外展示】
@@ -53,7 +51,8 @@ export interface VideoComment {
     replyCount: number;
 
     /**
-     * logical delete flag
+     * 逻辑删除标记：
+     * 0-未删除，1-用户自己删除，2-视频发布者删除，3-管理员删除
      */
     deleted: number;
 
@@ -86,12 +85,6 @@ export interface VideoComment {
      * 评论者头像（关联 user_info.avatar）
      */
     avatar: string;
-
-    /**
-     * 当前查询用户对该评论的操作记录（null 表示未登录或尚未操作）
-     * 由 SQL 关联 user_comment_action 表得到，Service 层据此设置 isUpvoted / isDownvoted。
-     */
-    currentUserAction: UserCommentAction | null;
 
     /**
      * 默认折叠原因（前端计算，预留后端下发扩展）
