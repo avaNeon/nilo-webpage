@@ -1,11 +1,15 @@
 <script lang="ts" setup>
 import { Search } from '@element-plus/icons-vue';
+import { ref } from 'vue';
 import { useVideoManagement } from '../model/useVideoManagement';
 import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue';
+import VideoPlayerDialog from '@/pages/creativeCenter/entities/videoPlayerDialog/ui/VideoPlayerDialog.vue';
 import { useRouter } from 'vue-router';
 import type { VideoInfo } from '@/shared/model/VideoInfo';
+import type { VideoInfoFileUpload } from '@/shared/model/VideoInfoFileUpload';
 import useVideoUploadEditStore from '@/shared/store/VideoUploadEditStore';
 import { VideoManagementApi } from '../api/VideoManagementApi';
+import { videoFileApi } from '@/shared/api/VideoFileApi';
 import message from '@/shared/lib/message';
 import confirm from '@/shared/lib/confirm';
 
@@ -27,6 +31,19 @@ const {
 
 const router = useRouter()
 const videoUploadEditStore = useVideoUploadEditStore()
+
+const previewVisible = ref(false)
+const previewVideoInfo = ref<VideoInfo | null>(null)
+const previewFileList = ref<VideoInfoFileUpload[]>([])
+
+async function handlePreview(videoInfo: VideoInfo)
+{
+    if (!videoInfo.videoId) return
+    previewVideoInfo.value = videoInfo
+    const files = await videoFileApi.loadVideoFileUpload(videoInfo.videoId)
+    previewFileList.value = files ?? []
+    previewVisible.value = true
+}
 
 function handleEdit(videoInfo: VideoInfo)
 {
@@ -137,7 +154,8 @@ async function handleDeleteVideo(videoInfo: VideoInfo)
             <div class="video-item" v-for="(video, index) in videoInfoList">
                 <VideoItem :key="video.videoId ?? index" :video-info="video" type="vertical" :author-mode="true"
                     :review-state="video.status" @edit="handleEdit" @toggle-danmaku="handleToggleDanmaku"
-                    @toggle-comment="handleToggleComment" @delete-video="handleDeleteVideo" title-font-size="18px"/>
+                    @toggle-comment="handleToggleComment" @delete-video="handleDeleteVideo" @preview="handlePreview"
+                    title-font-size="18px"/>
             </div>
         </div>
         <div class="pagination-wrapper">
@@ -146,6 +164,9 @@ async function handleDeleteVideo(videoInfo: VideoInfo)
                 background @size-change="handleSizeChange" @current-change="handlePageChange" />
         </div>
     </div>
+
+    <VideoPlayerDialog v-model:visible="previewVisible" :video-info="previewVideoInfo ?? {}"
+        :file-list="previewFileList" />
 </template>
 
 <style lang="scss" scoped>

@@ -175,7 +175,7 @@ onBeforeUnmount(() =>
                 <template #default="{ row }">
                     <div class="comment-info-cell">
                         <!-- 头像 -->
-                        <Avatar class="avatar" :user-id="row.userId" :src="imgRequestUrl(row.avatar)" :width="48"
+                        <Avatar class="avatar" :user-id="row.userId" :src="imgRequestUrl(row.avatar, true)" :width="48"
                             :lazy="true" :user-panel="false" :mobile="false" />
                         <!-- 评论主体 -->
                         <div class="comment-body">
@@ -233,7 +233,7 @@ onBeforeUnmount(() =>
             <el-table-column label="视频信息" align="left" width="200">
                 <template #default="{ row }">
                     <div class="video-info-cell">
-                        <Cover :src="imgRequestUrl(row.videoCover)" :width="120" :scale="0.5625" fit="cover"
+                        <Cover :src="imgRequestUrl(row.videoCover, true)" :width="120" :scale="0.5625" fit="cover"
                             :border-radius="4" @click="goToVideo(row.videoId)" />
                         <span class="video-name">{{ row.videoName }}</span>
                     </div>
