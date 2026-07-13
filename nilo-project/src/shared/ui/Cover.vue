@@ -26,37 +26,50 @@ const props = withDefaults(defineProps<{
     border: 'none',
     autoHeight: false,
     thumbnail: false,
-    tmp: false
 })
 // 
 const showViewer = ref(false)
 // 加载图片的高度，与图片高度一致
-const loadingHeight = computed(() => {
-    if (!props.autoHeight && props.width) {
+const loadingHeight = computed(() =>
+{
+    if (!props.autoHeight && props.width)
+    {
         return props.width * props.scale + 'px'
     }
     return '100%'
 })
-// 显示用的 src：开启 thumbnail 时在文件名与扩展名之间插入 _thumb，否则直接用原始 src
-const displaySrc = computed(() => {
+// thumbnail 时在路径扩展名前插 _thumb（保留 query/hash）
+const displaySrc = computed(() =>
+{
     if (!props.src) return ''
     if (!props.thumbnail) return props.src
     if (props.src.includes(THUMBNAIL_SUFFIX)) return props.src
-    // src 是原图路径，在扩展名前插入 _thumb 派生缩略图 URL（兼容所有图片格式）
-    return props.src.replace(/\.\w+$/, ext => THUMBNAIL_SUFFIX + ext)
+    const q = props.src.indexOf('?')
+    const h = props.src.indexOf('#')
+    let end = props.src.length
+    if (q >= 0) end = Math.min(end, q)
+    if (h >= 0) end = Math.min(end, h)
+    const path = props.src.slice(0, end)
+    const suffix = props.src.slice(end)
+    return path.replace(/\.\w+$/, ext => THUMBNAIL_SUFFIX + ext) + suffix
 })
 // 预览图片列表，始终为原图（去掉 _thumb 标记）
-const imageList = computed(() => {
-    if (!props.preview || !props.src) {
+const imageList = computed(() =>
+{
+    if (!props.preview || !props.src)
+    {
         return []
     }
-    else {
+    else
+    {
         return [props.src.replace(THUMBNAIL_SUFFIX, '')]
     }
 })
 // 展示略缩图，点击图片时的处理操作
-function showPreview() {
-    if (props.preview && props.src) {
+function showPreview()
+{
+    if (props.preview && props.src)
+    {
         showViewer.value = true
     }
 }
@@ -111,7 +124,8 @@ function showPreview() {
             </template>
         </el-image>
         <!-- 预览设置 -->
-        <el-image-viewer v-if="showViewer" :hide-on-click-modal="true" @close="() => {
+        <el-image-viewer v-if="showViewer" :hide-on-click-modal="true" @close="() =>
+        {
             showViewer = false
         }" :url-list="imageList" :teleported="true"></el-image-viewer>
     </div>
