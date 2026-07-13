@@ -1,10 +1,7 @@
 /** 视频分P文件信息 */
 export interface VideoInfoFileUpload {
-  /** 唯一ID */
-  fileId: string;
-
-  /** 上传ID */
-  uploadId: string;
+  /** 唯一ID；审核失败等不可复用时可能为 null */
+  fileId: string | null;
 
   /** 用户ID */
   userId: string;
@@ -21,7 +18,7 @@ export interface VideoInfoFileUpload {
   /** 文件大小 */
   fileSize: string;
 
-  /** 文件路径（只保存相对路径） */
+  /** 已发布 HLS 的 plain key */
   filePath: string;
 
   /** 0:无更新 1:有更新 */

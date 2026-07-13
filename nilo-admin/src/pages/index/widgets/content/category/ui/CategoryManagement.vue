@@ -90,7 +90,7 @@ function onCategorySaved()
                                     </div>
                                     <!-- 图标 -->
                                     <div class="sort-item__icon">
-                                        <el-image v-if="element.icon" :src="imgRequestUrl(element.icon ?? null)"
+                                        <el-image v-if="element.icon" :src="imgRequestUrl(element.icon ?? null, true)"
                                             fit="contain" class="table-icon">
                                             <template #error>
                                                 <div class="img-fallback">

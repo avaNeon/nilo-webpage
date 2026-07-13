@@ -182,11 +182,11 @@ export function useCategoryEditor(
     try {
       // 先上传图片（仅当用户重新选择了文件时才上传）
       if (iconFile.value) {
-        const path = await FileApi.uploadImage(iconFile.value, false);
+        const path = await FileApi.uploadImage(iconFile.value);
         if (path) form.icon = path;
       }
       if (backgroundFile.value) {
-        const path = await FileApi.uploadImage(backgroundFile.value, false);
+        const path = await FileApi.uploadImage(backgroundFile.value);
         if (path) form.background = path;
       }
 
