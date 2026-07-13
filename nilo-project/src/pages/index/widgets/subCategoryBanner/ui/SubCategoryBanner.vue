@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { BODY_PADDING } from '@/shared/config/Config';
 import useCategoryStore from '@/shared/store/CategoryStore';
-import { inject, ref } from 'vue';
+import { setPageTitle } from '@/shared/utils/PageTitle';
+import { inject, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 
@@ -9,6 +10,31 @@ const categoryStore = useCategoryStore()
 const route = useRoute()
 
 const subCategoryFolded = inject('subCategoryFolded', ref(false))
+
+watch(
+    [
+        () => categoryStore.currentPCategory,
+        () => route.params.subCategoryNumber,
+        () => categoryStore.currentCategoryNumber,
+    ],
+    () => {
+        const parent = categoryStore.currentPCategory
+        if (!parent?.categoryName) {
+            setPageTitle('分类')
+            return
+        }
+        const subCategoryNumber = route.params.subCategoryNumber
+        if (typeof subCategoryNumber === 'string' && subCategoryNumber) {
+            const sub = parent.children?.find(
+                item => item.categoryNumber === subCategoryNumber,
+            )
+            setPageTitle(sub?.categoryName ?? parent.categoryName)
+            return
+        }
+        setPageTitle(parent.categoryName)
+    },
+    { immediate: true },
+)
 
 </script>
 

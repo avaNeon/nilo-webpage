@@ -5,6 +5,7 @@ import { MessageType, type MessageTypeValue } from "../model/MessageType";
 import type { UserMessage } from "../model/UserMessage";
 import type { UserMessageCount } from "@/shared/model/UserMessageCount";
 import message from "@/shared/lib/message";
+import { setPageTitle } from "@/shared/utils/PageTitle";
 
 export function useMessageCenter() {
   /* ————————数据源———————— */
@@ -258,6 +259,10 @@ export function useMessageCenter() {
   watch(
     currentMessageType,
     () => {
+      const typeLabel =
+        messageTypeBaseItems.find(item => item.value === currentMessageType.value)
+          ?.label ?? "消息中心";
+      setPageTitle(typeLabel);
       requestVersion++;
       resetMessages();
       void loadCurrentMessageTotalCount();

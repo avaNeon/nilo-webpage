@@ -5,6 +5,7 @@ import { useHostUserDetailStore } from "@/shared/store/HostUserDetailStore";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import { FollowApi } from "@/shared/api/FollowApi";
 import message from "@/shared/lib/message";
+import { setPageTitle } from "@/shared/utils/PageTitle";
 import type { NavItem } from "../model/NavItem";
 import { useUserHomeShared } from "../shared/composables/useUserHomeShared";
 
@@ -209,6 +210,46 @@ export function useUserHome() {
     () => route.query.keyword,
     newVal => {
       keyword.value = (newVal as string) || "";
+    },
+  );
+
+  function resolveUserHomeTitle(nickName: string, routeName: string) {
+    switch (routeName) {
+      case "userUpload":
+        return `${nickName}的投稿`;
+      case "userVideoSeries":
+        return `${nickName}的系列`;
+      case "userCollection":
+        return `${nickName}的收藏`;
+      case "userFollowerList":
+        return `${nickName}的粉丝`;
+      case "userFollowingList":
+        return `${nickName}的关注`;
+      default:
+        return `${nickName}的主页`;
+    }
+  }
+
+  watch(
+    [
+      () => hostUserDetailStore.userHostDetail?.nickName,
+      () => route.name,
+      notFound,
+    ],
+    ([nickName, routeName, isNotFound]) => {
+      if (isNotFound) {
+        setPageTitle("用户不存在");
+        return;
+      }
+      if (!nickName || typeof routeName !== "string") {
+        setPageTitle((route.meta.title as string | undefined) || "用户主页");
+        return;
+      }
+      // 系列详情页由系列 composable 用系列名覆盖标题
+      if (routeName === "userVideoSeries" && route.params.seriesId) {
+        return;
+      }
+      setPageTitle(resolveUserHomeTitle(nickName, routeName));
     },
   );
 

@@ -8,6 +8,7 @@ import type { VideoInfo } from "@/shared/model/VideoInfo";
 import { UserHomeSharedApi } from "@/pages/userHome/shared/api/UserHomeSharedApi";
 import { useHostUserDetailStore } from "@/shared/store/HostUserDetailStore";
 import { useSystemConfigStore } from "@/shared/store/SystemConfigStore";
+import { setPageTitle } from "@/shared/utils/PageTitle";
 
 export function useHomeVideoSeries() {
   const hostUserDetailStore = useHostUserDetailStore();
@@ -299,9 +300,11 @@ export function useHomeVideoSeries() {
     if (!route.params.seriesId) {
       draggingTmpSeriesList.value = [...seriesList.value];
       dragging.value = true;
+      message.info("拖拽系列卡片即可调整顺序，完成后点击「确定」保存");
     } else {
       draggingTmpVideoList.value = [...videoList.value];
       dragging.value = true;
+      message.info("拖拽视频卡片即可调整顺序，完成后点击「确定」保存");
     }
   }
 
@@ -363,6 +366,23 @@ export function useHomeVideoSeries() {
 
   watch([() => hostUserDetailStore.userHostDetail, videoList], () =>
     fillVideoWithHostBriefUserInfo(videoList.value),
+  );
+
+  watch(
+    [
+      currentSerieInfo,
+      () => route.params.seriesId,
+      () => hostUserDetailStore.userHostDetail?.nickName,
+    ],
+    ([info, seriesId, nickName]) => {
+      if (seriesId && info?.seriesName) {
+        setPageTitle(info.seriesName);
+        return;
+      }
+      if (!seriesId && nickName) {
+        setPageTitle(`${nickName}的系列`);
+      }
+    },
   );
 
   return {

@@ -3,6 +3,7 @@ import { useRoute } from "vue-router";
 import { VideoSearchApi } from "@/shared/api/VideoSearchApi";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
 import type { VideoInfoDoc } from "@/shared/model/VideoInfoDoc";
+import { setPageTitle } from "@/shared/utils/PageTitle";
 
 export const VideoSearchOrderType = {
   COMPREHENSIVE: 1,
@@ -114,6 +115,8 @@ export function useVideoSearch() {
   watch(
     () => route.params.keyword,
     () => {
+      const keyword = getRouteKeyword().trim();
+      setPageTitle(keyword ? `搜索：${keyword}` : "搜索");
       searchVideo(1);
     },
     { immediate: true },

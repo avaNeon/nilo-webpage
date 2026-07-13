@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { getAutoLoginPromise } from "@/app/composables/useAutoLogin";
 import { isPublicRoute } from "@/app/router/publicRoutes";
+import { setPageTitle } from "@/shared/utils/PageTitle";
 import Index from "@/pages/index/ui/Index.vue";
 import RecommendVideo from "@/pages/index/widgets/recommendVideo/ui/RecommendVideo.vue";
 import SubCategoryBanner from "@/pages/index/widgets/subCategoryBanner/ui/SubCategoryBanner.vue";
@@ -43,6 +44,7 @@ const router = createRouter({
           path: "c/:categoryNumber?/:subCategoryNumber?",
           name: "category",
           component: SubCategoryBanner,
+          meta: { title: "分类" },
         },
       ],
     },
@@ -51,6 +53,7 @@ const router = createRouter({
       path: "/video/:videoId/:index?",
       name: "video",
       component: VideoDetail,
+      meta: { title: "视频" },
     },
     /** Creative Center Page */
     {
@@ -63,26 +66,31 @@ const router = createRouter({
           path: "home",
           name: "ccIndexPage",
           component: CreativeCenterHome,
+          meta: { title: "创作中心" },
         },
         {
           path: "upload",
           name: "videoUpload",
           component: VideoUploadEdit,
+          meta: { title: "投稿" },
         },
         {
           path: "video",
           name: "videoManagement",
           component: VideoManagement,
+          meta: { title: "视频管理" },
         },
         {
           path: "danmaku/:videoId?/:fileIndex?",
           name: "danmakuManagement",
           component: DanmakuManagement,
+          meta: { title: "弹幕管理" },
         },
         {
           path: "comment/:videoId?",
           name: "videoCommentManagement",
           component: VideoCommentManagement,
+          meta: { title: "评论管理" },
         },
       ],
     },
@@ -90,42 +98,49 @@ const router = createRouter({
       path: "/user/:userId",
       name: "userHome",
       component: UserHome,
+      meta: { title: "用户主页" },
       children: [
         // default - 首页
         {
           path: "",
           name: "userHomeIndex",
           component: UserHomeIndex,
+          meta: { title: "用户主页" },
         },
         // 投稿
         {
           path: "upload/:sortType?",
           name: "userUpload",
           component: UserHomeUpload,
+          meta: { title: "投稿" },
         },
         // 系列
         {
           path: "series/:seriesId?",
           name: "userVideoSeries",
           component: UserHomeVideoSeries,
+          meta: { title: "系列" },
         },
         // 收藏
         {
           path: "collection",
           name: "userCollection",
           component: UserHomeCollection,
+          meta: { title: "收藏" },
         },
         // 粉丝列表
         {
           path: "follower",
           name: "userFollowerList",
           component: UserHomeFollowerList,
+          meta: { title: "粉丝" },
         },
         // 关注列表
         {
           path: "following",
           name: "userFollowingList",
           component: UserHomeFollowingList,
+          meta: { title: "关注" },
         },
       ],
     },
@@ -133,26 +148,31 @@ const router = createRouter({
       path: "/history/:userId",
       name: "history",
       component: VideoHistory,
+      meta: { title: "历史记录" },
     },
     {
       path: "/message/:type",
       name: "messageCenter",
       component: MessageCenter,
+      meta: { title: "消息中心" },
     },
     {
       path: "/popular",
       name: "hot-ranking",
       component: HotRanking,
+      meta: { title: "24小时热榜" },
     },
     {
       path: "/search/:keyword?",
       name: "video-search",
       component: VideoSearch,
+      meta: { title: "搜索" },
     },
     {
       path: "/unlogged",
       name: "unlogged",
       component: Unlogged,
+      meta: { title: "请先登录" },
     },
   ],
 });
@@ -165,6 +185,14 @@ router.beforeEach(async (to, _from, next) => {
     return;
   }
   next();
+});
+
+// 根据路由 meta 设置默认标题；动态页会在数据就绪后覆盖
+router.afterEach(to => {
+  const titleRecord = [...to.matched]
+    .reverse()
+    .find(record => record.meta.title !== undefined);
+  setPageTitle(titleRecord?.meta.title ?? null);
 });
 
 export default router;
