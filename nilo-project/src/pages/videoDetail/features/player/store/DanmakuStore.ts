@@ -12,6 +12,9 @@ export const useDanmakuStore = defineStore('danmaku', {
         setDanmakuList(list: Danmaku[]) {
             this.danmakuList = list
         },
+        resetDanmakuList() {
+            this.danmakuList = []
+        },
         toggleDanmakuEnabled() {
             this.danmakuEnabled = !this.danmakuEnabled
         },
