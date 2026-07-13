@@ -1,21 +1,10 @@
 export interface VideoInfoFile {
-  /**
-   * upload id (existing file mapping id, optional for backward compatibility)
-   */
-  uploadId?: string | number;
-
-  /**
-   * video file name
-   */
+  /** 已发布 HLS 的 plain base key（无前缀） */
+  filePath: string;
+  /** 分 P 文件名 */
   fileName: string;
-
-  /**
-   * file index
-   */
+  /** 分 P 序号 */
   fileIndex: number;
-
-  /**
-   * duration
-   */
+  /** 时长（秒） */
   duration: number;
 }

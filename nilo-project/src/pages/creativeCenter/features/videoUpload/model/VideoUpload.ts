@@ -1,17 +1,19 @@
-/** 视频文件上传项（uploadId + 用户自定义文件名） */
+/** 分 P 提交项：新上传用 key，保留旧分 P 用 fileId（二选一） */
 export interface VideoFileUploadItem {
-  /** uploadId（临时文件映射ID；Long → string） */
-  uploadId: string;
-  /** 用户自定义文件名 */
+  /** 新上传的 plain key（无 tmp/） */
+  key?: string;
+  /** 编辑时保留的旧文件 id */
+  fileId?: string;
+  /** 自定义文件名 */
   filename: string;
 }
 
-/** 视频上传/修改信息（前端类型，Long 值一律使用 string 避免精度丢失） */
+/** 投稿/修改视频表单（Long 用 string 防精度丢失） */
 export interface VideoUpload {
-  /** 视频的唯一ID（修改时必填，新增时留空；Long → string） */
+  /** 视频 id（修改必填） */
   videoId?: string;
 
-  /** 封面在服务器的相对地址 */
+  /** 封面 plain key */
   coverPath: string;
 
   /** 视频标题 */
@@ -35,6 +37,6 @@ export interface VideoUpload {
   /** 互动设置（如 "1":关闭弹幕 "2":关闭评论，多个用逗号分隔） */
   interaction: string;
 
-  /** 视频文件列表（uploadId + 用户自定义filename） */
+  /** 分 P 列表 */
   videoFileUploadList: VideoFileUploadItem[];
 }
