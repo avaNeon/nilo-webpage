@@ -14,6 +14,7 @@ import { useRoute } from "vue-router";
 // ============================================================
 // Third-party libraries
 // ============================================================
+import Cookies from "js-cookie";
 import Artplayer from "artplayer";
 import Hls from "hls.js";
 import artplayerPluginHlsControl from "artplayer-plugin-hls-control";
@@ -44,6 +45,8 @@ import {
 } from "@/shared/model/Danmaku";
 import useVideoStateStore from "@/pages/videoDetail/store/VideoStateStore";
 import { useDanmakuStore } from "@/pages/videoDetail/features/player/store/DanmakuStore";
+import { createDanmakuLoader } from "@/pages/videoDetail/features/player/model/useDanmakuLoader";
+import { videoFileApi } from "@/shared/api/VideoFileApi";
 import * as videoApi from "@/pages/videoDetail/features/player/api/VideoApi";
 import * as videoOnlineApi from "@/pages/videoDetail/features/player/api/VideoOnlineApi";
 import { usePlayCount } from "@/pages/videoDetail/features/player/model/usePlayCount";
@@ -62,6 +65,16 @@ const HLS_CONFIG = {
   fragLoadingRetryDelay: 500,
   manifestLoadingMaxRetry: 2,
   startLevel: -1,
+  // 仅后端鉴权 HLS 带 token；MinIO 直连不要带，否则 CORS 会挂
+  xhrSetup(xhr: XMLHttpRequest, url: string) {
+    const isBackendHls = url.includes("/file/video/hls/");
+    if (!isBackendHls) return;
+    xhr.withCredentials = true;
+    const token = Cookies.get("token_normal");
+    if (token) {
+      xhr.setRequestHeader("token", token);
+    }
+  },
 };
 
 // ============================================================
@@ -76,6 +89,7 @@ export function usePlayer() {
   const loginStateStore = useLoginStateStore();
   const danmakuStore = useDanmakuStore();
   const { tryReportPlayCount } = usePlayCount();
+  const videoId = computed(() => route.params.videoId as string);
 
   // ──────────────────────────────────────────────────────────
   // Reactive state
@@ -93,6 +107,26 @@ export function usePlayer() {
   const timer = ref(0);
   const interval = 10_000;
 
+  const danmakuLoader = createDanmakuLoader({
+    getVideoId: () => videoId.value,
+    getFileIndex: () => Number(route.params.index) || 1,
+    getDurationMs: () => {
+      const durationSec = art.value?.duration;
+      if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) {
+        return Number.POSITIVE_INFINITY;
+      }
+      return Math.floor(durationSec * 1000);
+    },
+    onDanmakuAdded: added => {
+      const plugin = getDanmakuPlugin();
+      if (!plugin?.emit) return;
+      // 只追加新增条目。切勿 load(全量数组)：插件 load(有参) 不清队列只会 append
+      for (const item of added) {
+        plugin.emit(toArtplayerDanmu(item));
+      }
+    },
+  });
+
   // ──────────────────────────────────────────────────────────
   // Non-reactive module state
   // ──────────────────────────────────────────────────────────
@@ -107,16 +141,50 @@ export function usePlayer() {
   let restoreWebFullscreen = false;
   // 记录上一次上报播放历史的分P，避免同一分P暂停后继续播放重复上报
   let lastReportedHistoryKey: string | null = null;
+  /** 设置面板「循环播放」偏好（不能依赖 video.loop / 初始化后的 option.loop） */
+  let userPreferLoop = false;
+  /** 自动连播切分 P 后需要主动 play */
+  let pendingAutoPlayNext = false;
+
+  /** 当前分 P 之后是否还有下一集 */
+  function hasNextPartition() {
+    const currentIndex = Number(route.params.index) || 1;
+    return (
+      videoStateStore.videoFileList.length > 1 &&
+      currentIndex < videoStateStore.videoFileList.length
+    );
+  }
+
+  /** 本集重播（HLS/MSE 下原生 loop 不可靠，对齐 Artplayer 自身实现） */
+  async function replayCurrentPartition() {
+    const player = art.value;
+    if (!player) return;
+    player.seek = 0;
+    try {
+      await player.play();
+      player.controls.show = false;
+      player.mask.show = false;
+    } catch (error) {
+      console.warn("[player] 循环播放起播失败", error);
+    }
+  }
+
+  /** 同步设置面板里的「循环播放」开关 UI */
+  function syncLoopSettingUi(enabled: boolean) {
+    if (!art.value) return;
+    art.value.setting.update({
+      name: "loop-play",
+      html: "循环播放",
+      switch: enabled,
+      tooltip: enabled ? "开启" : "关闭",
+    } as any);
+  }
 
   // ──────────────────────────────────────────────────────────
-  // Computed
-  // ──────────────────────────────────────────────────────────
-  const videoId = computed(() => route.params.videoId as string);
-
-  // ──────────────────────────────────────────────────────────
-  // Cover
+  // 封面
   // ──────────────────────────────────────────────────────────
   function loadCover(videoCover: string | null) {
+    // VideoDetail 固定公开封面
     coverSrc.value = imgRequestUrl(videoCover);
     if (art.value) {
       art.value.poster = coverSrc.value;
@@ -166,21 +234,27 @@ export function usePlayer() {
     return Boolean(result);
   }
 
-  async function loadDanmakuList(): Promise<void> {
-    if (!videoId.value) return;
-    const loadedDanmakuList = await videoApi.loadDanmakuList(
-      videoId.value,
-      Number(route.params.index) || 1,
-    );
-    danmakuStore.setDanmakuList(
-      Array.isArray(loadedDanmakuList) ? loadedDanmakuList : [],
-    );
-  }
-
   function getDanmakuPlugin() {
     return art.value?.plugins?.artplayerPluginDanmuku as
-      | { load?: (target?: unknown) => void; reset?: () => void }
+      | {
+          load?: (target?: unknown) => void;
+          reset?: () => void;
+          emit?: (danmu: ArtplayerDanmu) => unknown;
+        }
       | undefined;
+  }
+
+  /** 换分 P / 换视频：清空覆盖集与列表，并重置插件 */
+  function resetDanmakuSession() {
+    danmakuLoader.reset();
+    // load() 无参会清空插件队列并按 option.danmuku 重建（此时 store 已空）
+    void getDanmakuPlugin()?.load?.();
+  }
+
+  async function ensureDanmakuAtCurrentTime() {
+    const t = art.value?.currentTime ?? 0;
+    await danmakuLoader.onSeekOrReady(t);
+    // 新增条目由 onDanmakuAdded -> emit；已覆盖区间无需再动插件队列
   }
 
   // ──────────────────────────────────────────────────────────
@@ -329,23 +403,49 @@ export function usePlayer() {
     art.on("destroy", onDestroy);
   }
 
-  /**
-   * Load a remote HLS source into Artplayer.
-   * Artplayer's built-in switchUrl keeps playback state aligned with the new source.
-   */
+  /** 切换远程 HLS 源 */
   async function loadRemote(url: string) {
     if (!art.value) return;
     await art.value.switchUrl(url);
   }
 
-  /**
-   * Load a video file by index using the HLS master playlist URL.
-   * Hls.js natively handles variant stream discovery and TS segment fetching.
-   */
-  function loadVideoFileByIndex(index: number) {
-    if (index <= 0) index = 1;
-    const masterPlaylistUrl = videoApi.getVideoResource(videoId.value, index);
-    loadRemote(masterPlaylistUrl);
+  /** 确保分 P 列表已加载 */
+  async function ensureVideoFileList(): Promise<void> {
+    if (videoStateStore.videoFileList.length > 0) return;
+    const id = videoId.value;
+    if (!id) return;
+    const result = await videoFileApi.loadVideoFileList(id);
+    if (result?.length) {
+      videoStateStore.setVideoFileList(result);
+    }
+  }
+
+  /** VideoDetail：固定 public/{filePath}/master.m3u8 */
+  async function loadVideoFileByIndex(index: number) {
+    let fileIndex = Number(index);
+    if (!Number.isFinite(fileIndex) || fileIndex <= 0) {
+      fileIndex = 1;
+    }
+
+    await ensureVideoFileList();
+
+    const fileList = videoStateStore.videoFileList;
+    const file =
+      fileList.find(f => Number(f.fileIndex) === fileIndex) ??
+      fileList[fileIndex - 1];
+    const filePath = file?.filePath?.trim();
+    if (!filePath) {
+      console.warn("[player] 缺少 filePath，无法拼 public HLS", {
+        fileIndex,
+        file,
+        fileList,
+      });
+      return;
+    }
+
+    const url = videoApi.getPublicVideoResource(filePath);
+    if (!url) return;
+    await loadRemote(url);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -384,6 +484,9 @@ export function usePlayer() {
       art.value.destroy(false);
     }
 
+    userPreferLoop = false;
+    pendingAutoPlayNext = false;
+
     // Create the player shell first; the real HLS source is loaded from the backend.
     art.value = new Artplayer({
       container: $container.value as HTMLDivElement,
@@ -404,7 +507,8 @@ export function usePlayer() {
       autoMini: true,
       screenshot: true,
       setting: true,
-      loop: true,
+      // 始终交给下方 video:ended 自定义处理；Artplayer 只认初始化时的 option.loop
+      loop: false,
       flip: true,
       playbackRate: true,
       aspectRatio: true,
@@ -422,12 +526,21 @@ export function usePlayer() {
       moreVideoAttr: {
         crossOrigin: "anonymous",
       },
-      contextmenu: [
+      settings: [
         {
-          html: "Custom menu",
-          click(contextmenu) {
-            console.info("You clicked on the custom menu");
-            contextmenu.show = false;
+          name: "loop-play",
+          html: "循环播放",
+          tooltip: "关闭",
+          switch: false,
+          onSwitch(item) {
+            const next = !item.switch;
+            userPreferLoop = next;
+            item.tooltip = next ? "开启" : "关闭";
+            // 与自动连播互斥
+            if (next && videoStateStore.autoPlay) {
+              videoStateStore.setAutoPlay(false);
+            }
+            return next;
           },
         },
       ],
@@ -442,7 +555,7 @@ export function usePlayer() {
           position: "right",
           html: `<img src="${theaterModeSrc}">`,
           index: 1,
-          tooltip: "theater mode",
+          tooltip: "剧场模式",
           style: {},
           click() {
             enableTheaterMode();
@@ -453,7 +566,7 @@ export function usePlayer() {
           position: "right",
           html: `<img src="${closeTheaterModeSrc}">`,
           index: 2,
-          tooltip: "close theater mode",
+          tooltip: "关闭剧场模式",
           style: {
             display: "none",
           },
@@ -481,16 +594,12 @@ export function usePlayer() {
         }),
         artplayerPluginDanmuku({
           mount: document.querySelector("#danmaku") as HTMLDivElement,
+          // 初始为空；后续由增量 loader 经 load() 注入
           danmuku: async function () {
-            await loadDanmakuList();
             return danmakuStore.danmakuList.map(toArtplayerDanmu);
           },
           theme: "light",
-          // 这是用户在输入框输入弹幕文本，然后点击发送按钮后触发的函数
-          // 你可以对弹幕做合法校验，或者做存库处理
-          // 当返回true后才表示把弹幕加入到弹幕队列
           async beforeEmit(danmaku: ArtplayerDanmu) {
-            // 检查弹幕是否被关闭
             if (!danmakuStore.danmakuEnabled) {
               message.warning("请先开启弹幕显示");
               return false;
@@ -498,35 +607,23 @@ export function usePlayer() {
 
             const isDirty = /fuck/i.test(danmaku.text);
             if (isDirty) return false;
-            const result = await postDanmaku(
-              fromArtplayerDanmu(danmaku, {
-                videoId: videoStateStore.videoInfo.videoId as string,
-                fileIndex: Number(route.params.index) || 1,
-              }),
-            );
+            const payload = fromArtplayerDanmu(danmaku, {
+              videoId: videoStateStore.videoInfo.videoId as string,
+              fileIndex: Number(route.params.index) || 1,
+            });
+            const result = await postDanmaku(payload);
             if (!result) return false;
 
-            // notify that danmaku has been send successfully
             message.success("弹幕发送成功");
-            // let's wait 2s for the new danmaku to be put in the database
-            // in case that the new danmaku can't be counted immediately
-            setTimeout(() => {
-              loadDanmakuList();
-            }, 2000);
+            danmakuLoader.addLocalDanmaku(payload);
 
             return true;
           },
 
-          // 这里是所有弹幕的过滤器,包含来自服务端的和来自用户输入的
-          // 你可以对弹幕做合法校验
-          // 当返回true后才表示把弹幕加入到弹幕队列
           filter(danmu: ArtplayerDanmu) {
             return danmu.text.length <= 200;
           },
 
-          // 这是弹幕即将显示的时触发的函数
-          // 你可以对弹幕做合法校验
-          // 当返回true后才表示可以马上发送到播放器里
           async beforeVisible(_danmu) {
             return true;
           },
@@ -534,7 +631,7 @@ export function usePlayer() {
       ],
     });
 
-    // Load the initial route selection immediately after the player is created.
+    // 播放器创建后立即拉分 P 并起播 public HLS
     if (videoId.value) {
       void loadVideoFileByIndex(Number(route.params.index));
     }
@@ -553,6 +650,8 @@ export function usePlayer() {
     art.value.on("ready", () => {
       const player = art.value;
       if (!player) return;
+
+      void ensureDanmakuAtCurrentTime();
 
       const $player = (player as any).template?.$player as
         | HTMLElement
@@ -619,28 +718,41 @@ export function usePlayer() {
     });
 
     art.value.on("video:ended", () => {
-      if (
-        videoStateStore.autoPlay &&
-        videoStateStore.videoFileList.length > 1 &&
-        Number(route.params.index) < videoStateStore.videoFileList.length
-      ) {
+      // 优先自动连播下一分 P
+      if (videoStateStore.autoPlay && hasNextPartition()) {
+        pendingAutoPlayNext = true;
         router.push({
           name: "video",
           params: {
             videoId: route.params.videoId,
-            index: Number(route.params.index) + 1,
+            index: (Number(route.params.index) || 1) + 1,
           },
         });
+        return;
+      }
+
+      // 否则按设置面板偏好循环本集
+      if (userPreferLoop) {
+        void replayCurrentPartition();
       }
     });
 
     art.value.on("seek", () => {
+      // 仅把已显示弹幕回收为 wait，按新时间轴再匹配；不要 load(全量) 追加
       getDanmakuPlugin()?.reset?.();
+      void ensureDanmakuAtCurrentTime();
     });
 
     art.value.on("destroy", () => {
       cleanupToggleButton();
       cleanupFullscreenButton();
+    });
+
+    // 弹幕增量预取：按播放进度推进覆盖前沿
+    art.value.on("video:timeupdate", () => {
+      const player = art.value;
+      if (!player) return;
+      danmakuLoader.onTimeUpdate(player.currentTime);
     });
 
     // 播放统计：累积实际播放15秒后上报一次
@@ -721,6 +833,7 @@ export function usePlayer() {
     cleanTimer();
     cleanupToggleButton();
     cleanupFullscreenButton();
+    resetDanmakuSession();
 
     // 销毁播放器实例
     if (art.value) {
@@ -732,21 +845,43 @@ export function usePlayer() {
   // ──────────────────────────────────────────────────────────
   // Watchers
   // ──────────────────────────────────────────────────────────
-  // watch for detecting video file changes to load new source from backend
+  // 路由分 P 变化时重新起播
   watch(
-    () => [route.params.videoId, route.params.index],
-    ([nextVideoId, nextIndex]) => {
+    () => [route.params.videoId, route.params.index] as const,
+    async ([nextVideoId, nextIndex]) => {
       if (!nextVideoId || !art.value) return;
-      void loadVideoFileByIndex(Number(nextIndex));
-      void loadDanmakuList().then(() => {
-        // 通知 ArtPlayer 弹幕插件重新拉取弹幕数据，
-        // 否则插件内部仍持有旧分P的弹幕
-        getDanmakuPlugin()?.load?.();
-      });
+
+      const shouldAutoPlay = pendingAutoPlayNext;
+      pendingAutoPlayNext = false;
+
+      resetDanmakuSession();
+      await loadVideoFileByIndex(Number(nextIndex));
+      void ensureDanmakuAtCurrentTime();
+
+      if (shouldAutoPlay && art.value) {
+        try {
+          await art.value.play();
+          art.value.controls.show = false;
+          art.value.mask.show = false;
+        } catch (error) {
+          console.warn("[player] 自动连播起播失败", error);
+        }
+      }
     },
   );
 
-  // watch for loading video cover
+  // 自动连播与循环播放互斥：开连播时关掉循环
+  watch(
+    () => videoStateStore.autoPlay,
+    enabled => {
+      if (enabled && userPreferLoop) {
+        userPreferLoop = false;
+        syncLoopSettingUi(false);
+      }
+    },
+  );
+
+  // 封面固定 public
   watch(
     () => videoStateStore.videoInfo.videoCover,
     videoCover => {
