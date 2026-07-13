@@ -6,7 +6,6 @@ import noneSrc from "@/assets/icon/img/none.svg"
 import { VueDraggable } from 'vue-draggable-plus';
 import VideoSeriesEditor from '@/pages/userHome/features/videoSeriesEditor/ui/VideoSeriesEditor.vue';
 import { useRoute } from 'vue-router';
-import deleteSrc from '@/assets/icon/img/delete.svg'
 
 
 const route = useRoute()
@@ -105,9 +104,9 @@ function getSerieRoute(seriesId: string | null | undefined)
                             <RouterLink class="serie-link" :to="getSerieRoute(serieItem.seriesId)">
                                 <SerieItem class="serie-item" :videoSeriesInfo="serieItem" />
                             </RouterLink>
-                            <button v-if="isMySelf" class="delete-action" type="button"
+                            <button v-if="isMySelf" class="delete-action" type="button" title="删除系列"
                                 @click="deleteSeries(serieItem.seriesId)">
-                                <img :src="deleteSrc" alt="del">
+                                <span class="iconfont icon-delete" aria-hidden="true"></span>
                             </button>
                         </div>
                     </div>
@@ -139,9 +138,9 @@ function getSerieRoute(seriesId: string | null | undefined)
                         <div class="video-item" v-for="(videoItem, index) in videoList"
                             :key="videoItem.videoId ?? index">
                             <VideoItem class="item" :video-info="videoItem" type="horizontal" />
-                            <button v-if="isMySelf" class="delete-action" type="button"
+                            <button v-if="isMySelf" class="delete-action" type="button" title="移出系列"
                                 @click="deleteSeriesVideo(videoItem.videoId)">
-                                <img :src="deleteSrc" alt="del">
+                                <span class="iconfont icon-delete" aria-hidden="true"></span>
                             </button>
                         </div>
                     </div>
@@ -402,30 +401,45 @@ function getSerieRoute(seriesId: string | null | undefined)
 
     .delete-action {
         position: absolute;
-        top: 0;
-        left: 0;
+        top: 10px;
+        left: 10px;
         z-index: 200;
-        width: 56px;
-        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
         padding: 0;
-        background-color: $color-mask-20;
-        border: none;
-        clip-path: path('M 15 0 H 56 L 0 56 V 15 Q 0 0 20 0 Z');
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 50%;
+        color: rgba(255, 255, 255, 0.95);
+        background-color: rgba(28, 28, 30, 0.42);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
         cursor: pointer;
-        transition: background-color 0.2s ease;
+        transition:
+            color 0.2s ease,
+            background-color 0.2s ease,
+            border-color 0.2s ease,
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
 
-        img {
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            width: 16px;
-            height: 16px;
-            object-fit: contain;
+        .icon-delete {
+            font-size: 13px;
+            line-height: 1;
             pointer-events: none;
         }
 
         &:hover {
-            background-color: $color-mask-40;
+            color: #fff;
+            background-color: rgba(220, 68, 68, 0.88);
+            border-color: rgba(255, 255, 255, 0.45);
+            box-shadow: 0 4px 12px rgba(220, 68, 68, 0.28);
+            transform: scale(1.06);
+        }
+
+        &:active {
+            transform: scale(0.96);
         }
     }
 }

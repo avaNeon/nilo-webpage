@@ -12,7 +12,7 @@ const defaultImg = ref(false);
 
 const imgSrc = computed(() =>
 {
-    const src = imgRequestUrl(props.videoSeriesInfo.videoCover)
+    const src = imgRequestUrl(props.videoSeriesInfo.videoCover, true)
     if (!src)
     {
         defaultImg.value = true;

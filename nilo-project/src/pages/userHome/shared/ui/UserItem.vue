@@ -43,7 +43,7 @@ async function handleToggle()
 <template>
     <div class="user-item-row">
         <RouterLink :to="`/user/${user.userId}`" target="_blank" class="left-section">
-            <img class="avatar" :src="user.avatar ? imgRequestUrl(user.avatar) : defaultAvatar" :alt="user.nickName" />
+            <img class="avatar" :src="user.avatar ? imgRequestUrl(user.avatar, true) : defaultAvatar" :alt="user.nickName" />
             <div class="info">
                 <span class="nick-name">{{ user.nickName }}</span>
                 <span class="intro">{{ user.personalIntroduction }}</span>
