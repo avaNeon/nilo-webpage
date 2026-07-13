@@ -40,3 +40,10 @@ declare module '*?raw' {
   const src: string
   export default src
 }
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** 静态页面标题（不含站点名）；动态页可先作占位，再由页面覆盖 */
+    title?: string
+  }
+}

@@ -9,6 +9,7 @@ import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import { FollowApi } from "@/shared/api/FollowApi";
 import message from "@/shared/lib/message";
 import { getOrCreateSessionId } from "@/shared/lib/sessionId";
+import { setPageTitle } from "@/shared/utils/PageTitle";
 
 // 交互类型常量
 export const InteractionType = {
@@ -257,6 +258,17 @@ export function useVideoDetail() {
         videoStateStore.videoInfo.userInfo?.hasFollowed ?? false;
       followerCount.value =
         videoStateStore.videoInfo.userInfo?.followerCount ?? 0;
+    },
+  );
+
+  watch(
+    [() => videoStateStore.videoInfo.videoName, notFound],
+    ([videoName, isNotFound]) => {
+      if (isNotFound) {
+        setPageTitle("视频不存在");
+        return;
+      }
+      setPageTitle(videoName || "视频");
     },
   );
 
