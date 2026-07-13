@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Picture } from '@element-plus/icons-vue'
 import type { UserMessage } from '@/pages/messageCenter/model/UserMessage'
 import { MessageType } from '@/pages/messageCenter/model/MessageType'
 import { imgRequestUrl } from '@/shared/utils/ImgUtil'
@@ -28,7 +29,7 @@ let resizeObserver: ResizeObserver | null = null
 type ExpandableContentType = 'main' | 'sub'
 
 const senderAvatar = computed(() =>
-    props.message.avatar ? imgRequestUrl(props.message.avatar) : defaultAvatar,
+    props.message.avatar ? imgRequestUrl(props.message.avatar, true) : defaultAvatar,
 )
 
 const senderName = computed(() =>
@@ -36,8 +37,13 @@ const senderName = computed(() =>
 )
 
 const videoCover = computed(() =>
-    props.message.videoCover ? imgRequestUrl(props.message.videoCover) : '',
+    props.message.videoCover ? imgRequestUrl(props.message.videoCover, true) : '',
 )
+const coverLoadFailed = ref(false)
+
+watch(videoCover, () => {
+    coverLoadFailed.value = false
+})
 
 const mainContent = computed(() => props.message.extendJson?.mainContent || '')
 const subContent = computed(() => props.message.extendJson?.subContent || '')
@@ -261,7 +267,15 @@ watch(() => props.message.extendJson, () =>
         </div>
         <div :class="['video-section', { clickable: message.videoId }]" @click="goToVideo">
             <div class="cover">
-                <img v-if="videoCover" :src="videoCover" alt="video cover">
+                <img
+                    v-if="videoCover && !coverLoadFailed"
+                    :src="videoCover"
+                    alt="video cover"
+                    @error="coverLoadFailed = true"
+                >
+                <el-icon v-else class="cover-fallback" :size="28">
+                    <Picture />
+                </el-icon>
             </div>
             <div class="video-name" :title="message.videoName || ''">{{ message.videoName || '无关联视频' }}</div>
         </div>
@@ -449,11 +463,19 @@ watch(() => props.message.extendJson, () =>
             border-radius: 6px;
             overflow: hidden;
             background-color: $color-mask-10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
             img {
                 width: 100%;
+                height: 100%;
                 object-fit: cover;
                 display: block;
+            }
+
+            .cover-fallback {
+                color: $color-text-secondary;
             }
         }
 

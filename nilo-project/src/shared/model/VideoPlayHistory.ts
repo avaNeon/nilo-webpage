@@ -1,9 +1,9 @@
 export interface VideoPlayHistory {
-  /** 用户ID */
-  userId: number;
+  /** 视频作者用户ID（非历史记录所属用户） */
+  userId: number | null;
 
-  /** 用户昵称 */
-  nickName: string;
+  /** 视频作者昵称 */
+  nickName: string | null;
 
   /** 视频ID */
   videoId: string;
@@ -14,9 +14,9 @@ export interface VideoPlayHistory {
   /** 最后更新时间 */
   lastUpdateTime: string;
 
-  /** 视频封面 */
-  videoCover: string;
+  /** 视频封面；视频已删除时为 null */
+  videoCover: string | null;
 
-  /** 视频名称 */
-  videoName: string;
+  /** 视频名称；视频已删除时为 null */
+  videoName: string | null;
 }
