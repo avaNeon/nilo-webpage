@@ -15,12 +15,16 @@ export interface Danmaku {
 }
 
 export function toArtplayerDanmu(danmaku: Danmaku): ArtplayerDanmu {
-    return {
+    const danmu: ArtplayerDanmu & { id?: string } = {
         text: danmaku.content,
         mode: danmaku.position,
         color: danmaku.color,
         time: danmaku.displayMoment / 1000,
     }
+    if (danmaku.danmakuId != null && danmaku.danmakuId !== "") {
+        danmu.id = String(danmaku.danmakuId)
+    }
+    return danmu
 }
 
 export function fromArtplayerDanmu(

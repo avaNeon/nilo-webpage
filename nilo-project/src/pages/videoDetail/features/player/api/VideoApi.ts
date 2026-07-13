@@ -1,12 +1,9 @@
 import { Api, getWebBaseUrl } from "@/shared/config/Api";
+import { publicHlsMasterUrl } from "@/shared/config/Minio";
 import { type Danmaku } from "@/shared/model/Danmaku";
 import request from "@/shared/lib/request";
 
-/**
- * Save one danmaku item to backend.
- * @param danmaku danmaku payload
- * @returns backend `data` field when request succeeds
- */
+/** 发送弹幕 */
 async function postDanmaku(danmaku: Danmaku): Promise<boolean | null> {
   const result = await request({
     method: "post",
@@ -16,26 +13,26 @@ async function postDanmaku(danmaku: Danmaku): Promise<boolean | null> {
   if (!result) {
     return null;
   }
-  // request 拦截器已保证 code===200 才会返回 result
-  // 这里不能再依赖 result.data 是否为真，因为后端可能返回空 data
   return true;
 }
 
 /**
- * Load danmaku list for one video file.
- * @param videoId video id
- * @param fileIndex file index
- * @returns backend `data` field containing the danmaku list
+ * 按视频时间轴增量加载弹幕。
+ * 区间为左闭右开 [fromMs, toMs)，单次跨度不得超过 5000 毫秒。
  */
 async function loadDanmakuList(
   videoId: string,
   fileIndex: number,
+  fromMs: number,
+  toMs: number,
 ): Promise<Danmaku[] | null> {
   const result = await request({
     method: "get",
     url: `${Api.loadDanmaku}/${videoId}`,
     params: {
       fileIndex,
+      fromMs,
+      toMs,
     },
   });
   if (!result) {
@@ -44,28 +41,28 @@ async function loadDanmakuList(
   return result.data;
 }
 
-/**
- * Get the absolute URL of the HLS master playlist (master.m3u8) for a video file.
- * Hls.js will use this URL to discover variant streams and TS segments natively.
- * @param videoId video id
- * @param index file index
- * @returns absolute URL to the master playlist
- */
-function getVideoResource(videoId: string, index: number): string {
-  const baseUrl = getWebBaseUrl();
-  return `${baseUrl}${Api.hlsMasterPlaylist}/${videoId}/${index}/master.m3u8`;
+/** VideoDetail：固定 public/{filePath}/master.m3u8 */
+function getPublicVideoResource(filePath: string): string {
+  return publicHlsMasterUrl(filePath);
 }
 
-/**
- * 上报播放统计（视频播放50%后调用一次，后续不再触发）
- * @param videoId 视频ID
- */
+/** 创作中心未发布预览：鉴权 web HLS（pending） */
+function getPendingVideoResource(videoId: string, index: number): string {
+  return `${getWebBaseUrl()}${Api.hlsMasterPlaylist}/${videoId}/${index}/master.m3u8`;
+}
+
+/** 上报播放统计 */
 async function reportPlayCount(videoId: string): Promise<void> {
   await request({
     method: "post",
     url: Api.playCount + `/${videoId}`,
   });
-  console.log("上报播放统计成功");
 }
 
-export { getVideoResource, loadDanmakuList, postDanmaku, reportPlayCount };
+export {
+  getPublicVideoResource,
+  getPendingVideoResource,
+  loadDanmakuList,
+  postDanmaku,
+  reportPlayCount,
+};
