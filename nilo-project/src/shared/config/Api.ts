@@ -1,19 +1,23 @@
 //单服务版本
 const Api = {
-  // ——————Backend System configuration——————
+  // ——————系统配置——————
   systemConfig: "/system/config",
-  // ——————Account——————
+  // ——————账户——————
   captcha: "/account/captcha",
   login: "/account/login",
   logout: "/account/logout",
   register: "/account/register",
+  /** 申请邮箱验证码（REGISTER / RESET_PASSWORD） */
+  sendEmailCode: "/account/email",
+  /** 忘记密码重置 */
+  resetPassword: "/account/reset",
   autoLogin: "/account/autoLogin",
-  sourcePath: "/file/image?sourcePath=",
-  tmpSourcePath: "/file/image?tmp=true&sourcePath=",
+  /** pending 图预签名（?imgKey=） */
+  downloadImage: "/file/image",
   loadAllCategories: "/category/categories/all",
   getUserState: "/account/state",
   // ——————视频——————
-  preUploadVideo: "/file/videoTag",
+  /** 取 MinIO 预签名 POST 表单（?fileSize=） */
   uploadVideo: "/file/video",
   postVideo: "/creativeCenter/video",
   uploadImage: "/file/image",
@@ -43,12 +47,13 @@ const Api = {
   loadVideoInfo: "/video/video",
   loadVideoFileList: "/video/file",
   hlsMasterPlaylist: "/file/video/hls",
-  //评论
+  //评论（用户端，走 nilo-comment；点赞态用列表字段 isUpvoted / isDownvoted，勿再 GET action）
   commentAction: "/user/commentAction/action",
   getCommentList: "/comment/comment",
   postComment: "/comment/comment",
-  //弹幕
-  loadDanmaku: "/danmaku/danmaku",
+  topComment: "/comment/top",
+  //弹幕（加载按时间轴区间：GET /danmaku/{videoId}?fileIndex&fromMs&toMs）
+  loadDanmaku: "/danmaku",
   postDanmaku: "/danmaku/danmaku",
   //上报在线人数
   sendHearbeat: "/online/heartbeat",
@@ -122,12 +127,32 @@ const Api = {
 /** Web 服务路径前缀 */
 const WEB_SERVICE_PREFIX = "/web";
 
+/** Comment 微服务路径前缀（与 VITE_APP_BASE_URL 拼接后为 /api/comment） */
+const COMMENT_SERVICE_PREFIX = "/comment";
+
 /**
- * Build the browser-reachable absolute base URL for the web service module.
- * Must be absolute so that Hls.js and other relative-URL resolvers work correctly.
+ * 按业务 path 选择服务前缀。
+ * 用户端评论 CRUD / 点赞点踩走 nilo-comment；创作中心评论管理仍走 nilo-web。
  */
+function resolveServicePrefix(url: string): string {
+  if (
+    url.startsWith("/comment") ||
+    url.startsWith("/user/commentAction")
+  ) {
+    return COMMENT_SERVICE_PREFIX;
+  }
+  return WEB_SERVICE_PREFIX;
+}
+
+/** web 服务绝对根地址（Hls.js 等需要绝对 URL） */
 function getWebBaseUrl() {
   return `${window.location.origin}${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}`;
 }
 
-export { Api, getWebBaseUrl, WEB_SERVICE_PREFIX };
+export {
+  Api,
+  getWebBaseUrl,
+  WEB_SERVICE_PREFIX,
+  COMMENT_SERVICE_PREFIX,
+  resolveServicePrefix,
+};

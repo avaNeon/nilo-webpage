@@ -1,18 +1,21 @@
-import { WEB_SERVICE_PREFIX, Api } from "@/shared/config/Api";
+import { publicImageUrl, publicImageThumbUrl, thumbKey } from "@/shared/config/Minio";
+import { imageApi } from "@/shared/api/ImageApi";
 
-// 获取图片的完整url
-function imgRequestUrl(path: string | null, tmp?: boolean): string {
-    if (!path) {
-        return '';
-    }
-    if (tmp) {
-        return `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}${Api.tmpSourcePath}${path}`
-    }
-    else {
-        return `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}${Api.sourcePath}${path}`
-    }
+/** 已公开图片 URL；thumb=true 时用缩略图 */
+function imgRequestUrl(path: string | null | undefined, thumb = false): string {
+  if (!path) return "";
+  return thumb ? publicImageThumbUrl(path) : publicImageUrl(path);
 }
 
-export {
-    imgRequestUrl
+/** 属主私有图：走后端预签名；thumb=true 时签缩略图 key */
+async function resolveImageUrl(
+  plainKey: string | null | undefined,
+  thumb = false,
+): Promise<string> {
+  if (!plainKey) return "";
+  const key = thumb ? thumbKey(plainKey) : plainKey;
+  const url = await imageApi.getPresignedImageUrl(key);
+  return url ?? "";
 }
+
+export { imgRequestUrl, resolveImageUrl };
