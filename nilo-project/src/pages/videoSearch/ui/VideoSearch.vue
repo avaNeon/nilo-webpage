@@ -60,8 +60,6 @@ const {
 .search-section {
     width: min(760px, 100%);
     margin: 0 auto;
-    border-radius: 5px;
-    border: 1px solid $color-bilibili-blue;
 }
 
 .order-type-bar {

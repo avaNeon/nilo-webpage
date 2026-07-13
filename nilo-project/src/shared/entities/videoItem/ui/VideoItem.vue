@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { VideoInfo } from '@/shared/model/VideoInfo';
 import { calculateDuration, calculateRelativeTime } from '@/shared/utils/DateUtil';
-import { imgRequestUrl } from '@/shared/utils/ImgUtil';
+import { imgRequestUrl, resolveImageUrl } from '@/shared/utils/ImgUtil';
 import { routerToNewPage } from '@/shared/utils/RouteUtil';
 import { useVideoItemRipple } from '../model/useVideoItemRipple';
 import option from '@/assets/icon/img/options-horizontal.svg'
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { getRippleStyle } = useVideoItemRipple()
@@ -59,10 +59,17 @@ const emit = defineEmits<{
     (e: 'toggleDanmaku', videoInfo: VideoInfo): void;
     (e: 'toggleComment', videoInfo: VideoInfo): void;
     (e: 'deleteVideo', videoInfo: VideoInfo): void;
+    /** 创作中心：未过审稿件打开预览弹窗（待审核可播，其余仅详情） */
+    (e: 'preview', videoInfo: VideoInfo): void;
 }>()
 
 const canEdit = computed(() =>
     (props.reviewState === VideoStatusEnum.Passed || props.reviewState === VideoStatusEnum.NotPassed || props.reviewState === VideoStatusEnum.TranscodingFailed) && !!props.videoInfo.videoId,
+)
+
+/** 创作中心非已通过：封面/标题打开预览弹窗，不跳转公开页 */
+const shouldPreviewInsteadOfNavigate = computed(() =>
+    props.authorMode && props.reviewState !== VideoStatusEnum.Passed,
 )
 
 const imgSectionStyle = computed(() =>
@@ -101,6 +108,23 @@ function onEditClick()
 {
     if (!canEdit.value || !props.videoInfo.videoId) return
     emit('edit', props.videoInfo)
+}
+
+function onCoverOrTitleClick(event?: Event)
+{
+    if (!shouldPreviewInsteadOfNavigate.value) return
+    event?.preventDefault()
+    emit('preview', props.videoInfo)
+}
+
+function onTitleClick()
+{
+    if (shouldPreviewInsteadOfNavigate.value)
+    {
+        emit('preview', props.videoInfo)
+        return
+    }
+    routerToNewPage(videoPath.value)
 }
 
 /* ─── options panel ─────────────────────────────────────────── */
@@ -142,6 +166,51 @@ function toggleOptionsPanel()
     showOptionsPanel.value = !showOptionsPanel.value
 }
 
+/**
+ * 封面加载：
+ * - 审核通过 / 非创作中心：直连 MinIO public（缩略图）
+ * - 创作中心且未过审：先试 public（二次修改未换封面时常仍在公开桶），失败再回退 pending 预签名
+ */
+const coverSrc = ref('')
+/** 未过审封面是否已尝试过 pending 回退，避免 error 死循环 */
+const coverPendingFallbackTried = ref(false)
+let coverRequestId = 0
+
+watch(
+    () => [props.videoInfo.videoCover, props.authorMode, props.reviewState] as const,
+    ([cover]) =>
+    {
+        const requestId = ++coverRequestId
+        coverPendingFallbackTried.value = false
+        if (!cover)
+        {
+            if (requestId === coverRequestId) coverSrc.value = ''
+            return
+        }
+        // 一律先拼 public；创作中心未过审若加载失败再由 @error 回退 pending
+        if (requestId === coverRequestId)
+        {
+            coverSrc.value = imgRequestUrl(cover, true)
+        }
+    },
+    { immediate: true },
+)
+
+async function onCoverError()
+{
+    const cover = props.videoInfo.videoCover
+    if (!cover) return
+    // 仅创作中心未过审需要 public → pending 回退
+    if (!props.authorMode || props.reviewState === VideoStatusEnum.Passed) return
+    if (coverPendingFallbackTried.value) return
+
+    coverPendingFallbackTried.value = true
+    const requestId = coverRequestId
+    const pendingUrl = await resolveImageUrl(cover, true)
+    if (requestId !== coverRequestId) return
+    if (pendingUrl) coverSrc.value = pendingUrl
+}
+
 </script>
 
 <template>
@@ -150,10 +219,26 @@ function toggleOptionsPanel()
         zIndex: showOptionsPanel ? 500 : undefined,
         ...(props.authorMode ? {} : getRippleStyle(props.videoInfo)),
     }">
-        <RouterLink class="img-section" :style="[{ color: 'inherit', textDecoration: 'none' }, imgSectionStyle]"
+        <!-- 未过审：点击封面打开预览弹窗，不跳转公开页 -->
+        <div v-if="shouldPreviewInsteadOfNavigate" class="img-section preview-trigger"
+            :style="[{ color: 'inherit' }, imgSectionStyle]" role="button" tabindex="0"
+            @click="onCoverOrTitleClick" @keydown.enter="onCoverOrTitleClick">
+            <div class="cover">
+                <img loading="lazy" :src="coverSrc" @error="onCoverError">
+            </div>
+            <div v-if="fileIndex" class="file-index">P{{ fileIndex }}</div>
+            <div v-if="showStats || showDuration" class="video-detail">
+                <div v-if="type === 'horizontal' && showStats" class="count">
+                    <div class="iconfont icon-play2">{{ props.videoInfo.playCount }}</div>
+                    <div class="iconfont icon-danmu">{{ props.videoInfo.danmakuCount }}</div>
+                </div>
+                <div v-if="showDuration" class="duration">{{ calculateDuration(props.videoInfo.duration) }}</div>
+            </div>
+        </div>
+        <RouterLink v-else class="img-section" :style="[{ color: 'inherit', textDecoration: 'none' }, imgSectionStyle]"
             :to="videoPath" target="_blank">
             <div class="cover">
-                <img loading="lazy" :src="imgRequestUrl(props.videoInfo.videoCover)">
+                <img loading="lazy" :src="coverSrc" @error="onCoverError">
             </div>
             <div v-if="fileIndex" class="file-index">P{{ fileIndex }}</div>
             <div v-if="showStats || showDuration" class="video-detail">
@@ -166,7 +251,7 @@ function toggleOptionsPanel()
         </RouterLink>
         <div class="video-info">
             <div class="top-info">
-                <div class="video-name" @click="routerToNewPage(videoPath)">
+                <div class="video-name" @click="onTitleClick">
                     <span v-if="props.renderTitleHtml" :title="videoNameText" v-html="videoNameHtml"></span>
                     <span v-else :title="props.videoInfo.videoName || ''"
                         :style="{ fontSize: titleFontSize ? titleFontSize : '15px' }">
@@ -188,10 +273,11 @@ function toggleOptionsPanel()
                 </div>
             </div>
             <div v-if="!authorMode" :class="['other-info', type === 'vertical' ? 'vertical' : '']"
-                :title="`${props.videoInfo.briefUserInfo?.nickName + ' · '}${calculateRelativeTime(props.videoInfo.lastUpdateTime)}`">
-                <span class="author-name iconfont icon-upzhu"
+                :title="`${props.videoInfo.briefUserInfo?.nickName ? props.videoInfo.briefUserInfo.nickName + ' · ' : ''}${calculateRelativeTime(props.videoInfo.lastUpdateTime)}`">
+                <span v-if="props.videoInfo.briefUserInfo?.nickName" class="author-name iconfont icon-upzhu"
                     @click="routerToNewPage(`/user/${props.videoInfo.briefUserInfo?.userId}`)">{{
                         props.videoInfo.briefUserInfo?.nickName }}</span>
+                <span v-else class="author-name iconfont icon-upzhu muted-author">未知UP主</span>
                 <span v-if="type === 'horizontal'"> · </span>
                 <div v-if="type === 'vertical' && showStats" class="count">
                     <div class="iconfont icon-play2" title="播放数">{{ props.videoInfo.playCount }}</div>
@@ -436,6 +522,14 @@ function toggleOptionsPanel()
                 &::before {
                     margin-right: 2px;
                 }
+
+                &.muted-author {
+                    cursor: default;
+
+                    &:hover {
+                        color: $color-text-muted;
+                    }
+                }
             }
 
             .author-name,
@@ -634,6 +728,14 @@ function toggleOptionsPanel()
 
                 &::before {
                     margin-right: 2px;
+                }
+
+                &.muted-author {
+                    cursor: default;
+
+                    &:hover {
+                        color: $color-text-muted;
+                    }
                 }
             }
 

@@ -1,24 +1,19 @@
-import useCategoryStore from "@/shared/store/CategoryStore"
-import { WEB_SERVICE_PREFIX, Api } from "@/shared/config/Api"
-import { computed } from "vue"
+import useCategoryStore from "@/shared/store/CategoryStore";
+import { imgRequestUrl } from "@/shared/utils/ImgUtil";
+import { computed } from "vue";
 
-/**
- * 背景头图相关业务逻辑
- */
+/** 首页分类背景图 */
 export function useBackgroundImg() {
-    const categoryStore = useCategoryStore()
+  const categoryStore = useCategoryStore();
 
-    /**
-     * 背景头图的资源url
-     */
-    const bgImgUrl = computed((): string | null => {
-        const path = categoryStore.currentPCategory?.background
-        if (!path) return null
-        // 直接把后端接口地址和图片路径拼接起来
-        // 浏览器会自动发出 GET 请求获取图片流
-        return `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}${Api.sourcePath}${path}`
-    })
+  /** 背景图公开 URL */
+  const bgImgUrl = computed((): string | null => {
+    const path = categoryStore.currentPCategory?.background;
+    if (!path) {
+      return null;
+    }
+    return imgRequestUrl(path) || null;
+  });
 
-    return { bgImgUrl }
+  return { bgImgUrl };
 }
-

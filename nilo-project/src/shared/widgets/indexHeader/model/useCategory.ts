@@ -1,22 +1,16 @@
-import { WEB_SERVICE_PREFIX, Api } from "@/shared/config/Api";
+import { imgRequestUrl } from "@/shared/utils/ImgUtil";
 import useCategoryStore from "@/shared/store/CategoryStore";
 
 export function useCategory() {
-    
-    const categoryStore = useCategoryStore();
+  const categoryStore = useCategoryStore();
 
-    // 请求图标的完整url
-    function getIcon(iconPath: string | undefined): string {
-        if (!iconPath) {
-            return ''
-        }
-        else {
-            return `${import.meta.env.VITE_APP_BASE_URL}${WEB_SERVICE_PREFIX}${Api.sourcePath}${iconPath}`
-        }
-    }
+  /** 分类图标公开 URL（缩略图） */
+  function getIcon(iconPath: string | undefined): string {
+    return imgRequestUrl(iconPath ?? null, true);
+  }
 
-    return {
-        categoryStore,
-        getIcon
-    }
+  return {
+    categoryStore,
+    getIcon,
+  };
 }

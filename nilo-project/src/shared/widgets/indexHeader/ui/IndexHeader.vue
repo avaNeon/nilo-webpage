@@ -66,7 +66,7 @@ onMounted(() =>
         <div v-else></div>
         <div class="user">
             <div class="user-avatar">
-                <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar) : ''"
+                <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar, true) : ''"
                     :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
                     :width="48">
                 </Avatar>
