@@ -1,28 +1,38 @@
 <script lang="ts" setup>
 /**
- * VideoPlayerDialog —— 管理员视频预览 & 详情弹窗
+ * 管理员视频预览弹窗
  */
 import { ref, computed, watch, onBeforeUnmount, nextTick, shallowRef } from "vue";
+import Cookies from "js-cookie";
 import Artplayer from "artplayer";
 import Hls from "hls.js";
 import artplayerPluginHlsControl from "artplayer-plugin-hls-control";
 import { getHlsMasterUrl } from "../model/hlsUrl";
-import { imgRequestUrl } from "@/shared/utils/ImgUtil";
+import { imgRequestUrl, resolveImageUrl } from "@/shared/utils/ImgUtil";
+import { VideoStatusEnum } from "@/pages/index/widgets/content/upload/model/enum/VideoStatusEnum";
 
 /* —————— Props —————— */
 
 const props = withDefaults(defineProps<{
-  /** 控制弹窗显示/隐藏 */
+  /** 弹窗显隐 */
   visible: boolean;
-  /** 视频信息对象 */
+  /** 视频信息 */
   videoInfo: Record<string, any>;
-  /** 分P文件列表 */
-  fileList?: { fileIndex: number; fileName: string; fileSize: string; transferResult: number; updateType?: number }[];
-  /**
-   * 自定义 HLS master.m3u8 地址构建函数。
-   * 默认使用普通视频的构建函数；存档视频需传入 getArchiveHlsMasterUrl。
-   */
-  getMasterUrl?: (videoId: string, index: number) => string;
+  /** 分 P 列表（上传稿件含 transferResult/updateType；存档仅有基础字段） */
+  fileList?: {
+    fileIndex: number;
+    fileName: string;
+    fileSize?: string | number;
+    transferResult?: number;
+    updateType?: number;
+    filePath?: string;
+  }[];
+  /** 自定义 master 地址；存档传 getArchiveHlsMasterUrl */
+  getMasterUrl?: (
+    videoId: string,
+    index: number,
+    options?: { status?: number | null; filePath?: string | null },
+  ) => string;
 }>(), {
   fileList: () => [],
   getMasterUrl: getHlsMasterUrl,
@@ -188,8 +198,52 @@ const $container = ref<HTMLDivElement>();
 const art = shallowRef<Artplayer | null>(null);
 
 const videoId = computed(() => String(props.videoInfo.videoId ?? ""));
-const coverSrc = computed(() => imgRequestUrl(props.videoInfo.videoCover ?? ""));
-const hlsUrl = computed(() => (props.getMasterUrl ?? getHlsMasterUrl)(videoId.value, currentFileIndex.value));
+const coverSrc = ref("");
+/** 封面异步解析代数，避免切换视频时旧请求回写上一张封面 */
+let coverRequestId = 0;
+const hlsUrl = computed(() =>
+{
+  const file = props.fileList.find(f => f.fileIndex === currentFileIndex.value);
+  return (props.getMasterUrl ?? getHlsMasterUrl)(videoId.value, currentFileIndex.value, {
+    status: props.videoInfo.status,
+    filePath: file?.filePath,
+    updateType: file?.updateType,
+  });
+});
+
+watch(
+  () => [props.videoInfo.videoCover, props.videoInfo.status] as const,
+  async ([cover, status]) =>
+  {
+    const requestId = ++coverRequestId;
+    // 先清空，避免切换时 initPlayer 仍用上一张 poster
+    coverSrc.value = "";
+    if (art.value)
+    {
+      art.value.poster = "";
+    }
+
+    if (!cover) return;
+
+    // 播放器封面用原图；已通过可同步拼公开 URL，其余走预签名
+    let next = "";
+    if (status === VideoStatusEnum.Passed)
+    {
+      next = imgRequestUrl(cover, false);
+    } else
+    {
+      next = (await resolveImageUrl(cover)) || imgRequestUrl(cover, false);
+    }
+
+    if (requestId !== coverRequestId) return;
+    coverSrc.value = next;
+    if (art.value)
+    {
+      art.value.poster = next;
+    }
+  },
+  { immediate: true },
+);
 
 function createHls(video: HTMLVideoElement, url: string, artInstance: Artplayer)
 {
@@ -207,6 +261,19 @@ function createHls(video: HTMLVideoElement, url: string, artInstance: Artplayer)
     fragLoadingMaxRetry: 2,
     manifestLoadingMaxRetry: 2,
     startLevel: -1,
+    // 仅后端鉴权 HLS 带 token；MinIO 直连不要带
+    xhrSetup(xhr: XMLHttpRequest, url: string)
+    {
+      const isBackendHls =
+        url.includes("/file/video/hls/") || url.includes("/archive/video/hls/");
+      if (!isBackendHls) return;
+      xhr.withCredentials = true;
+      const token = Cookies.get("token_admin");
+      if (token)
+      {
+        xhr.setRequestHeader("token", token);
+      }
+    },
   });
   hls.loadSource(url);
   hls.attachMedia(video);
@@ -226,6 +293,9 @@ function initPlayer()
   if (!videoId.value) return;
 
   destroyPlayer();
+
+  // 转码中 / 未通过等状态没有可播地址
+  if (!hlsUrl.value) return;
 
   nextTick(() =>
   {
@@ -251,7 +321,7 @@ function initPlayer()
       autoMini: true,
       screenshot: false,
       setting: true,
-      loop: true,
+      loop: false,
       flip: true,
       playbackRate: true,
       aspectRatio: true,
@@ -266,6 +336,24 @@ function initPlayer()
       theme: "#23ade5",
       lang: navigator.language.toLowerCase(),
       moreVideoAttr: { crossOrigin: "anonymous" },
+      settings: [
+        {
+          html: "循环播放",
+          tooltip: "关闭",
+          switch: false,
+          onSwitch(item)
+          {
+            const next = !item.switch;
+            // Artplayer 循环看的是 option.loop，不是 video.loop
+            if (art.value)
+            {
+              art.value.option.loop = next;
+            }
+            item.tooltip = next ? "开启" : "关闭";
+            return next;
+          },
+        },
+      ],
       plugins: [
         artplayerPluginHlsControl({
           quality: { control: false, setting: false, title: "画质", auto: "自动" },
@@ -398,6 +486,7 @@ const playerHeight = 480;
     <!-- ===== 视频预览 ===== -->
     <div v-show="activeTab === 'preview'" class="preview-panel">
       <div v-if="!videoId" class="empty-hint">暂无视频信息</div>
+      <div v-else-if="!hlsUrl" class="empty-hint">当前状态无可预览视频（仅待审核 / 已通过可播放）</div>
       <div v-else class="preview-layout">
         <div ref="$container" class="player-container" :style="{ height: playerHeight + 'px' }" />
         <div class="partition-panel" v-if="fileListOptions.length > 0">

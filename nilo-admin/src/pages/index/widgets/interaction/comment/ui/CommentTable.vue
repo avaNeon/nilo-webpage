@@ -63,14 +63,35 @@ function getCommentImages(imgPaths: string | null | undefined): string[]
   return imgPaths.split(",").filter(path => path.trim() !== "");
 }
 
+/** 0 未删 / 1 用户 / 2 发布者 / 3 管理员 */
+function isSoftDeleted(deleted: number | null | undefined): boolean
+{
+  return deleted != null && deleted !== 0;
+}
+
+function getDeletedLabel(deleted: number | null | undefined): string
+{
+  switch (deleted)
+  {
+    case 1:
+      return "用户已删除";
+    case 2:
+      return "发布者已删除";
+    case 3:
+      return "管理员已删除";
+    default:
+      return "已删除";
+  }
+}
+
 /**
  * 删除按钮点击：弹窗二次确认后执行删除
- * 已逻辑删除的评论会走彻底清除接口
+ * 已逻辑删除（deleted=1/2/3）的评论会走彻底清除接口
  */
 async function handleDeleteClick(row: Comment)
 {
   const commentId = row.commentId;
-  const destroyed = row.deleted === 1;
+  const destroyed = isSoftDeleted(row.deleted);
   const actionText = destroyed ? "彻底删除" : "删除";
 
   try
@@ -107,8 +128,8 @@ async function handleDeleteClick(row: Comment)
       row-key="commentId" highlight-current-row>
       <el-table-column label="评论信息" align="left" min-width="520">
         <template #default="{ row }">
-          <div class="comment-info-cell" :class="{ 'is-deleted': row.deleted === 1 }">
-            <el-avatar class="avatar" :src="imgRequestUrl(row.avatar)" :size="48">
+          <div class="comment-info-cell" :class="{ 'is-deleted': isSoftDeleted(row.deleted) }">
+            <el-avatar class="avatar" :src="imgRequestUrl(row.avatar, true)" :size="48">
               <span class="avatar-fallback">{{ row.nickName?.charAt(0) ?? "?" }}</span>
             </el-avatar>
 
@@ -124,7 +145,7 @@ async function handleDeleteClick(row: Comment)
                   <span class="user-name">{{ row.nickName }}</span>
                   <span class="reply-text"> 发表了评论</span>
                 </template>
-                <span v-if="row.deleted === 1" class="deleted-tag">【已删除】</span>
+                <span v-if="isSoftDeleted(row.deleted)" class="deleted-tag">【{{ getDeletedLabel(row.deleted) }}】</span>
               </div>
 
               <div class="comment-content">{{ row.content }}</div>
@@ -138,7 +159,7 @@ async function handleDeleteClick(row: Comment)
                 <span class="post-time">{{ formatPostTime(row.postTime) }}</span>
                 <div class="delete-btn" @click="handleDeleteClick(row)">
                   <span class="iconfont icon-delete"></span>
-                  <span class="delete-text">{{ row.deleted === 1 ? "彻底删除" : "删除" }}</span>
+                  <span class="delete-text">{{ isSoftDeleted(row.deleted) ? "彻底删除" : "删除" }}</span>
                 </div>
               </div>
             </div>
@@ -149,7 +170,7 @@ async function handleDeleteClick(row: Comment)
       <el-table-column label="视频信息" align="center" width="200">
         <template #default="{ row }">
           <div class="video-info-cell">
-            <el-image :src="imgRequestUrl(row.videoCover)" fit="cover" class="cover-img">
+            <el-image :src="imgRequestUrl(row.videoCover, true)" fit="cover" class="cover-img">
               <template #error>
                 <div class="cover-placeholder">
                   <el-icon>

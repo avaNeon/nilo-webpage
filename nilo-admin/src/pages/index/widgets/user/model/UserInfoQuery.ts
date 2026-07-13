@@ -1,6 +1,6 @@
 /** 用户账户列表查询参数（对应后端 UserInfoQuery） */
 export interface UserInfoQuery {
-  /** 页号（从1开始） */
+  /** 页号（后端从 0 开始） */
   pageNo: number;
 
   /** 页大小（1-100） */
