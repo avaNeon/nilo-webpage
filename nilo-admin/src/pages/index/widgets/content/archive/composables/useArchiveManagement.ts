@@ -5,9 +5,8 @@ import type { CategoryInfo } from "@/pages/index/widgets/content/category/model/
 import { ArchiveApi } from "@/pages/index/widgets/content/archive/api/ArchiveApi";
 import type { VideoInfoArchiveQuery } from "@/pages/index/widgets/content/archive/model/VideoInfoArchiveQuery";
 import type { VideoInfoArchive } from "@/pages/index/widgets/content/archive/model/VideoInfoArchive";
+import type { VideoInfoFileArchive } from "@/pages/index/widgets/content/archive/model/VideoInfoFileArchive";
 import { DeleterTypeEnum } from "@/pages/index/widgets/content/archive/model/enum/DeleterTypeEnum";
-import { VideoApi } from "@/pages/index/widgets/content/upload/api/VideoApi";
-import type { VideoInfoFileUpload } from "@/pages/index/widgets/content/upload/model/VideoInfoFileUpload";
 import message from "@/shared/lib/message";
 
 export function useArchiveManagement() {
@@ -182,13 +181,13 @@ export function useArchiveManagement() {
 
   const previewVisible = ref(false);
   const previewVideoInfo = ref<VideoInfoArchive | null>(null);
-  const previewFileList = ref<VideoInfoFileUpload[]>([]);
+  const previewFileList = ref<VideoInfoFileArchive[]>([]);
 
   /** 点击行打开预览弹窗，同时加载分P列表 */
   async function openPreview(video: VideoInfoArchive) {
     previewVideoInfo.value = video;
 
-    const files = await VideoApi.loadArchiveFileList(video.videoId);
+    const files = await ArchiveApi.loadArchiveFileList(video.videoId);
     previewFileList.value = files ?? [];
 
     previewVisible.value = true;

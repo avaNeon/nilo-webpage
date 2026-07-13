@@ -59,22 +59,6 @@ export const VideoApi = {
   },
 
   /**
-   * 获取视频存档分P列表
-   * @param videoId 视频ID
-   * @returns 视频分P文件列表
-   */
-  async loadArchiveFileList(
-    videoId: string,
-  ): Promise<VideoInfoFileUpload[] | null> {
-    const result = await request({
-      method: "get",
-      url: `${Api.archiveFileList}/${videoId}`,
-    });
-    if (!result) return null;
-    return (result.data ?? []) as VideoInfoFileUpload[];
-  },
-
-  /**
    * 审核视频
    * @param videoId 视频ID
    * @param reviewResult 审核结果，true表示审核通过，false表示审核不通过

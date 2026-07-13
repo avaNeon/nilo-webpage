@@ -3,7 +3,7 @@ import { PictureFilled, Search } from "@element-plus/icons-vue";
 import { useUploadManagement } from "../composables/useUploadManagement";
 import { VideoStatusEnum, getStatusLabel, getStatusClass } from "../model/enum/VideoStatusEnum";
 import { getRecommendLabel, getRecommendClass } from "../model/enum/RecommendEnum";
-import { imgRequestUrl } from "@/shared/utils/ImgUtil";
+import MediaImage from "@/shared/ui/MediaImage.vue";
 import VideoPlayerDialog from "@/pages/index/entities/videoPlayerDialog/ui/VideoPlayerDialog.vue";
 
 const {
@@ -57,7 +57,9 @@ const {
                 <!-- 封面 -->
                 <el-table-column label="封面" width="160" align="center">
                     <template #default="{ row }">
-                        <el-image :src="imgRequestUrl(row.videoCover)" fit="cover" class="cover-img">
+                        <MediaImage :path="row.videoCover"
+                            :pending="row.status === VideoStatusEnum.PendingReview || row.status === VideoStatusEnum.NotPassed || row.status === VideoStatusEnum.Transcoding || row.status === VideoStatusEnum.TranscodingFailed"
+                            :thumb="true" fit="cover" class-name="cover-img">
                             <template #error>
                                 <div class="cover-placeholder">
                                     <el-icon>
@@ -65,7 +67,7 @@ const {
                                     </el-icon>
                                 </div>
                             </template>
-                        </el-image>
+                        </MediaImage>
                     </template>
                 </el-table-column>
 
