@@ -112,7 +112,7 @@ onMounted(() =>
                         <Avatar class="avatar" :style="{
                             'height': avatarSize + 'px',
                         }" :user-id="videoStateStore.videoInfo?.userInfo?.userId || null"
-                            :src="imgRequestUrl(avatarUrl)" :width="avatarSize" :lazy="true" :user-panel="false"
+                            :src="imgRequestUrl(avatarUrl, true)" :width="avatarSize" :lazy="true" :user-panel="false"
                             :mobile="false" :require-login="false">
                         </Avatar>
                         <div class="user-detail">
@@ -182,6 +182,12 @@ onMounted(() =>
     </div>
 </template>
 
+<style>
+/* 覆盖首页等页面留下的 body 灰底，避免底部露一条灰缝 */
+body {
+    background-color: #fff !important;
+}
+</style>
 <style lang="scss" scoped>
 $title-font-size: 26px;
 $info-font-size: 16px;
@@ -226,8 +232,12 @@ $right-content-max-width: 28%;
 }
 
 .page-content {
-    min-height: 150vh;
+    min-height: 100vh;
+    margin: 0 auto;
     background-color: white;
+    /* 阻断子元素 margin 塌陷到 body，避免底部露出灰条 */
+    padding-bottom: 40px;
+    box-sizing: border-box;
 
     .header {
         position: sticky;
