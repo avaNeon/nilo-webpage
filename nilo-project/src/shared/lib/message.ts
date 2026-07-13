@@ -24,6 +24,14 @@ const showMessage = (msg: string, callback?: () => void, type: MessageType = 'in
 
 const message = {
     /**
+     * 显示提示消息
+     * @param msg 提示内容
+     * @param callback 消息关闭后的回调函数
+     */
+    info(msg: string, callback?: () => void) {
+        showMessage(msg, callback, "info");
+    },
+    /**
      * 显示错误消息
      * @param msg 提示内容
      * @param callback 消息关闭后的回调函数
