@@ -32,8 +32,13 @@ const isLoading = inject<boolean>('isLoading') || false
             <slot class="video-item" :videoInfo="videoItem"></slot>
         </template>
     </div>
-    <div class="loading" v-if="isLoading">
-        <img src="@/assets/loading-bar.gif" alt="Loading..." />
+    <div class="loading" v-if="isLoading" role="status" aria-live="polite" aria-label="视频加载中">
+        <div class="loading-bar">
+            <div class="loading-bar__track">
+                <div class="loading-bar__indicator" />
+            </div>
+            <span class="loading-bar__text">加载中</span>
+        </div>
     </div>
     <div class="bottom"
         v-if="videoList && !isLoading && videoList.list.length > 0 && videoList?.pageNo >= videoList?.pageTotal">
@@ -42,25 +47,69 @@ const isLoading = inject<boolean>('isLoading') || false
 </template>
 
 <style lang="scss" scoped>
-
 .grid-layout {
     display: grid;
     gap: $video-item-gap;
 
     // 防止视频子内容宽度限制不能平分空间
-    > * {
+    >* {
         min-width: 0;
     }
 }
 
 .loading {
-    padding: 100px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 100%;
+    padding: 48px 20px 56px;
+}
 
-    img {
-        display: block;
-        margin: 0 auto;
-        width: 10%;
+.loading-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: min(220px, 42vw);
+
+    &__track {
+        position: relative;
+        width: 100%;
+        height: 3px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba($color-bilibili-blue, 0.14);
+    }
+
+    &__indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg,
+                rgba($color-bilibili-blue, 0.35),
+                $color-bilibili-blue,
+                rgba($color-bilibili-blue, 0.35));
+        animation: loading-slide 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    &__text {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        color: $color-text-muted;
+    }
+}
+
+@keyframes loading-slide {
+    0% {
+        transform: translateX(-120%);
+    }
+
+    100% {
+        transform: translateX(320%);
     }
 }
 

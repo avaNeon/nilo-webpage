@@ -76,7 +76,7 @@ const {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: $color-neutral-1;
+    background-color: $color-neutral-4;
     opacity: 0.8;
     border-radius: 8px;
     padding: 0 8px;
@@ -96,11 +96,10 @@ const {
         outline: none;
         border-radius: 10px;
         height: 30px;
-        background-color: $color-neutral-1;
+        background-color: $color-neutral-4;
         opacity: inherit;
 
         &:focus {
-            background-color: $color-mask-10;
             z-index: 400;
         }
     }
@@ -122,7 +121,7 @@ const {
     width: 100%;
     box-sizing: border-box;
     padding: 16px;
-    background-color: $color-neutral-1;
+    background-color: $color-neutral-4;
     border-radius: 0 0 8px 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 

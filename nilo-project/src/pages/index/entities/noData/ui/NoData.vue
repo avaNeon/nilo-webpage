@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { Platform } from '@element-plus/icons-vue'
+
 const props = withDefaults(defineProps<{
     message?: string
 }>(), {
@@ -8,7 +10,9 @@ const props = withDefaults(defineProps<{
 
 <template>
     <div class="container">
-        <div class="iconfont icon-empty"></div>
+        <el-icon :size="40">
+            <Platform />
+        </el-icon>
         <div class="message">{{ props.message }}</div>
     </div>
 </template>
@@ -19,11 +23,6 @@ const props = withDefaults(defineProps<{
     flex-direction: column;
     align-items: center;
     padding: 25px 10px;
-
-    .iconfont {
-        font-size: 40px;
-        color: rgb(200, 200, 200);
-    }
 
     .message {
         margin-top: 20px;
