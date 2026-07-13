@@ -5,6 +5,7 @@ import VideoUpload from './VideoUpload.vue'
 import draggable from 'vuedraggable'
 import { useVideoUpload } from '../model/useVideoUpload'
 import { useVideoUploadConfig } from '../model/useVideoUploadConfig'
+import { isTransferFailedFile } from '../model/PreuploadVideoFile'
 import videoIcon from '@/assets/icon/img/video.svg'
 import CoverUpload from '@/pages/creativeCenter/features/coverEdit/ui/CoverUpload.vue'
 import VideoTag from '@/pages/creativeCenter/entities/videoTag/ui/VideoTag.vue'
@@ -26,7 +27,7 @@ const {
   form,
   closeDanmaku,
   closeComment,
-  hasMissingExistingUploadId,
+  hasMissingExistingFileId,
   maxVideoEpisodes,
   hasExceededVideoEpisodes,
   remainingVideoQuotaMiB,
@@ -57,22 +58,17 @@ const {
 
 /** 正常可用的分P列表（排除转码失败文件，支持拖拽排序写回） */
 const activePreuploadList = computed({
-  get: () =>
-    preuploadList.value.filter(
-      item => !(item.isExisting && item.transferResult === 2),
-    ),
+  get: () => preuploadList.value.filter(item => !isTransferFailedFile(item)),
   set: (newActiveList) =>
   {
-    const failedItems = preuploadList.value.filter(
-      item => item.isExisting && item.transferResult === 2,
-    )
+    const failedItems = preuploadList.value.filter(item => isTransferFailedFile(item))
     preuploadList.value = [...newActiveList, ...failedItems]
   },
 })
 
-/** 转码失败的文件列表 */
+/** 转码失败的文件列表（仅展示，不参与编辑/提交） */
 const failedTransferList = computed(() =>
-  preuploadList.value.filter(item => item.isExisting && item.transferResult === 2),
+  preuploadList.value.filter(item => isTransferFailedFile(item)),
 )
 
 function onContinueUpload()
@@ -210,7 +206,6 @@ function onIntroductionInput()
                   <span v-if="element.status === 'error'" class="error-badge">上传失败</span>
                   <span v-else-if="element.status === 'done'" class="done-badge">已完成</span>
                   <span v-else-if="element.status === 'uploading'" class="uploading-badge">上传中</span>
-                  <span v-else-if="element.status === 'preuploading'" class="uploading-badge">准备上传</span>
                   <span v-else-if="element.status === 'pending'" class="pending-badge">待提交</span>
                 </div>
 
@@ -230,25 +225,31 @@ function onIntroductionInput()
           </template>
         </draggable>
 
-        <!-- ===== 转码失败文件区域（纯展示，不参与编辑/提交） ===== -->
+        <!-- ===== 转码失败文件（禁用展示，不参与编辑/上传/提交） ===== -->
         <div v-if="failedTransferList.length > 0" class="failed-transfer-section">
-          <h3 class="failed-title">转码失败的文件</h3>
+          <h3 class="failed-title">转码失败的文件（不可修改，提交时不会携带）</h3>
           <div class="failed-transfer-list">
-            <!-- 每个失败项：小图标 + 文件名 + 大小 + 失败徽标 -->
-            <div v-for="item in failedTransferList" :key="item.uid" class="failed-transfer-item">
-              <div class="failed-left">
-                <!-- 小视频图标 -->
-                <div class="video-icon-wrapper small">
+            <div v-for="item in failedTransferList" :key="item.uid" class="preupload-item is-disabled">
+              <div class="item-left">
+                <div class="drag-handle is-disabled" title="不可排序">
+                  <span class="drag-icon">⠿</span>
+                </div>
+                <div class="video-icon-wrapper">
                   <img :src="videoIcon" alt="video" class="video-icon" />
                 </div>
-                <!-- 文件名 -->
-                <span class="failed-filename">{{ item.filename }}</span>
               </div>
-              <div class="failed-right">
-                <!-- 文件大小 -->
-                <span class="failed-size">{{ formatMB(item.fileSize) }}MB</span>
-                <!-- 转码失败徽标 -->
-                <span class="transfer-fail-badge">转码失败</span>
+              <div class="item-right">
+                <el-input :model-value="item.filename" class="filename-input" disabled />
+                <div class="progress-info">
+                  <span class="progress-text">
+                    {{ formatMB(item.fileSize) }}MB / {{ formatMB(item.fileSize) }}MB
+                  </span>
+                  <span class="transfer-fail-badge">转码失败</span>
+                </div>
+                <el-progress :percentage="100" :stroke-width="8" status="exception" class="progress-bar" />
+              </div>
+              <div class="item-delete">
+                <el-button type="danger" plain size="small" disabled>删除文件</el-button>
               </div>
             </div>
           </div>
@@ -347,7 +348,7 @@ function onIntroductionInput()
             <div class="form-input">
               <!-- 提交 / 提交修改 -->
               <el-button type="primary" :loading="submitting" @click="submitVideo"
-                :disabled="submitting || !isFormValid || activePreuploadList.length === 0 || hasMissingExistingUploadId">
+                :disabled="submitting || !isFormValid || activePreuploadList.length === 0 || hasMissingExistingFileId">
                 {{ isEditMode ? '提交修改' : '提交视频' }}
               </el-button>
               <!-- 返回上传界面 -->
@@ -359,8 +360,11 @@ function onIntroductionInput()
               <span v-else-if="!isFormValid && activePreuploadList.length > 0" class="submit-hint">
                 请完善必填信息后再提交
               </span>
-              <span v-else-if="hasMissingExistingUploadId" class="submit-hint">
+              <span v-else-if="hasMissingExistingFileId" class="submit-hint">
                 存在旧分P数据损坏，请尝试删除旧分P
+              </span>
+              <span v-else-if="activePreuploadList.length === 0 && failedTransferList.length > 0" class="submit-hint">
+                请重新上传视频文件以替换转码失败的分P
               </span>
               <span v-else-if="activePreuploadList.length === 0 && failedTransferList.length === 0" class="submit-hint">
                 请选择视频文件后再提交
@@ -635,6 +639,27 @@ function onIntroductionInput()
     align-items: center;
     padding-top: 2px;
   }
+
+  &.is-disabled {
+    opacity: 0.62;
+    background: #f7f7f7;
+    border-color: #ebebeb;
+    pointer-events: none;
+    user-select: none;
+
+    &:hover {
+      box-shadow: none;
+    }
+
+    .drag-handle {
+      cursor: not-allowed;
+      color: #d0d0d0;
+
+      &:hover {
+        color: #d0d0d0;
+      }
+    }
+  }
 }
 
 .add-more-wrapper {
@@ -664,10 +689,6 @@ function onIntroductionInput()
 
 .failed-transfer-section {
   margin-top: 20px;
-  padding: 16px 20px;
-  background: #fafafa;
-  border: 1px solid #eee;
-  border-radius: 10px;
 
   .failed-title {
     font-size: 14px;
@@ -680,54 +701,7 @@ function onIntroductionInput()
 .failed-transfer-list {
   display: flex;
   flex-direction: column;
-  row-gap: 8px;
-}
-
-.failed-transfer-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-
-  .failed-left {
-    display: flex;
-    align-items: center;
-    column-gap: 10px;
-    min-width: 0;
-    flex: 1;
-
-    .video-icon-wrapper.small {
-      width: 28px;
-      height: 24px;
-      flex-shrink: 0;
-
-      .video-icon {
-        width: 24px;
-        height: 21px;
-      }
-    }
-
-    .failed-filename {
-      font-size: 13px;
-      color: #999;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-
-  .failed-right {
-    display: flex;
-    align-items: center;
-    column-gap: 12px;
-    flex-shrink: 0;
-    margin-left: 16px;
-
-    .failed-size {
-      font-size: 12px;
-      color: #bbb;
-    }
-  }
+  row-gap: 16px;
 }
 
 // ==================== 视频信息表单 ====================

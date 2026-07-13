@@ -4,7 +4,7 @@ import { StringUtil } from "@/shared/utils/StringUtil";
 export interface ExistingUploadFileInput {
   fileName?: string;
   fileSize?: string | number;
-  uploadId?: string | number;
+  fileId?: string | number | null;
   /** 0:转码中 1:转码成功 2:转码失败 */
   transferResult?: 0 | 1 | 2;
 }
@@ -20,20 +20,14 @@ export const UploadUtil = {
     if (closeComment) parts.push("1");
     return parts.join(",");
   },
-  buildPreuploadFile(
-    file: File,
-    chunkSize: number,
-    uid: string,
-  ): PreuploadVideoFile {
-    const totalChunks = Math.ceil(file.size / chunkSize);
+  buildPreuploadFile(file: File, uid: string): PreuploadVideoFile {
     return {
       uid,
       file,
       filename: StringUtil.stripExtension(file.name),
       fileSize: file.size,
-      chunkSize,
-      totalChunks,
-      uploadId: null,
+      key: null,
+      fileId: null,
       uploadedBytes: 0,
       status: "pending",
       isExisting: false,
@@ -42,7 +36,6 @@ export const UploadUtil = {
   buildExistingFile(
     file: ExistingUploadFileInput,
     index: number,
-    chunkSize: number,
     uid: string,
   ): PreuploadVideoFile {
     const parsedSize =
@@ -54,11 +47,10 @@ export const UploadUtil = {
       file: null,
       filename: StringUtil.stripExtension(file.fileName || `P${index + 1}`),
       fileSize: Number.isFinite(parsedSize) ? parsedSize : 0,
-      chunkSize,
-      totalChunks: 1,
-      uploadId:
-        file.uploadId !== undefined && file.uploadId !== null
-          ? String(file.uploadId)
+      key: null,
+      fileId:
+        file.fileId !== undefined && file.fileId !== null
+          ? String(file.fileId)
           : null,
       uploadedBytes: Number.isFinite(parsedSize) ? parsedSize : 0,
       status: "done",

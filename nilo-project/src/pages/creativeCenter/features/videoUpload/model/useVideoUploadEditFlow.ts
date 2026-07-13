@@ -9,6 +9,9 @@ import useVideoUploadEditStore from "@/shared/store/VideoUploadEditStore";
 import { StringUtil } from "@/shared/utils/StringUtil";
 import { UploadUtil } from "@/shared/utils/UploadUtil";
 
+/** 与后端 VideoStatus.TRANSCODING_FAIL 一致 */
+const VIDEO_STATUS_TRANSCODING_FAILED = 1;
+
 function applyDetailToForm(form: VideoUpload, detail: VideoInfo) {
   form.videoTitle = detail.videoName ?? "";
   form.postType = Number(detail.postType ?? 1);
@@ -37,18 +40,32 @@ function syncInteractionFlags(
 
 function buildExistingFileList(
   fileList: VideoInfoFileUpload[],
-  chunkSize: number,
+  videoStatus?: number | null,
 ): PreuploadVideoFile[] {
+  const isVideoTranscodingFailed =
+    Number(videoStatus) === VIDEO_STATUS_TRANSCODING_FAILED;
+
   return [...fileList]
     .sort((a, b) => Number(a.fileIndex) - Number(b.fileIndex))
-    .map((item, index) =>
-      UploadUtil.buildExistingFile(
+    .map((item, index) => {
+      const built = UploadUtil.buildExistingFile(
         item,
         index,
-        chunkSize,
         `existing_${Date.now()}_${index}`,
-      ),
-    );
+      );
+
+      // 视频为转码失败时：后端会清空失败文件 fileId；统一标为不可复用
+      const transferFailed =
+        Number(built.transferResult) === 2 ||
+        (isVideoTranscodingFailed && built.fileId === null);
+
+      if (transferFailed) {
+        built.transferResult = 2;
+        built.fileId = null;
+      }
+
+      return built;
+    });
 }
 
 export function useVideoUploadEditFlow(
@@ -59,9 +76,9 @@ export function useVideoUploadEditFlow(
   closeComment: Ref<boolean>,
   initialTags: Ref<string[]>,
   syncCategorySelectionByCategoryNumber: (categoryNumber: string) => void,
-  chunkSize: number,
+  editVideoStatus: Ref<number | null>,
 ) {
-  /** temporarily store the uploading video info */
+  /** 编辑中的视频信息暂存 */
   const videoUploadEditStore = useVideoUploadEditStore();
 
   async function loadEditVideo(videoId: string): Promise<boolean> {
@@ -71,6 +88,11 @@ export function useVideoUploadEditFlow(
       return false;
     }
 
+    editVideoStatus.value =
+      detail.status === null || detail.status === undefined
+        ? null
+        : Number(detail.status);
+
     applyDetailToForm(form, detail);
     syncCategorySelectionByCategoryNumber(form.categoryNumber);
     initialTags.value = UploadUtil.parseTags(form.tags);
@@ -79,7 +101,7 @@ export function useVideoUploadEditFlow(
     const fileList = await videoFileApi.loadVideoFileUpload(videoId);
     hasFileSelected.value = true;
     preuploadList.value = fileList?.length
-      ? buildExistingFileList(fileList, chunkSize)
+      ? buildExistingFileList(fileList, detail.status)
       : [];
 
     videoUploadEditStore.clearEditVideoInfo();

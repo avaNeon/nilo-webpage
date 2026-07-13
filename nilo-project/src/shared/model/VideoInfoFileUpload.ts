@@ -1,10 +1,13 @@
 export interface VideoInfoFileUpload {
-  uploadId: string;
+  /** 已有文件 id；不可复用时为 null */
+  fileId: string | null;
   fileName: string;
-  fileIndex: number,
+  fileIndex: number;
   fileSize: string;
   /**
-   * 0:转码中 1:转码成功 2:转码失败
+   * 0 转码中
+   * 1 成功
+   * 2 失败
    */
   transferResult?: 0 | 1 | 2;
 }

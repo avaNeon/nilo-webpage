@@ -1,6 +1,9 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
-import type { PreuploadVideoFile } from "./PreuploadVideoFile";
+import {
+  isTransferFailedFile,
+  type PreuploadVideoFile,
+} from "./PreuploadVideoFile";
 import type { VideoUpload as VideoUploadType } from "./VideoUpload";
 import { videoUploadApi } from "@/shared/api/VideoUploadApi";
 import { imageApi } from "@/shared/api/ImageApi";
@@ -20,7 +23,7 @@ import { useUploadQuota } from "./useUploadQuota";
 export function useVideoUpload() {
   /* —————— 外部依赖 —————— */
 
-  const { DEFAULT_CHUNK_SIZE, MAX_TAG_STRING_LENGTH, MAX_INTRODUCTION_LENGTH } =
+  const { MAX_TAG_STRING_LENGTH, MAX_INTRODUCTION_LENGTH } =
     useVideoUploadConfig();
 
   const {
@@ -79,7 +82,6 @@ export function useVideoUpload() {
   function buildPreuploadFile(file: File): PreuploadVideoFile {
     return UploadUtil.buildPreuploadFile(
       file,
-      DEFAULT_CHUNK_SIZE,
       `preupload_${Date.now()}_${++uidCounter}`,
     );
   }
@@ -106,7 +108,10 @@ export function useVideoUpload() {
     if (submitting.value) return;
 
     const index = preuploadList.value.findIndex(i => i.uid === uid);
-    if (index !== -1) preuploadList.value.splice(index, 1);
+    if (index === -1) return;
+    // 转码失败文件仅展示，不可删除/提交
+    if (isTransferFailedFile(preuploadList.value[index]!)) return;
+    preuploadList.value.splice(index, 1);
   }
 
   function hasPendingData(): boolean {
@@ -123,6 +128,7 @@ export function useVideoUpload() {
     preuploadList.value = [];
     hasFileSelected.value = false;
     modifiedVideoId.value = null;
+    editVideoStatus.value = null;
     coverBlob.value = null;
     tagList.value = [];
     closeDanmaku.value = false;
@@ -170,6 +176,8 @@ export function useVideoUpload() {
 
   const modifiedVideoId = ref<string | null>(null);
   const isEditMode = computed(() => !!modifiedVideoId.value);
+  /** 编辑中稿件状态（转码失败分 P 等逻辑用） */
+  const editVideoStatus = ref<number | null>(null);
 
   const { loadEditVideo } = useVideoUploadEditFlow(
     form,
@@ -179,7 +187,7 @@ export function useVideoUpload() {
     closeComment,
     tagList,
     syncCategorySelectionByCategoryNumber,
-    DEFAULT_CHUNK_SIZE,
+    editVideoStatus,
   );
 
   /** 根据路由 query 判断是否进入编辑模式并加载已有视频数据 */
@@ -197,30 +205,31 @@ export function useVideoUpload() {
 
   /* —————— 衍生计算 —————— */
 
-  /**
-   * 准备提交的文件列表。
-   * 过滤逻辑：仅保留状态为 done、uploadId 有效、且非转码失败（transferResult !== 2）的项。
-   * 转码失败的文件仅作展示，不应携带到提交请求中。
-   */
+  /** 可编辑/可计数的分 P（排除转码失败项） */
+  const editablePreuploadList = computed(() =>
+    preuploadList.value.filter(item => !isTransferFailedFile(item)),
+  );
+
+  /** 可提交分 P：done 且有 key/fileId，排除转码失败项 */
   const readyUploadFileList = computed(() =>
-    preuploadList.value
+    editablePreuploadList.value
       .filter(
         item =>
           item.status === "done" &&
-          item.uploadId !== null &&
-          !(item.isExisting && item.transferResult === 2),
+          (item.key !== null || item.fileId !== null),
       )
-      .map(item => ({
-        uploadId: item.uploadId!,
-        filename: item.filename,
-      })),
+      .map(item => {
+        if (item.isExisting && item.fileId) {
+          return { fileId: item.fileId, filename: item.filename };
+        }
+        return { key: item.key!, filename: item.filename };
+      }),
   );
 
-  /** 是否存在旧文件已完成但缺少 uploadId（数据异常，不可提交） */
-  const hasMissingExistingUploadId = computed(() =>
-    preuploadList.value.some(
-      item =>
-        item.isExisting && item.status === "done" && item.uploadId === null,
+  /** 是否存在旧文件已完成但缺少 fileId（数据异常，不可提交；转码失败项不计入） */
+  const hasMissingExistingFileId = computed(() =>
+    editablePreuploadList.value.some(
+      item => item.isExisting && item.status === "done" && item.fileId === null,
     ),
   );
 
@@ -234,7 +243,7 @@ export function useVideoUpload() {
   const hasExceededVideoEpisodes = computed(
     () =>
       maxVideoEpisodes.value > 0 &&
-      preuploadList.value.length > maxVideoEpisodes.value,
+      editablePreuploadList.value.length > maxVideoEpisodes.value,
   );
 
   /** 表单前端校验：必填项非空、长度不超限 */
@@ -286,107 +295,49 @@ export function useVideoUpload() {
 
   /* —————— 上传管线 —————— */
 
-  /**
-   * 单个文件完整上传流程：
-   *   1. 预上传——获取后端分配的 uploadId
-   *   2. 将文件按 chunkSize 切片
-   *   3. 逐片顺序上传，通过 AxiosProgressEvent 实时更新进度
-   *
-   * 旧文件（isExisting）跳过此链路；已完成的新文件也跳过。
-   */
+  /** 直传 MinIO；旧分 P / 已完成项跳过 */
   async function startUpload(item: PreuploadVideoFile) {
     const reactiveItem = preuploadList.value.find(i => i.uid === item.uid);
     if (!reactiveItem) return;
 
     if (reactiveItem.isExisting || reactiveItem.status === "done") return;
 
-    reactiveItem.uploadId = null;
+    const sourceFile = reactiveItem.file;
+    if (!sourceFile) {
+      reactiveItem.status = "error";
+      reactiveItem.errorMsg = "missing file";
+      return;
+    }
+
+    reactiveItem.key = null;
     reactiveItem.uploadedBytes = 0;
     reactiveItem.errorMsg = undefined;
+    reactiveItem.status = "uploading";
 
-    // 1. 预上传
-    reactiveItem.status = "preuploading";
     try {
-      const uploadId = await videoUploadApi.preUploadVideo(
-        reactiveItem.totalChunks,
+      const plainKey = await videoUploadApi.uploadVideo(
+        sourceFile,
+        (event: AxiosProgressEvent) => {
+          if (event.loaded !== undefined) {
+            reactiveItem.uploadedBytes = event.loaded;
+          }
+        },
       );
-      if (!uploadId) {
+      if (!plainKey) {
         reactiveItem.status = "error";
-        reactiveItem.errorMsg = "preUploadVideo failed";
-        message.error(`"${reactiveItem.filename}" 预上传失败！`);
+        reactiveItem.errorMsg = "uploadVideo failed";
+        message.error(`"${reactiveItem.filename}" 上传失败！`);
         return;
       }
-      reactiveItem.uploadId = uploadId;
+      reactiveItem.key = plainKey;
+      reactiveItem.uploadedBytes = reactiveItem.fileSize;
+      reactiveItem.status = "done";
+      message.success(`"${reactiveItem.filename}" 上传完成`);
     } catch (err: any) {
       reactiveItem.status = "error";
-      reactiveItem.errorMsg = err?.msg ?? "preUploadVideo exception";
-      message.error(`"${reactiveItem.filename}" 预上传异常！`);
-      return;
+      reactiveItem.errorMsg = err?.msg ?? err?.message ?? "upload exception";
+      message.error(`"${reactiveItem.filename}" 上传时出现异常！`);
     }
-
-    // 2 & 3. 切片 → 顺序上传
-    reactiveItem.status = "uploading";
-    const {
-      totalChunks,
-      chunkSize,
-      uploadId,
-      file: sourceFile,
-      fileSize,
-    } = reactiveItem;
-
-    if (!uploadId || !sourceFile) {
-      reactiveItem.status = "error";
-      reactiveItem.errorMsg = "missing uploadId or file";
-      return;
-    }
-
-    for (let i = 0; i < totalChunks; i++) {
-      const chunkIndex = i + 1;
-      const start = i * chunkSize;
-      const end = Math.min(start + chunkSize, fileSize);
-      const blob = sourceFile.slice(start, end);
-
-      const chunkFile = new File(
-        [blob],
-        `${sourceFile.name}.part${chunkIndex}`,
-        { type: sourceFile.type },
-      );
-
-      const offsetBeforeChunk = i * chunkSize;
-
-      try {
-        const success = await videoUploadApi.uploadVideo(
-          chunkFile,
-          chunkIndex,
-          uploadId,
-          (event: AxiosProgressEvent) => {
-            if (event.loaded !== undefined) {
-              reactiveItem.uploadedBytes = offsetBeforeChunk + event.loaded;
-            }
-          },
-        );
-        if (!success) {
-          reactiveItem.status = "error";
-          reactiveItem.errorMsg = `Chunk ${chunkIndex} upload failed`;
-          message.error(`"${reactiveItem.filename}" 上传失败！`);
-          return;
-        }
-      } catch (err: any) {
-        reactiveItem.status = "error";
-        reactiveItem.errorMsg =
-          err?.msg ?? `Chunk ${chunkIndex} upload exception`;
-        message.error(`"${reactiveItem.filename}" 上传时出现异常！`);
-        return;
-      }
-
-      reactiveItem.uploadedBytes = Math.min(
-        offsetBeforeChunk + blob.size,
-        fileSize,
-      );
-    }
-
-    reactiveItem.status = "done";
-    message.success(`"${reactiveItem.filename}" 上传完成`);
   }
 
   /** 顺序上传 preuploadList 中所有待上传的新文件，任一失败则返回 false */
@@ -422,7 +373,7 @@ export function useVideoUpload() {
       message.error("转载视频请填写原资源说明");
       return false;
     }
-    if (preuploadList.value.length === 0) {
+    if (editablePreuploadList.value.length === 0) {
       message.error("请选择视频文件");
       return false;
     }
@@ -430,8 +381,8 @@ export function useVideoUpload() {
       message.error(`单个视频最多只能提交 ${maxVideoEpisodes.value} 个分P`);
       return false;
     }
-    if (isEditMode.value && hasMissingExistingUploadId.value) {
-      message.error("存在旧分P缺少 uploadId，暂无法提交编辑");
+    if (isEditMode.value && hasMissingExistingFileId.value) {
+      message.error("存在旧分P缺少 fileId，暂无法提交编辑");
       return false;
     }
     if ((form.tags?.length ?? 0) > MAX_TAG_STRING_LENGTH) {
@@ -572,7 +523,7 @@ export function useVideoUpload() {
     isEditMode,
     // 衍生计算
     readyUploadFileList,
-    hasMissingExistingUploadId,
+    hasMissingExistingFileId,
     maxVideoEpisodes,
     hasExceededVideoEpisodes,
     isFormValid,
