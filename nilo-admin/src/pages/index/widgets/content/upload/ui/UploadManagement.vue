@@ -5,6 +5,7 @@ import { VideoStatusEnum, getStatusLabel, getStatusClass } from "../model/enum/V
 import { getRecommendLabel, getRecommendClass } from "../model/enum/RecommendEnum";
 import MediaImage from "@/shared/ui/MediaImage.vue";
 import VideoPlayerDialog from "@/pages/index/entities/videoPlayerDialog/ui/VideoPlayerDialog.vue";
+import { formatBackendDateTime } from "@/shared/utils/DateUtil";
 
 const {
     flatCategoryOptions,
@@ -112,11 +113,11 @@ const {
                         <div class="time-cell">
                             <div class="time-row">
                                 <span class="time-label">创建</span>
-                                <span class="time-value">{{ row.createTime }}</span>
+                                <span class="time-value">{{ formatBackendDateTime(row.createTime) }}</span>
                             </div>
                             <div class="time-row">
                                 <span class="time-label">更新</span>
-                                <span class="time-value">{{ row.lastUpdateTime }}</span>
+                                <span class="time-value">{{ formatBackendDateTime(row.lastUpdateTime) }}</span>
                             </div>
                         </div>
                     </template>

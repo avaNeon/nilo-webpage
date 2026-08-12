@@ -18,9 +18,6 @@ const {
     <Dialog :show="loginStateStore.showPanel" width="900" :top="80" title="" :showCancel="false"
         :handle-close="closePanel">
         <div class="dialog">
-            <div class="background">
-                <img src="@/assets/login_background.jpg" alt="背景图" class="background-img" />
-            </div>
             <el-form class="form" :model="formData" :rules="rules" ref="formDataRef">
                 <!-- 登录/注册切换；忘记密码时显示返回 -->
                 <div class="login-items" v-if="!inForgot">

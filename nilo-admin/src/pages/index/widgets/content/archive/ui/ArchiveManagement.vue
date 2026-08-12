@@ -5,6 +5,7 @@ import { getDeleterTypeLabel, getDeleterTypeClass } from "../model/enum/DeleterT
 import MediaImage from "@/shared/ui/MediaImage.vue";
 import VideoPlayerDialog from "@/pages/index/entities/videoPlayerDialog/ui/VideoPlayerDialog.vue";
 import { getArchiveHlsMasterUrl } from "@/pages/index/entities/videoPlayerDialog/model/hlsUrl";
+import { formatBackendDateTime } from "@/shared/utils/DateUtil";
 
 const {
   flatCategoryOptions,
@@ -109,15 +110,15 @@ const {
             <div class="time-cell">
               <div class="time-row">
                 <span class="time-label">删除时间</span>
-                <span class="time-value">{{ row.deleteTime }}</span>
+                <span class="time-value">{{ formatBackendDateTime(row.deleteTime) }}</span>
               </div>
               <div class="time-row">
                 <span class="time-label">创建时间</span>
-                <span class="time-value">{{ row.createTime }}</span>
+                <span class="time-value">{{ formatBackendDateTime(row.createTime) }}</span>
               </div>
               <div class="time-row">
                 <span class="time-label">最后修改时间</span>
-                <span class="time-value">{{ row.lastUpdateTime }}</span>
+                <span class="time-value">{{ formatBackendDateTime(row.lastUpdateTime) }}</span>
               </div>
             </div>
           </template>

@@ -9,8 +9,7 @@ import { useVideoCommentItem, calcDefaultFoldReason } from '../model/useVideoCom
 import { DefaultFoldReason } from '@/shared/model/VideoComment';
 import { useRoute } from 'vue-router';
 import CommentPostBar from '@/pages/videoDetail/features/commentPostBar/ui/CommentPostBar.vue';
-import type { Dayjs } from 'dayjs';
-import dayjs from 'dayjs';
+import { formatPostTime } from '@/shared/utils/DateUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import useVideoStateStore from '@/pages/videoDetail/store/VideoStateStore';
 
@@ -69,25 +68,7 @@ function toggleReplyFoldState()
     isReplyFolded.value = !isReplyFolded.value
 }
 
-const postTime = computed(() =>
-{
-    const now: Dayjs = dayjs()
-    let postDate: Dayjs
-    if (!props.videoComment || !props.videoComment.postTime)
-    {
-        return ''
-    }
-    postDate = dayjs(props.videoComment.postTime)
-    const diffMin = now.diff(postDate, 'minute')
-    if (diffMin < 1)
-    {
-        return '刚刚'
-    }
-    else
-    {
-        return postDate.format('YYYY-MM-DD HH:mm')
-    }
-})
+const postTime = computed(() => formatPostTime(props.videoComment?.postTime))
 
 const deletedBy = computed(() =>
 {

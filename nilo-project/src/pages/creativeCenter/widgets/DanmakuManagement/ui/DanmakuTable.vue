@@ -3,7 +3,7 @@ import { computed, watch, nextTick, ref } from "vue";
 import type { DanmakuManagement } from "../model/DanmakuManagement";
 import { useRouter } from "vue-router";
 import confirm from "@/shared/lib/confirm";
-import dayjs, { type Dayjs } from "dayjs";
+import { formatPostTime } from "@/shared/utils/DateUtil";
 
 const emit = defineEmits<{
   (e: "changePageNo", pageNo: number): void;
@@ -50,17 +50,6 @@ const handlePageNoChange = (newPageNo: number) =>
   emit("changePageNo", newPageNo);
   scrollToAnchor();
 };
-
-// ----- 发布时间格式化 -----
-function formatPostTime(postTime: string | null): string
-{
-  if (!postTime) return "";
-  const now: Dayjs = dayjs();
-  const postDate = dayjs(postTime);
-  const diffMin = now.diff(postDate, "minute");
-  if (diffMin < 1) return "刚刚";
-  return postDate.format("YYYY-MM-DD HH:mm");
-}
 
 // ----- 毫秒转可读时间 -----
 function formatDisplayMoment(ms: number | null): string

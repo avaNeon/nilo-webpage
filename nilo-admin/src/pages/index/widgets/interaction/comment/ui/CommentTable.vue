@@ -6,7 +6,7 @@ import type { Comment } from "@/pages/index/widgets/interaction/comment/model/Co
 import { CommentApi } from "@/pages/index/widgets/interaction/comment/api/CommentApi";
 import { imgRequestUrl } from "@/shared/utils/ImgUtil";
 import message from "@/shared/lib/message";
-import dayjs, { type Dayjs } from "dayjs";
+import { formatPostTime } from "@/shared/utils/DateUtil";
 import Cover from "@/shared/ui/Cover.vue";
 
 const emit = defineEmits<{
@@ -43,17 +43,6 @@ function handlePageSizeChange(size: number)
 function handlePageNoChange(newPageNo: number)
 {
   emit("changePageNo", newPageNo);
-}
-
-/** 将发布时间格式化为相对时间或绝对时间 */
-function formatPostTime(postTime: string | null | undefined): string
-{
-  if (!postTime) return "";
-  const now: Dayjs = dayjs();
-  const postDate = dayjs(postTime);
-  const diffMin = now.diff(postDate, "minute");
-  if (diffMin < 1) return "刚刚";
-  return postDate.format("YYYY-MM-DD HH:mm");
 }
 
 /** 解析评论图片路径（后端以逗号分隔） */

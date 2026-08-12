@@ -6,7 +6,8 @@
     "types": ["vite/client"],
     "paths": {
       "@/*": ["./src/*"],
-      "src/*": ["./src/*"]
+      "src/*": ["./src/*"],
+      "vue-cropper": ["./src/types/vue-cropper-shim.d.ts"]
     },
     /* Linting */
     "strict": true,

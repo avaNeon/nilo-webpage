@@ -6,7 +6,12 @@ import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import { routerToNewPage } from '@/shared/utils/RouteUtil';
 import SearchBar from '@/shared/features/searchBar/ui/SearchBar.vue';
 import { MessageApi } from '@/shared/api/MessageApi';
-import { computed, onMounted, ref } from 'vue';
+import Dialog from '@/shared/ui/Dialog.vue';
+import { Connection } from '@element-plus/icons-vue';
+import { computed, ref, watch } from 'vue';
+
+const CONTACT_EMAIL = 'unitneon@outlook.com';
+
 const props = withDefaults(defineProps<{
     theme?: string,
     showSearch?: boolean,
@@ -17,10 +22,22 @@ const props = withDefaults(defineProps<{
 
 const { categoryStore, getIcon } = useCategory();
 const loginStateStore = useLoginStateStore();
+const showContactDialog = ref(false);
 const uncheckedMessageCount = ref(0);
 const uncheckedMessageCountText = computed(() =>
     uncheckedMessageCount.value > 99 ? '99+' : String(uncheckedMessageCount.value),
 )
+
+function requireLoginThen(pathOrFactory: string | (() => string))
+{
+    if (!loginStateStore.loginState || !loginStateStore.userInfo?.userId)
+    {
+        loginStateStore.showPanel = true;
+        return;
+    }
+    const path = typeof pathOrFactory === 'function' ? pathOrFactory() : pathOrFactory;
+    routerToNewPage(path);
+}
 
 async function loadUncheckedMessageCount()
 {
@@ -32,10 +49,22 @@ async function loadUncheckedMessageCount()
         (messageCount?.commentMessageCount ?? 0);
 }
 
-onMounted(() =>
-{
-    loadUncheckedMessageCount();
-})
+// 等 loginState 就绪后再拉未读数，避免未登录/autoLogin 未完成时误请求
+watch(
+    () => loginStateStore.loginState,
+    loggedIn =>
+    {
+        if (loggedIn)
+        {
+            loadUncheckedMessageCount();
+        }
+        else
+        {
+            uncheckedMessageCount.value = 0;
+        }
+    },
+    { immediate: true },
+)
 
 </script>
 
@@ -58,7 +87,10 @@ onMounted(() =>
                     </nav>
                 </div>
             </el-popover>
-            <nav></nav>
+            <button type="button" class="contact-btn" @click="showContactDialog = true">
+                <el-icon><Connection /></el-icon>
+                <span class="contact-text">联系</span>
+            </button>
         </div>
         <div v-if="props.showSearch" class="search">
             <SearchBar />
@@ -72,31 +104,35 @@ onMounted(() =>
                 </Avatar>
             </div>
             <nav class="message-nav">
-                <div class="iconfont icon-message" @click="routerToNewPage('/message/1')"></div>
+                <div class="iconfont icon-message" @click="requireLoginThen('/message/1')"></div>
                 <div v-if="uncheckedMessageCount > 0" class="message-badge">
                     {{ uncheckedMessageCountText }}
                 </div>
                 <div class="description">消息</div>
             </nav>
-            <nav @click="routerToNewPage(`/user/${loginStateStore.userInfo?.userId}/collection`)">
+            <nav @click="requireLoginThen(() => `/user/${loginStateStore.userInfo!.userId}/collection`)">
                 <div class="iconfont icon-collection"></div>
                 <div class="description">收藏</div>
             </nav>
-            <nav @click="routerToNewPage(`/history/${loginStateStore.userInfo?.userId}`)">
+            <nav @click="requireLoginThen(() => `/history/${loginStateStore.userInfo!.userId}`)">
                 <div class="iconfont icon-history"></div>
                 <div class="description">历史</div>
             </nav>
-            <nav @click="routerToNewPage('/cc')">
+            <nav @click="requireLoginThen('/cc')">
                 <div class="iconfont icon-light"></div>
                 <div class="description">创作中心</div>
             </nav>
 
-            <el-button class="post" type="primary" size="large" @click="routerToNewPage('/cc/upload')">
+            <el-button class="post" type="primary" size="large" @click="requireLoginThen('/cc/upload')">
                 <span class="iconfont icon-upload"></span>
                 <span>投稿</span>
             </el-button>
         </div>
     </div>
+    <Dialog :show="showContactDialog" title="联系方式" :width="420" :top="160" :show-cancel="false"
+        :handle-close="() => { showContactDialog = false }">
+        <p class="contact-email">邮箱：{{ CONTACT_EMAIL }}</p>
+    </Dialog>
 </template>
 
 <style lang="scss">
@@ -186,6 +222,24 @@ onMounted(() =>
                 margin-right: 6px;
             }
         }
+
+        .contact-btn {
+            margin-left: 18px;
+            border: none;
+            background: transparent;
+            color: inherit;
+            font-size: 16px;
+            line-height: 16px;
+            cursor: pointer;
+
+            &:hover {
+                opacity: 0.85;
+            }
+
+            .contact-text {
+                margin-left: 6px;
+            }
+        }
     }
 
     .search {
@@ -264,7 +318,8 @@ onMounted(() =>
 .header-bar-light {
     color: white;
 
-    .icon-logo {
+    .icon-logo,
+    .contact-btn {
         color: white;
     }
 
@@ -281,7 +336,8 @@ onMounted(() =>
     box-shadow: 0 2px 4px $color-header-shadow;
     border-bottom: $color-border solid 1px;
 
-    .icon-logo {
+    .icon-logo,
+    .contact-btn {
         color: black;
     }
 
@@ -290,5 +346,13 @@ onMounted(() =>
             color: black;
         }
     }
+}
+
+.contact-email {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: $color-text-primary;
+    word-break: break-all;
 }
 </style>

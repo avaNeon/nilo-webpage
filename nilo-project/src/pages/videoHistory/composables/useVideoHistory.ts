@@ -5,17 +5,18 @@ import message from "@/shared/lib/message";
 import type { VideoPlayHistory } from "@/shared/model/VideoPlayHistory";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
 import type { VideoHistoryItem } from "../model/VideoHistoryGroup";
+import { parseBackendDateTime } from "@/shared/utils/DateUtil";
 
 function getTimelineDate(dateTime: string) {
-  const parsedDateTime = dayjs(dateTime);
-  return parsedDateTime.isValid()
+  const parsedDateTime = parseBackendDateTime(dateTime);
+  return parsedDateTime
     ? parsedDateTime.format("YYYY-MM-DD")
     : "unknown";
 }
 
 function getTimelineDayLabel(dateTime: string) {
-  const parsedDateTime = dayjs(dateTime);
-  if (!parsedDateTime.isValid()) return "未知日期";
+  const parsedDateTime = parseBackendDateTime(dateTime);
+  if (!parsedDateTime) return "未知日期";
 
   const today = dayjs().startOf("day");
 
