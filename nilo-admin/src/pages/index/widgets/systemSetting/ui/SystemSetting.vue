@@ -10,6 +10,10 @@ const {
   handleSubmit,
   handleReset,
 } = useSystemSetting();
+
+// vue-tsc 对"从 composable 拿到的 ref 绑定同名模板 ref"识别不到用途，误报 formRef 未使用；
+// 下面 <el-form ref="formRef"> 实际会由 Vue 运行时正确赋值，这里显式引用一次消除误报
+void formRef;
 </script>
 
 <template>

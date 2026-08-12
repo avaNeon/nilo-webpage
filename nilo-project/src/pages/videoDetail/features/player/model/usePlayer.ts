@@ -25,7 +25,6 @@ import artplayerPluginDanmuku, {
 // ============================================================
 // Assets
 // ============================================================
-import stateSrc from "@/assets/player/play.svg";
 import rollingLoadingSrc from "@/assets/player/rolling-loading.svg";
 import indicatorSrc from "@/assets/player/indicator.svg";
 import closeTheaterModeSrc from "@/assets/player/close-theater-mode.svg";

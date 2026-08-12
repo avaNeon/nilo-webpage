@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { VideoInfo } from '@/shared/model/VideoInfo';
-import { calculateDuration, calculateRelativeTime } from '@/shared/utils/DateUtil';
+import { calculateDuration, calculateRelativeTime, formatBackendDateTime } from '@/shared/utils/DateUtil';
 import { imgRequestUrl, resolveImageUrl } from '@/shared/utils/ImgUtil';
 import { routerToNewPage } from '@/shared/utils/RouteUtil';
 import { useVideoItemRipple } from '../model/useVideoItemRipple';
@@ -310,8 +310,8 @@ async function onCoverError()
                         </div>
                     </div>
                     <div class="post-date">
-                        <span class="create-time">创建时间：{{ props.videoInfo.createTime }}</span>
-                        <span class="last-update-time">最后更新时间：{{ props.videoInfo.lastUpdateTime }}</span>
+                        <span class="create-time">创建时间：{{ formatBackendDateTime(props.videoInfo.createTime) }}</span>
+                        <span class="last-update-time">最后更新时间：{{ formatBackendDateTime(props.videoInfo.lastUpdateTime) }}</span>
                     </div>
                 </div>
                 <div v-if="authorMode" class="right">

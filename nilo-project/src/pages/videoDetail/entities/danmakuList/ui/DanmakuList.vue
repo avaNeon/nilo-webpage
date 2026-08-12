@@ -1,19 +1,11 @@
 <script lang="ts" setup>
 import { useDanmakuStore } from '@/pages/videoDetail/features/player/store/DanmakuStore';
-import { calculateDuration } from '@/shared/utils/DateUtil';
-import dayjs from 'dayjs';
+import { calculateDuration, formatBackendDateTime } from '@/shared/utils/DateUtil';
 
 const danmakuStore = useDanmakuStore()
 
 function formatSendTime(time: string | undefined) {
-    if (!time) {
-        return '';
-    }
-    const date = dayjs(time);
-    if (!date.isValid()) {
-        return '';
-    }
-    return date.format('YYYY-MM-DD');
+    return formatBackendDateTime(time, 'YYYY-MM-DD');
 }
 </script>
 

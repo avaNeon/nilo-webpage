@@ -10,6 +10,7 @@ import artplayerPluginHlsControl from "artplayer-plugin-hls-control";
 import { getHlsMasterUrl } from "../model/hlsUrl";
 import { imgRequestUrl, resolveImageUrl } from "@/shared/utils/ImgUtil";
 import { VideoStatusEnum } from "@/pages/index/widgets/content/upload/model/enum/VideoStatusEnum";
+import { formatBackendDateTime } from "@/shared/utils/DateUtil";
 
 /* —————— Props —————— */
 
@@ -31,7 +32,7 @@ const props = withDefaults(defineProps<{
   getMasterUrl?: (
     videoId: string,
     index: number,
-    options?: { status?: number | null; filePath?: string | null },
+    options?: { status?: number | null; filePath?: string | null; updateType?: number | null },
   ) => string;
 }>(), {
   fileList: () => [],
@@ -459,9 +460,17 @@ const detailFields = computed(() =>
     recommendType: "推荐状态", status: "状态", avatar: "头像路径",
   };
 
+  const timeKeys = new Set(["createTime", "lastUpdateTime", "deleteTime"]);
   for (const [key, label] of Object.entries(fieldMap))
   {
-    if (key in info) entries.push({ label, value: info[key] });
+    if (key in info)
+    {
+      const raw = info[key];
+      entries.push({
+        label,
+        value: timeKeys.has(key) ? (formatBackendDateTime(raw) || raw) : raw,
+      });
+    }
   }
   for (const key of Object.keys(info))
   {

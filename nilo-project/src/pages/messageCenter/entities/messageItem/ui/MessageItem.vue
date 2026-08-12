@@ -8,6 +8,7 @@ import defaultAvatar from '@/assets/user.svg'
 import deleteSrc from '@/assets/icon/img/delete-plain.svg'
 import confirm from '@/shared/lib/confirm'
 import { routerToNewPage } from '@/shared/utils/RouteUtil'
+import { formatBackendDateTime } from '@/shared/utils/DateUtil'
 
 const props = defineProps<{
     message: UserMessage,
@@ -254,8 +255,8 @@ watch(() => props.message.extendJson, () =>
                     </div>
                 </div>
                 <div class="bottom-row">
-                    <span class="create-time" :title="message.createTime || ''">
-                        {{ message.createTime || '未知时间' }}
+                    <span class="create-time" :title="formatBackendDateTime(message.createTime) || ''">
+                        {{ formatBackendDateTime(message.createTime) || '未知时间' }}
                     </span>
                     <el-tooltip content="删除消息" placement="top">
                         <button class="delete-button" @click.stop="onDelete">

@@ -11,6 +11,9 @@ export function useAccount() {
    */
   async function saveUserState() {
     const loginStateStore = useLoginStateStore();
+    if (loginStateStore.loginState === false) {
+      return;
+    }
     const userState = await UserApi.getUserState();
     if (userState) {
       loginStateStore.setFollowerCount(userState.followerCount);

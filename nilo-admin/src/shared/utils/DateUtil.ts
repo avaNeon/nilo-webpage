@@ -77,17 +77,7 @@ export function formatPostTime(value: BackendDateInput): string {
 }
 
 /**
- * Format date strings to relative time.
- * Logic:
- * - More than 1 year ago: X years ago (X年前)
- * - Less than 1 year but more than 1 month: X months ago (X个月前)
- * - Less than 1 month but more than 1 day: X days ago (X天前)
- * - Less than 1 day but more than 1 hour: X hours ago (X小时前)
- * - Less than 1 hour but more than 1 minute: X minutes ago (X分钟前)
- * - Less than 1 minute: Just now (刚刚)
- *
- * @param date Date string returned by the backend (yyyy-MM-dd HH:mm:ss, UTC) or null
- * @returns Formatted string
+ * Format date strings to relative time（后端时间为 UTC）。
  */
 export function calculateRelativeTime(date: BackendDateInput): string {
     if (!date) {
@@ -130,8 +120,7 @@ export function calculateRelativeTime(date: BackendDateInput): string {
 }
 
 /**
- * Transforms a duration in seconds into a human-readable format. The highest display unit is hours.
- * @param duration Duration in seconds
+ * Transforms a duration in seconds into a human-readable format.
  */
 export function calculateDuration(duration: number | null): string {
     if (duration === null) {

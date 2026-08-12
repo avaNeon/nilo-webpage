@@ -2,6 +2,12 @@
 import useCategoryStore from '@/shared/store/CategoryStore';
 import { BODY_PADDING } from '@/shared/config/Config';
 import { useTimer } from '../model/useTimer';
+import { computed } from 'vue';
+
+/** 每排固定展示的分类数量（对应 CSS 中 unfolded 10% / folded 9% 的宽度设计） */
+const ITEMS_PER_ROW = 10;
+/** 折叠态最多展示的排数，超过才需要"展开更多" */
+const MAX_COLLAPSED_ROWS = 2;
 
 const categoryStore = useCategoryStore();
 const { isUnfoldedHovered, isFoldedHovered, itemHover, subItemsDalayAndTransition, waitAndChange, waitAndLeave } = useTimer();
@@ -14,7 +20,20 @@ const props = withDefaults(defineProps<{
     folded: false,
 })
 
+/**
+ * 分类是否超过折叠排数，只有超过时才允许悬停展开 / 显示下拉箭头。
+ * 用固定的"每排数量"直接算，而不是量 DOM 高度：
+ * 量 DOM 高度需要用 ResizeObserver 监听同一个会被这个值反过来改变样式（max-height/overflow）的元素，
+ * 一旦这个值变化触发样式变化、样式变化又改变了尺寸，就会形成量出来 -> 改样式 -> 尺寸变 -> 又触发量 的死循环，
+ * 表现为分类栏每隔一两百毫秒自己抖一下（不需要鼠标悬浮也会抖）。
+ */
+const needsExpand = computed(() =>
+    categoryStore.categoryList.length > ITEMS_PER_ROW * MAX_COLLAPSED_ROWS,
+);
 
+const isExpanded = computed(() =>
+    needsExpand.value && (props.folded ? isFoldedHovered.value : isUnfoldedHovered.value),
+);
 </script>
 
 <template>
@@ -27,7 +46,15 @@ const props = withDefaults(defineProps<{
             <div class="iconfont icon-hot"></div>
             <div class="popular-info">热门</div>
         </RouterLink>
-        <div class="category-items" :class="{ expanded: isUnfoldedHovered, extra: itemHover }">
+        <div
+            class="category-items"
+            :class="{
+                expanded: isExpanded,
+                // 仅在被 max-height 裁切时才切 overflow，否则会在第二排裁切边产生抖动
+                extra: itemHover && needsExpand,
+                'no-clamp': !needsExpand,
+            }"
+        >
             <div :class="['category-item-container', categoryStore.currentPCategory?.categoryNumber === categoryItem.categoryNumber ? 'active' : '']"
                 v-for="categoryItem in categoryStore.categoryList" :key="categoryItem.categoryNumber"
                 @mouseenter="waitAndChange($event)" @mouseleave="waitAndLeave($event)">
@@ -55,17 +82,6 @@ const props = withDefaults(defineProps<{
                 </div>
             </div>
         </div>
-        <!-- <div class="others"> -->
-            <!-- <div class="online-user-count"> -->
-            <!-- <img class="user-count-img" src="@/assets/bilibili_tv.jpg" alt="bilibili"> -->
-            <!-- <span class="count-text">在线人数：</span> -->
-            <!-- <span class="count-number">0</span> -->
-            <!-- </div> -->
-            <!-- <RouterLink class="read" to="/read"> -->
-            <!-- <img class="read-img" src="@/assets/document.svg" alt="document"> -->
-            <!-- <span class="read-text">专栏</span> -->
-            <!-- </RouterLink> -->
-        <!-- </div> -->
     </div>
     <div class="category-bar folded" v-else @mouseenter="isFoldedHovered = true" @mouseleave="isFoldedHovered = false"
         :style="{
@@ -78,7 +94,7 @@ const props = withDefaults(defineProps<{
             <div class="iconfont icon-hot"></div>
             <div class="popular-info">热门</div>
         </RouterLink>
-        <div class="category-items" :class="{ expanded: isFoldedHovered }">
+        <div class="category-items" :class="{ expanded: isExpanded, 'no-clamp': !needsExpand }">
             <RouterLink class="category-item" v-for="categoryItem in categoryStore.categoryList"
                 :key="categoryItem.categoryNumber" :to="`/c/${categoryItem.categoryNumber}`" :style="{
                     '--category-color': categoryItem.color,
@@ -89,7 +105,8 @@ const props = withDefaults(defineProps<{
                 </span>
             </RouterLink>
         </div>
-        <img class="down-arrow" :class="{ rotated: isFoldedHovered }" src="@/assets/down_arrow.svg" alt="展开箭头" />
+        <img v-if="needsExpand" class="down-arrow" :class="{ rotated: isFoldedHovered }" src="@/assets/down_arrow.svg"
+            alt="展开箭头" />
     </div>
 
 </template>
@@ -106,6 +123,10 @@ const props = withDefaults(defineProps<{
 
     &.unfolded {
         border-bottom: $color-border solid 1px;
+        // 不设置这个的话，容器默认 align-items: stretch 会把矮的 category-items 拉到跟高个的 .popular 一样高，
+        // category-items 内部（flex-wrap）又会把这份多余高度摊到每一排的分类块上，
+        // 分类块的实际渲染高度就会比看起来该有的 30px 高出几像素，肉眼看是"晃了一下"
+        align-items: flex-start;
 
         .popular {
             text-decoration: none;
@@ -136,6 +157,8 @@ const props = withDefaults(defineProps<{
 
             display: flex;
             flex-wrap: wrap;
+            align-items: flex-start;
+            align-content: flex-start;
             flex: 1;
             gap: 10px;
             margin: 15px 20px 0px;
@@ -144,6 +167,13 @@ const props = withDefaults(defineProps<{
             max-height: 80px;
 
             transition: max-height 0.2s 0.2s ease; // 收起时有0.2s的过渡时间和0.2s的延迟，延迟时间必须大于subItemsDalayAndTransition，避免和子分类的过渡冲突
+
+            // 未超过两排：不裁切、不动画，避免悬停切换 overflow 导致第二排抖动
+            &.no-clamp {
+                max-height: none;
+                overflow: visible;
+                transition: none;
+            }
 
             &.expanded {
                 max-height: 200px;
@@ -157,6 +187,8 @@ const props = withDefaults(defineProps<{
             .category-item-container {
                 width: calc(10% - 10px);
                 position: relative;
+                // 父级裁切时默认藏住绝对定位子菜单，避免撑高；no-clamp 时保持 visible，禁止悬停切换 overflow
+                overflow: hidden;
 
                 &:hover {
                     overflow: visible;
@@ -165,7 +197,7 @@ const props = withDefaults(defineProps<{
                     .sub-category-items {
                         opacity: 1;
                         visibility: visible;
-                        transform: translateX(-50%) translateY(0);
+                        pointer-events: auto;
                     }
                 }
 
@@ -188,7 +220,7 @@ const props = withDefaults(defineProps<{
                     color: $color-text-secondary;
                     background-color: $color-surface;
                     border-radius: 7px;
-                    transition: background-color 0.3s;
+                    transition: background-color 0.3s, color 0.3s;
 
                     &:hover {
                         background-color: var(--category-hover-bg);
@@ -206,6 +238,7 @@ const props = withDefaults(defineProps<{
                     z-index: 300;
                     top: calc(100% + 4px); // 紧挨着父级
                     left: 50%;
+                    transform: translateX(-50%);
 
                     background-color: white;
                     border: 1px solid $color-border;
@@ -215,14 +248,14 @@ const props = withDefaults(defineProps<{
 
                     opacity: 0;
                     visibility: hidden;
-                    transform: translateX(-50%) translateY(10px);
+                    pointer-events: none;
 
-                    display: flex; // 改回 flex
+                    display: flex;
                     flex-direction: column;
                     justify-content: space-around;
                     row-gap: 10px;
-                    // 子菜单变化时间和延迟保持0.2s
-                    transition-property: opacity, visibility, transform;
+                    // 只用透明度，避免 translateY 造成第二排视觉抖动
+                    transition-property: opacity, visibility;
                     transition-timing-function: ease;
 
                     .sub-category-item {
@@ -249,58 +282,14 @@ const props = withDefaults(defineProps<{
             }
         }
 
-        .others {
-            width: 180px;
-            padding: 5px;
+        .category-items.no-clamp {
+            .category-item-container {
+                overflow: visible;
 
-            min-width: 150px;
-
-            // .online-user-count {
-            //     color: $color-text-primary;
-            //     display: flex;
-            //     align-items: center;
-
-            //     .user-count-img {
-            //         width: 50px;
-            //     }
-
-            //     .count-text {
-            //         font-size: 20px;
-            //         font-weight: 500;
-            //     }
-
-            //     .count-number {
-            //         font-size: 30px;
-            //         font-weight: 500;
-            //     }
-            // }
-
-            // .read {
-            //     padding: 5px 0;
-            //     width: 70px;
-            //     height: 40px;
-            //     line-height: 30px;
-            //     text-align: center;
-            //     color: $color-text-secondary;
-            //     border-radius: 7px;
-            //     text-decoration: none;
-            //     display: flex;
-            //     align-items: center;
-
-            //     &:hover {
-            //         .read-text {
-            //             color: $color-bilibili-blue;
-            //         }
-            //     }
-
-            //     .read-img {
-            //         width: 20px;
-            //     }
-
-            //     .read-text {
-            //         font-size: 16px;
-            //     }
-            // }
+                &:hover {
+                    overflow: visible; // 与默认一致，避免 hidden→visible 切换引发抖动
+                }
+            }
         }
     }
 
@@ -315,6 +304,7 @@ const props = withDefaults(defineProps<{
         padding: 10px 100px;
         background: white;
         justify-content: space-between;
+        align-items: flex-start;
         transition: all 0.3s;
 
         .popular {
@@ -369,6 +359,12 @@ const props = withDefaults(defineProps<{
             max-height: 30px; // 初始最大高度
             transition: max-height 0.2s ease-out;
 
+            &.no-clamp {
+                max-height: none;
+                overflow: visible;
+                transition: none;
+            }
+
             &.expanded {
                 max-height: 150px;
                 transition: max-height 0.2s ease-in; // 展开和收起可以共用或单独设置
@@ -377,7 +373,7 @@ const props = withDefaults(defineProps<{
             .category-item {
                 display: inline-block;
                 text-decoration: none;
-                width: 9%; // 一行10个
+                width: 8.5%; // 一行10个
                 height: 30px;
                 line-height: 30px;
                 text-align: center;
@@ -413,4 +409,3 @@ const props = withDefaults(defineProps<{
 
 }
 </style>
-

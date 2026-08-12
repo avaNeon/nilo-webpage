@@ -5,7 +5,6 @@ import { VIDEO_PAGE_SIDE_PADDING } from '@/shared/config/Config';
 import { inject, onMounted } from 'vue';
 import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import Account from '@/shared/features/account/ui/Account.vue';
 import Player from '@/pages/videoDetail/features/player/ui/Player.vue';
 import useVideoStateStore from '../store/VideoStateStore';
 import VideoPartitionList from '@/pages/videoDetail/entities/videoPartitonList/ui/VideoPartitionList.vue';
@@ -18,6 +17,7 @@ import VideoComment from '@/pages/videoDetail/widgets/videoComment/ui/VideoComme
 import { useRoute } from 'vue-router';
 import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue';
 import { useRecommendVideo } from '../composables/useRecommendVideo';
+import { formatBackendDateTime } from '@/shared/utils/DateUtil';
 
 const {
     avatarUrl,
@@ -59,7 +59,6 @@ onMounted(() =>
 </script>
 
 <template>
-    <Account />
     <CoinDialog @action-done="afterCoinAction" />
     <div v-if="notFound" class="not-found-page">
         <header class="header" :style="{
@@ -101,7 +100,7 @@ onMounted(() =>
                     <div class="video-info">
                         <div class="iconfont icon-play2">{{ videoStateStore.videoInfo?.playCount }}</div>
                         <div class="iconfont icon-danmu">{{ videoStateStore.videoInfo?.danmakuCount }}</div>
-                        <div class="iconfont">{{ videoStateStore.videoInfo?.createTime }}</div>
+                        <div class="iconfont">{{ formatBackendDateTime(videoStateStore.videoInfo?.createTime) }}</div>
                         <div class="post-type">
                             {{ videoStateStore.videoInfo.postType === 1 ? '原创' : '转载' }}
                         </div>

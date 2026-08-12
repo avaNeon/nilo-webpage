@@ -2,7 +2,6 @@
 import { inject, onMounted, onUnmounted, provide } from 'vue'
 import { RouterView } from 'vue-router'
 import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue'
-import Account from '@/shared/features/account/ui/Account.vue'
 import Category from '@/pages/index/entities/category/ui/Category.vue'
 import defaultBg from '@/assets/banner-background-beach.jpg'
 import { BODY_PADDING } from '@/shared/config/Config'
@@ -86,7 +85,6 @@ onUnmounted(() =>
             <VideoList></VideoList>
         </div>
     </div>
-    <Account />
 </template>
 
 <style>

@@ -12,6 +12,7 @@ import Hls from "hls.js";
 import artplayerPluginHlsControl from "artplayer-plugin-hls-control";
 import { getCreatorHlsMasterUrl } from "../model/hlsUrl";
 import { imgRequestUrl, resolveImageUrl } from "@/shared/utils/ImgUtil";
+import { formatBackendDateTime } from "@/shared/utils/DateUtil";
 
 const VideoStatusEnum = {
   Passed: 3,
@@ -464,9 +465,17 @@ const detailFields = computed(() =>
     status: "状态",
   };
 
+  const timeKeys = new Set(["createTime", "lastUpdateTime"]);
   for (const [key, label] of Object.entries(fieldMap))
   {
-    if (key in info) entries.push({ label, value: info[key] });
+    if (key in info)
+    {
+      const raw = info[key];
+      entries.push({
+        label,
+        value: timeKeys.has(key) ? (formatBackendDateTime(raw) || raw) : raw,
+      });
+    }
   }
   return entries;
 });

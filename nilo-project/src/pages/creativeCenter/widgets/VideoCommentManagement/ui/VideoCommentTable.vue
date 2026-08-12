@@ -6,7 +6,7 @@ import Cover from "@/shared/ui/Cover.vue";
 import { imgRequestUrl } from "@/shared/utils/ImgUtil";
 import { CommentApi } from "@/shared/api/CommentApi";
 import message from "@/shared/lib/message";
-import dayjs, { type Dayjs } from "dayjs";
+import { formatPostTime } from "@/shared/utils/DateUtil";
 import { useRouter } from "vue-router";
 
 const emit = defineEmits<{
@@ -56,17 +56,6 @@ const handlePageNoChange = (newPageNo: number) =>
     emit("changePageNo", newPageNo);
     scrollToAnchor();
 };
-
-// ----- 发布时间格式化 -----
-function formatPostTime(postTime: string | null): string
-{
-    if (!postTime) return "";
-    const now: Dayjs = dayjs();
-    const postDate = dayjs(postTime);
-    const diffMin = now.diff(postDate, "minute");
-    if (diffMin < 1) return "刚刚";
-    return postDate.format("YYYY-MM-DD HH:mm");
-}
 
 // ----- 删除按钮确认流程（与评论组件一致） -----
 const confirmingMap = ref<Record<string, boolean>>({});

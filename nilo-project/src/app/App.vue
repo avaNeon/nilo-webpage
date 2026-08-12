@@ -4,21 +4,18 @@ import { onBeforeMount, provide } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useInitCategories } from '@/app/composables/useInitCategories'
 import { useInitSystemConfig } from '@/app/composables/useInitSystemConfig'
-import { useAccount } from '@/shared/composables/useAccount'
+import Account from '@/shared/features/account/ui/Account.vue'
 
 provide('mainContentMaxWidth', 2000)
 provide('mainContentMinWidth', 1440)
 
 const { loadAllCategories } = useInitCategories()
 const { loadSystemConfig } = useInitSystemConfig()
-const { saveUserState } = useAccount()
 
 onBeforeMount(() =>
 {
   loadAllCategories()
   loadSystemConfig()
-  // may take more time
-  saveUserState()
 })
 
 </script>
@@ -26,6 +23,7 @@ onBeforeMount(() =>
 <template>
   <el-config-provider :locale="zhCn">
     <RouterView></RouterView>
+    <Account />
   </el-config-provider>
 </template>
 
