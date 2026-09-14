@@ -1,6 +1,6 @@
 # Nilo用户界面预览
 
-- 后端内容移步至 ☞ 后端仓库：https://github.com/avaNeon/nilo-server/tree/master
+- 后端内容移步至 ☞ 后端仓库：https://github.com/avaNeon/nilo-server
 
 ## 1.首页
 <img width="1920" height="952" alt="portal" src="https://github.com/user-attachments/assets/9e26d145-6a67-4808-8021-d2ec488d2379" />
