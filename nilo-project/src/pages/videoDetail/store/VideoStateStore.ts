@@ -9,6 +9,8 @@ const useVideoStateStore = defineStore('videoState', {
             videoInfo: {} as VideoInfo,
             videoFileList: [] as VideoInfoFile[],
             autoPlay: true as boolean,
+            /** 页面其他地方请求播放器跳到某个分 P 的某一秒（例如 AI 助手的片段）；nonce 保证重复点同一个时间点也能触发 */
+            seekRequest: null as { fileIndex: number; sec: number; nonce: number } | null,
         }
     },
     actions: {
@@ -23,6 +25,13 @@ const useVideoStateStore = defineStore('videoState', {
         },
         setAutoPlay(auto: boolean) {
             this.autoPlay = auto
+        },
+        requestSeek(fileIndex: number, sec: number) {
+            this.seekRequest = {
+                fileIndex,
+                sec,
+                nonce: (this.seekRequest?.nonce ?? 0) + 1,
+            }
         },
     }
 })

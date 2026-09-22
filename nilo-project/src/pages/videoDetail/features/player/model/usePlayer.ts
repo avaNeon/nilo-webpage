@@ -84,6 +84,14 @@ function subtitleFontSizeValue(scalePercent: number): string {
   return `clamp(${SUBTITLE_SIZE_FLOOR_PX}px, ${widthPercent}cqw, ${SUBTITLE_SIZE_CEILING_PX}px)`;
 }
 
+/** 解析链接里的 ?t= 秒数，非法或负数返回 null */
+function parseSeekSec(raw: unknown): number | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const sec = Number(value);
+  return Number.isFinite(sec) && sec >= 0 ? sec : null;
+}
+
 const HLS_CONFIG = {
   maxFragLookUpTolerance: 0.5,
   // fast fail
@@ -175,6 +183,8 @@ export function usePlayer() {
   let userPreferLoop = false;
   /** 自动连播切分 P 后需要主动 play */
   let pendingAutoPlayNext = false;
+  /** 加载完分 P 后要跳到的秒数（?t= 或跨分 P 的跳转请求），必须等 loadRemote 完成、有了 duration 再 seek */
+  let pendingSeekSec: number | null = null;
 
   /** 当前分 P 之后是否还有下一集 */
   function hasNextPartition() {
@@ -439,6 +449,31 @@ export function usePlayer() {
     await art.value.switchUrl(url);
   }
 
+  /**
+   * 跳到当前分 P 的第 sec 秒。播放器没就绪或还没有 duration 时返回 false。
+   * 必须用 art.seek 而不是改 currentTime：只有 seek 会 emit 'seek'，弹幕插件靠它重置
+   */
+  function seekTo(sec: number): boolean {
+    const player = art.value;
+    if (!player || !player.duration) return false;
+    // 跳到结尾会触发 video:ended，开着自动连播会直接切到下一 P，所以最多跳到倒数第 1 秒
+    player.seek = Math.min(Math.max(0, sec), player.duration - 1);
+    // 隐藏「上次看到 xx:xx」提示层，否则用户一点又跳回旧位置
+    const autoPlaybackLayer = player.layers["auto-playback"];
+    if (autoPlaybackLayer) {
+      autoPlaybackLayer.style.display = "none";
+    }
+    return true;
+  }
+
+  /** 消费待跳转秒数；只能在 loadRemote 完成后调（之前 duration 为 0，seek 会被截成 0） */
+  function consumePendingSeek() {
+    if (pendingSeekSec === null) return;
+    const sec = pendingSeekSec;
+    pendingSeekSec = null;
+    seekTo(sec);
+  }
+
   /** 确保分 P 列表已加载 */
   async function ensureVideoFileList(): Promise<void> {
     if (videoStateStore.videoFileList.length > 0) return;
@@ -475,7 +510,11 @@ export function usePlayer() {
 
     const url = videoApi.getPublicVideoResource(filePath);
     if (!url) return;
-    await Promise.all([loadRemote(url), loadSubtitles(filePath)]);
+    // 视频 canplay 之后马上跳转，不等字幕探测完；字幕照样同时开始加载
+    await Promise.all([
+      loadRemote(url).then(consumePendingSeek),
+      loadSubtitles(filePath),
+    ]);
   }
 
   /** 探测当前分P的字幕。有原文时默认打开原文，没有字幕就不显示切换项 */
@@ -815,6 +854,9 @@ export function usePlayer() {
       applySubtitleSize(art.value, subtitleScale);
     }
 
+    // 链接带 ?t= 时（例如 AI 助手的片段在新标签页打开），这一 P 加载完后跳到对应秒数
+    pendingSeekSec = parseSeekSec(route.query.t);
+
     // 播放器创建后立即拉分 P 并起播 public HLS
     if (videoId.value) {
       void loadVideoFileByIndex(Number(route.params.index));
@@ -1051,6 +1093,46 @@ export function usePlayer() {
         } catch (error) {
           console.warn("[player] 自动连播起播失败", error);
         }
+      }
+    },
+  );
+
+  // 页面其他地方（例如 AI 助手的片段）请求跳到某个分 P 的某一秒
+  watch(
+    () => videoStateStore.seekRequest,
+    async request => {
+      if (!request || !videoId.value) return;
+
+      const currentIndex = Number(route.params.index) || 1;
+      if (request.fileIndex !== currentIndex) {
+        // 不同分 P：先记下秒数，按现有方式切 P，由上面的 params watch 加载完成后消费；
+        // 和同一分 P 的跳转一样，加载完主动起播
+        pendingSeekSec = request.sec;
+        pendingAutoPlayNext = true;
+        router.push({
+          name: "video",
+          params: {
+            videoId: videoId.value,
+            index: request.fileIndex,
+          },
+        });
+        return;
+      }
+
+      // 同一分 P：直接跳，不重新加载 HLS；还没拿到 duration（这一 P 还在加载）就等加载完再跳
+      if (!seekTo(request.sec)) {
+        pendingSeekSec = request.sec;
+        return;
+      }
+      const player = art.value;
+      if (!player) return;
+      try {
+        await player.play();
+        player.controls.show = false;
+        player.mask.show = false;
+      } catch (error) {
+        // 被浏览器拦截自动播放就算了，进度已经跳过去了
+        console.warn("[player] 跳转后起播失败", error);
       }
     },
   );

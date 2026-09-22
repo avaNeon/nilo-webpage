@@ -18,6 +18,7 @@ import { useRoute } from 'vue-router';
 import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue';
 import { useRecommendVideo } from '../composables/useRecommendVideo';
 import { formatBackendDateTime } from '@/shared/utils/DateUtil';
+import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue';
 
 const {
     avatarUrl,
@@ -50,6 +51,12 @@ const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
 const avatarSize = 60
+
+/** AI 助手里点了当前视频的片段：交给播放器跳转 */
+function onAiJump({ fileIndex, startSec }: { fileIndex: number; startSec: number })
+{
+    videoStateStore.requestSeek(fileIndex, startSec)
+}
 
 onMounted(() =>
 {
@@ -169,6 +176,14 @@ onMounted(() =>
                     </div>
                 </div>
                 <div class="sidebar">
+                    <!-- AI 助手：嵌在侧栏的折叠卡片里（悬浮球会被播放器的迷你窗挡住），默认收起 -->
+                    <div class="ai-assistant-card">
+                        <el-collapse class="collapse">
+                            <el-collapse-item class="collapse-item" title="AI 视频助手" name="1">
+                                <AiAssistant embedded :video-id="route.params.videoId as string" @jump="onAiJump" />
+                            </el-collapse-item>
+                        </el-collapse>
+                    </div>
                     <DanmakuList v-if="isCommentAvailable()" class="danmaku-list"></DanmakuList>
                     <VideoPartitionList></VideoPartitionList>
                     <div v-if="recommendVideoList.length > 0" class="recommend-video-list">
@@ -400,6 +415,31 @@ $right-content-max-width: 28%;
             .sidebar {
                 grid-column: 2;
                 grid-row: 1 / span 2;
+
+                // 与 DanmakuList 的折叠卡片同风格
+                .ai-assistant-card {
+                    margin-bottom: 10px;
+
+                    .collapse {
+                        border-radius: 10px;
+                        overflow: hidden;
+
+                        :deep(.el-collapse-item__header) {
+                            background-color: #f5f5f5;
+                            font-size: 16px;
+                            padding-left: 15px;
+                        }
+
+                        :deep(.el-collapse-item__wrap) {
+                            background-color: #f5f5f5;
+                            padding: 0;
+                        }
+
+                        :deep(.el-collapse-item__content) {
+                            padding-bottom: 0;
+                        }
+                    }
+                }
 
                 .danmaku-list {
                     margin-bottom: 10px;

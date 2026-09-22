@@ -1,4 +1,4 @@
-import type { AiCitedVideo } from "./AiAnswer";
+import type { AiCitedSegment, AiCitedVideo } from "./AiAnswer";
 
 /** 对话框里的一条消息 */
 export interface AiChatMessage {
@@ -6,4 +6,6 @@ export interface AiChatMessage {
   content: string;
   /** 助手消息引用的视频，点击跳转到视频页 */
   videos?: AiCitedVideo[];
+  /** 助手消息引用的视频片段，点击跳到对应分 P 的对应时间 */
+  segments?: AiCitedSegment[];
 }
