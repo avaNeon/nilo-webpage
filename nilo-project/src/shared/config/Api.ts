@@ -122,6 +122,8 @@ const Api = {
   loadHotVideo: "/video/hot/",
   // ——————视频搜索——————
   videoSearch: "/video-search",
+  // ——————AI 助手（走 nilo-ai）——————
+  aiAsk: "/ai/ask",
 };
 
 /** Web 服务路径前缀 */
@@ -130,9 +132,12 @@ const WEB_SERVICE_PREFIX = "/web";
 /** Comment 微服务路径前缀（与 VITE_APP_BASE_URL 拼接后为 /api/comment） */
 const COMMENT_SERVICE_PREFIX = "/comment";
 
+/** AI 微服务路径前缀（与 VITE_APP_BASE_URL 拼接后为 /api/ai） */
+const AI_SERVICE_PREFIX = "/ai";
+
 /**
  * 按业务 path 选择服务前缀。
- * 用户端评论 CRUD / 点赞点踩走 nilo-comment；创作中心评论管理仍走 nilo-web。
+ * 用户端评论 CRUD / 点赞点踩走 nilo-comment；创作中心评论管理仍走 nilo-web；AI 助手走 nilo-ai。
  */
 function resolveServicePrefix(url: string): string {
   if (
@@ -140,6 +145,9 @@ function resolveServicePrefix(url: string): string {
     url.startsWith("/user/commentAction")
   ) {
     return COMMENT_SERVICE_PREFIX;
+  }
+  if (url.startsWith("/ai/")) {
+    return AI_SERVICE_PREFIX;
   }
   return WEB_SERVICE_PREFIX;
 }
@@ -154,5 +162,6 @@ export {
   getWebBaseUrl,
   WEB_SERVICE_PREFIX,
   COMMENT_SERVICE_PREFIX,
+  AI_SERVICE_PREFIX,
   resolveServicePrefix,
 };

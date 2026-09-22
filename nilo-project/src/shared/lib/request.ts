@@ -113,6 +113,8 @@ interface RequestConfig {
   errorCallback?: (data: any) => void;
   /** 用于终止请求 */
   signal?: AbortSignal;
+  /** 超时时间（毫秒），不传用实例默认的 10 秒 */
+  timeout?: number;
 }
 
 /**
@@ -133,6 +135,7 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     uploadProgressCallback,
     errorCallback,
     signal,
+    timeout,
   } = config;
 
   // 默认在请求头中携带 token
@@ -142,7 +145,7 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     token: token || "",
   };
 
-  // 拼接二级前缀，兼容 Vite 代理（web / comment）
+  // 拼接二级前缀，兼容 Vite 代理（web / comment / ai）
   const prefix = `${import.meta.env.VITE_APP_BASE_URL}${resolveServicePrefix(url)}`;
   const completeUrl = prefix + url;
 
@@ -158,6 +161,9 @@ const request = (config: RequestConfig): Promise<BaseResponse> => {
     showError,
     signal,
   };
+  if (timeout !== undefined) {
+    axiosConfig.timeout = timeout;
+  }
 
   // POST / PUT：序列化请求体
   if (method.toLowerCase() === "post" || method.toLowerCase() === "put") {

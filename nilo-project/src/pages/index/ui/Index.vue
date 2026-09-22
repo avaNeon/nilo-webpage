@@ -9,6 +9,7 @@ import { useBackgroundImg } from '../composables/useBackgroundImg'
 import { useCategory } from '../composables/useCategory'
 import { useScroll } from '../composables/useScroll'
 import VideoList from '@/pages/index/widgets/videoList/ui/VideoList.vue'
+import AiAssistant from '@/pages/index/features/aiAssistant/ui/AiAssistant.vue'
 import { useVideo } from '../composables/useVideo'
 
 const { bgImgUrl } = useBackgroundImg()
@@ -84,6 +85,8 @@ onUnmounted(() =>
         }">
             <VideoList></VideoList>
         </div>
+        <!-- AI 助手：右下角常驻按钮，fixed 定位，放哪里都不影响布局 -->
+        <AiAssistant />
     </div>
 </template>
 

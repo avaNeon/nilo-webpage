@@ -34,6 +34,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/comment/, ''),
       },
+      // AI 助手微服务（/ai/**）
+      "/api/ai": {
+        target: "http://localhost:7076/",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ai/, ''),
+      },
     }
   },
 })
