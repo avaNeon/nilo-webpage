@@ -1,39 +1,107 @@
-import request from "@/shared/lib/request";
-import { Api } from "@/shared/config/Api";
-import type { AiAnswer } from "../model/AiAnswer";
+import Cookies from "js-cookie";
+import { Api, resolveServicePrefix } from "@/shared/config/Api";
+import type { AiCitedSegment, AiCitedVideo } from "../model/AiAnswer";
 
-/** 一次回答要先分类、再调工具、再生成，经常超过默认的 10 秒 */
-const ASK_TIMEOUT = 60 * 1000;
+/** 和后端这条连接的 90 秒超时对齐 */
+export const ASK_TIMEOUT = 90 * 1000;
 
 export const AiAssistantApi = {
   /**
-   * 向 AI 助手提问
-   * @param question 问题
-   * @param conversationId 会话 id，同一个 id 就是同一段对话
-   * @param videoId 在视频详情页提问时带上当前视频 id，首页不传
-   * @returns 回答；失败返回 null（不弹全局错误提示，由对话框自己显示）
+   * 流式提问。先收到进度，核对完时间点后再一段段收到正文，最后收到视频和片段
    */
   async ask(
     question: string,
     conversationId: string,
-    videoId?: string,
-  ): Promise<AiAnswer | null> {
-    const data: Record<string, string> = { question, conversationId };
-    // 没有 videoId 时不能放这个 key：form 序列化会把 undefined 变成空串
+    videoId: string | undefined,
+    handlers: AskStreamHandlers,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const body = new URLSearchParams({ question, conversationId });
     if (videoId) {
-      data.videoId = videoId;
+      body.set("videoId", videoId);
     }
-    const result = await request({
-      method: "post",
-      url: Api.aiAsk,
-      data,
-      dataType: "form",
-      showError: false,
-      timeout: ASK_TIMEOUT,
+    const prefix = `${import.meta.env.VITE_APP_BASE_URL}${resolveServicePrefix(Api.aiAsk)}`;
+    const response = await fetch(prefix + Api.aiAsk, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        token: Cookies.get("token_normal") || "",
+      },
+      credentials: "include",
+      body,
+      signal,
     });
-    if (!result?.data) {
-      return null;
+    if (!response.ok || !response.body) {
+      handlers.onError("出了点问题，请稍后再试。");
+      return;
     }
-    return result.data;
+    await readSse(response.body, handlers);
   },
 };
+
+export interface AskStreamHandlers {
+  onStatus: (text: string) => void;
+  onDelta: (text: string) => void;
+  onDone: (done: {
+    answer: string;
+    videos: AiCitedVideo[];
+    segments: AiCitedSegment[];
+  }) => void;
+  onError: (text: string) => void;
+}
+
+/** 读 SSE：event 行 + data 行，空行结束一条 */
+async function readSse(body: ReadableStream<Uint8Array>, handlers: AskStreamHandlers) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    let splitAt = buffer.indexOf("\n\n");
+    while (splitAt >= 0) {
+      dispatchFrame(buffer.slice(0, splitAt), handlers);
+      buffer = buffer.slice(splitAt + 2);
+      splitAt = buffer.indexOf("\n\n");
+    }
+  }
+}
+
+function dispatchFrame(raw: string, handlers: AskStreamHandlers) {
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trim());
+    }
+  }
+  if (dataLines.length === 0) {
+    return;
+  }
+  const payload = JSON.parse(dataLines.join("\n")) as { text?: string } & AskStreamDone;
+  if (event === "status" && payload.text) {
+    handlers.onStatus(payload.text);
+  } else if (event === "delta" && payload.text) {
+    handlers.onDelta(payload.text);
+  } else if (event === "done") {
+    handlers.onDone({
+      answer: payload.answer ?? "",
+      videos: payload.videos ?? [],
+      segments: payload.segments ?? [],
+    });
+  } else if (event === "error") {
+    handlers.onError(payload.text || "出了点问题，请稍后再试。");
+  }
+}
+
+interface AskStreamDone {
+  answer?: string;
+  videos?: AiCitedVideo[];
+  segments?: AiCitedSegment[];
+}

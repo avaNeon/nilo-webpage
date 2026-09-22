@@ -1,5 +1,5 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from "vue";
-import { AiAssistantApi } from "../api/AiAssistantApi";
+import { AiAssistantApi, ASK_TIMEOUT } from "../api/AiAssistantApi";
 import type { AiChatMessage } from "./AiChatMessage";
 
 /** 与后端 @Size(max = 100) 保持一致 */
@@ -33,6 +33,9 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
   /** 会话 id，后端靠它把多轮对话串起来；开始新对话时重新生成 */
   let conversationId = createConversationId();
 
+  /** 正在进行的流式请求，新对话或换视频时断开 */
+  let askAbort: AbortController | null = null;
+
   /* ————————方法———————— */
 
   /** 展开 / 收起对话框（收起不清空，同一次浏览里还能接着聊） */
@@ -40,11 +43,14 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
     visible.value = !visible.value;
   }
 
-  /** 开始新对话：清空消息，换一个会话 id */
+  /** 开始新对话：清空消息，换一个会话 id，进行中的回答不再写进来 */
   function reset() {
+    conversationId = createConversationId();
+    askAbort?.abort();
+    askAbort = null;
+    sending.value = false;
     messages.value = [welcome(toValue(videoId))];
     input.value = "";
-    conversationId = createConversationId();
   }
 
   /** 发送输入框里的问题 */
@@ -58,30 +64,73 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
     sending.value = true;
 
     const askedId = conversationId;
-    const answer = await AiAssistantApi.ask(
-      question,
-      askedId,
-      toValue(videoId),
-    );
-    sending.value = false;
-
-    // 等待期间点了「新对话」，这条回答属于旧对话，丢掉
-    if (askedId !== conversationId) {
-      return;
-    }
-    if (!answer) {
-      messages.value.push({
-        role: "assistant",
-        content: "出了点问题，请稍后再试。",
-      });
-      return;
-    }
     messages.value.push({
       role: "assistant",
-      content: answer.answer,
-      videos: answer.videos,
-      segments: answer.segments,
+      content: "",
+      pending: "正在看你的问题",
     });
+    const reply = messages.value[messages.value.length - 1]!;
+
+    askAbort?.abort();
+    const abort = new AbortController();
+    askAbort = abort;
+    const timer = window.setTimeout(() => abort.abort(), ASK_TIMEOUT);
+    let finished = false;
+
+    try {
+      await AiAssistantApi.ask(
+        question,
+        askedId,
+        toValue(videoId),
+        {
+          onStatus(text) {
+            if (askedId !== conversationId) return;
+            reply.pending = text;
+          },
+          onDelta(text) {
+            if (askedId !== conversationId) return;
+            reply.pending = undefined;
+            reply.content += text;
+          },
+          onDone(done) {
+            if (askedId !== conversationId) return;
+            finished = true;
+            reply.pending = undefined;
+            reply.content = done.answer;
+            reply.videos = done.videos;
+            reply.segments = done.segments;
+          },
+          onError(text) {
+            if (askedId !== conversationId) return;
+            reply.pending = undefined;
+            reply.content = text;
+          },
+        },
+        abort.signal,
+      );
+      if (askedId === conversationId && !finished) {
+        reply.pending = undefined;
+        reply.content = reply.content || "出了点问题，请稍后再试。";
+      }
+    } catch (error) {
+      // 新对话会先换会话 id 再断开，这里什么都不用写
+      if (askedId !== conversationId) return;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        reply.pending = undefined;
+        reply.content = reply.content || "出了点问题，请稍后再试。";
+        return;
+      }
+      reply.pending = undefined;
+      reply.content = "出了点问题，请稍后再试。";
+    } finally {
+      window.clearTimeout(timer);
+      if (askAbort === abort) {
+        askAbort = null;
+      }
+      if (askedId === conversationId) {
+        sending.value = false;
+      }
+    }
   }
 
   /* ————————监听———————— */
