@@ -34,7 +34,13 @@ const placeholder = computed(() =>
 const messageListRef = ref<HTMLElement | null>(null)
 
 // 有新消息、开始等待回答、刚展开对话框时，都滚到最底部
-watch([() => messages.value.length, sending, visible], async () =>
+watch([
+    () => messages.value.length,
+    () => messages.value[messages.value.length - 1]?.content,
+    () => messages.value[messages.value.length - 1]?.pending,
+    sending,
+    visible,
+], async () =>
 {
     await nextTick()
     const el = messageListRef.value
@@ -100,7 +106,9 @@ function onSegmentClick(segment: AiCitedSegment)
 
                 <div ref="messageListRef" class="message-list">
                     <div v-for="(message, index) in messages" :key="index" :class="['message', message.role]">
-                        <div class="bubble">{{ message.content }}</div>
+                        <div class="bubble" :class="{ thinking: !message.content && message.pending }">
+                            {{ message.content || message.pending }}
+                        </div>
                         <div v-if="message.segments?.length" class="segments">
                             <template v-for="segment in message.segments" :key="segmentKey(segment)">
                                 <!-- 当前视频的片段：本页跳转进度 -->
@@ -131,9 +139,6 @@ function onSegmentClick(segment: AiCitedSegment)
                                 <span>{{ video.videoName }}</span>
                             </RouterLink>
                         </div>
-                    </div>
-                    <div v-if="sending" class="message assistant">
-                        <div class="bubble thinking">正在思考…</div>
                     </div>
                 </div>
 
