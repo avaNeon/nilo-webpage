@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, toValue, watch, type MaybeRefOrGetter } from "vue";
 import { AiAssistantApi } from "../api/AiAssistantApi";
 import type { AiChatMessage } from "./AiChatMessage";
 
@@ -8,14 +8,21 @@ export const QUESTION_MAX_LENGTH = 100;
 const WELCOME_TEXT =
   "你好，我是 Nilo 视频助手。想看什么告诉我，我帮你在站内找。";
 
-export function useAiAssistant() {
+/** 视频详情页里问的是当前这个视频 */
+const VIDEO_WELCOME_TEXT =
+  "你好，我是 Nilo 视频助手。关于这个视频想问什么？比如：某个内容在第几分钟讲的。";
+
+/**
+ * @param videoId 视频详情页传当前视频 id，提问时一起带给后端；首页不传
+ */
+export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
   /* ————————状态———————— */
 
   /** 对话框是否展开 */
   const visible = ref(false);
 
   /** 当前对话的消息，只存在内存里，刷新页面就没了 */
-  const messages = ref<AiChatMessage[]>([welcome()]);
+  const messages = ref<AiChatMessage[]>([welcome(toValue(videoId))]);
 
   /** 输入框内容 */
   const input = ref("");
@@ -35,7 +42,7 @@ export function useAiAssistant() {
 
   /** 开始新对话：清空消息，换一个会话 id */
   function reset() {
-    messages.value = [welcome()];
+    messages.value = [welcome(toValue(videoId))];
     input.value = "";
     conversationId = createConversationId();
   }
@@ -51,7 +58,11 @@ export function useAiAssistant() {
     sending.value = true;
 
     const askedId = conversationId;
-    const answer = await AiAssistantApi.ask(question, askedId);
+    const answer = await AiAssistantApi.ask(
+      question,
+      askedId,
+      toValue(videoId),
+    );
     sending.value = false;
 
     // 等待期间点了「新对话」，这条回答属于旧对话，丢掉
@@ -69,8 +80,17 @@ export function useAiAssistant() {
       role: "assistant",
       content: answer.answer,
       videos: answer.videos,
+      segments: answer.segments,
     });
   }
+
+  /* ————————监听———————— */
+
+  // 换了视频就开新对话：后端按会话 id 在 Redis 里存多轮记忆，不换的话上一个视频的上下文会串过来
+  watch(
+    () => toValue(videoId),
+    () => reset(),
+  );
 
   return {
     visible,
@@ -83,8 +103,11 @@ export function useAiAssistant() {
   };
 }
 
-function welcome(): AiChatMessage {
-  return { role: "assistant", content: WELCOME_TEXT };
+function welcome(videoId?: string): AiChatMessage {
+  return {
+    role: "assistant",
+    content: videoId ? VIDEO_WELCOME_TEXT : WELCOME_TEXT,
+  };
 }
 
 function createConversationId(): string {
