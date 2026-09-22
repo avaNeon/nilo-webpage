@@ -51,10 +51,38 @@ import * as videoOnlineApi from "@/pages/videoDetail/features/player/api/VideoOn
 import { usePlayCount } from "@/pages/videoDetail/features/player/model/usePlayCount";
 import { VideoPlayHistoryApi } from "@/shared/api/VideoPlayHistoryApi";
 import { getOrCreateSessionId } from "@/shared/lib/sessionId";
+import { publicSubtitleUrl } from "@/shared/config/Minio";
 
 // ============================================================
 // Module-level constants
 // ============================================================
+
+const SUBTITLE_CONTROL_NAME = "subtitle-track";
+const SUBTITLE_SIZE_NAME = "subtitle-size";
+const ORIGINAL_SUBTITLE_NAME = "subtitle.srt";
+const CHINESE_SUBTITLE_NAME = "subtitle.zh.srt";
+/**
+ * 100% 时字号是播放器宽度的 2.2%：普通窗口大约 18px，全屏、剧场模式会跟着变大。
+ * 滑块调的是这个比例，不是固定像素
+ */
+const SUBTITLE_WIDTH_PERCENT = 2.2;
+const SUBTITLE_SCALE_MIN = 70;
+const SUBTITLE_SCALE_MAX = 150;
+const SUBTITLE_SCALE_STEP = 5;
+const SUBTITLE_SCALE_DEFAULT = 100;
+/** 窗口特别窄或特别宽时，不让字小到看不清，也不让字大到挡住画面 */
+const SUBTITLE_SIZE_FLOOR_PX = 12;
+const SUBTITLE_SIZE_CEILING_PX = 64;
+
+function subtitleFontSizeValue(scalePercent: number): string {
+  const scale = Math.min(
+    SUBTITLE_SCALE_MAX,
+    Math.max(SUBTITLE_SCALE_MIN, scalePercent),
+  );
+  const widthPercent =
+    Math.round(((SUBTITLE_WIDTH_PERCENT * scale) / 100) * 1000) / 1000;
+  return `clamp(${SUBTITLE_SIZE_FLOOR_PX}px, ${widthPercent}cqw, ${SUBTITLE_SIZE_CEILING_PX}px)`;
+}
 
 const HLS_CONFIG = {
   maxFragLookUpTolerance: 0.5,
@@ -102,6 +130,9 @@ export function usePlayer() {
     minWidth: "0",
   });
   const coverSrc = ref<string>("");
+  let subtitleLoadId = 0;
+  /** 分 P 切换时保留用户选过的比例，100 表示跟播放器宽度的默认比例 */
+  let subtitleScale = SUBTITLE_SCALE_DEFAULT;
   const watcherCount = ref("1");
   const timer = ref(0);
   const interval = 10_000;
@@ -444,7 +475,152 @@ export function usePlayer() {
 
     const url = videoApi.getPublicVideoResource(filePath);
     if (!url) return;
-    await loadRemote(url);
+    await Promise.all([loadRemote(url), loadSubtitles(filePath)]);
+  }
+
+  /** 探测当前分P的字幕。有原文时默认打开原文，没有字幕就不显示切换项 */
+  async function loadSubtitles(filePath: string) {
+    const requestId = ++subtitleLoadId;
+    const player = art.value;
+    if (!player) return;
+    clearSubtitle(player);
+
+    const originalUrl = publicSubtitleUrl(filePath, ORIGINAL_SUBTITLE_NAME);
+    const chineseUrl = publicSubtitleUrl(filePath, CHINESE_SUBTITLE_NAME);
+    const [hasOriginal, hasChinese] = await Promise.all([
+      subtitleExists(originalUrl),
+      subtitleExists(chineseUrl),
+    ]);
+    if (requestId !== subtitleLoadId || art.value !== player) return;
+
+    const tracks: { html: string; url: string; default?: boolean }[] = [];
+    if (hasOriginal) {
+      tracks.push({
+        html: hasChinese ? "原文" : "字幕",
+        url: originalUrl,
+        default: true,
+      });
+    }
+    if (hasChinese) {
+      tracks.push({ html: "中文", url: chineseUrl });
+    }
+    if (tracks.length === 0) return;
+
+    const selected = tracks.find(track => track.default) ?? tracks[0]!;
+    applySubtitleSize(player, subtitleScale);
+    showSubtitleUi(player, tracks, selected.html);
+    player.subtitle.show = true;
+    void player.subtitle.switch(selected.url, {
+      type: "srt",
+      name: selected.html,
+    });
+  }
+
+  /**
+   * 字幕切换和画质一样：右侧控制栏直接弹出选项，设置里也留一项。
+   * 字号滑块调的是相对播放器宽度的比例，范围 {@link SUBTITLE_SCALE_MIN}%–{@link SUBTITLE_SCALE_MAX}%。
+   */
+  function showSubtitleUi(
+    player: Artplayer,
+    tracks: { html: string; url: string; default?: boolean }[],
+    currentLabel: string,
+  ) {
+    const selector = [{ html: "关闭", url: "" }, ...tracks];
+    const onSelect = function (
+      this: Artplayer,
+      item: { html?: string; url?: string },
+    ) {
+      const subtitleUrl = String(item.url ?? "");
+      if (!subtitleUrl) {
+        this.subtitle.show = false;
+        return item.html;
+      }
+      this.subtitle.show = true;
+      void this.subtitle.switch(subtitleUrl, {
+        type: "srt",
+        name: String(item.html),
+      });
+      return item.html;
+    };
+
+    player.controls.update({
+      name: SUBTITLE_CONTROL_NAME,
+      position: "right",
+      html: currentLabel,
+      style: { padding: "0 10px" },
+      selector,
+      onSelect,
+    } as any);
+
+    player.setting.update({
+      name: SUBTITLE_CONTROL_NAME,
+      html: "字幕",
+      tooltip: currentLabel,
+      width: 200,
+      selector,
+      onSelect,
+    } as any);
+
+    player.setting.update({
+      name: SUBTITLE_SIZE_NAME,
+      html: "字幕大小",
+      tooltip: `${subtitleScale}%`,
+      range: [
+        subtitleScale,
+        SUBTITLE_SCALE_MIN,
+        SUBTITLE_SCALE_MAX,
+        SUBTITLE_SCALE_STEP,
+      ],
+      onChange(item) {
+        const scale = applySubtitleSize(this, Number(item.range?.[0]));
+        return `${scale}%`;
+      },
+      onRange(item) {
+        const scale = applySubtitleSize(this, Number(item.range?.[0]));
+        return `${scale}%`;
+      },
+    });
+  }
+
+  /**
+   * 把字号写成播放器宽度的百分比。cqw 相对最近的容器，所以播放器本身要标成 inline-size 容器
+   */
+  function applySubtitleSize(player: Artplayer, scalePercent: number) {
+    const next = Math.min(
+      SUBTITLE_SCALE_MAX,
+      Math.max(SUBTITLE_SCALE_MIN, Math.round(scalePercent)),
+    );
+    subtitleScale = next;
+    const playerElement = player.template.$player;
+    playerElement.style.containerType = "inline-size";
+    playerElement.style.setProperty(
+      "--art-subtitle-font-size",
+      subtitleFontSizeValue(next),
+    );
+    return next;
+  }
+
+  function clearSubtitle(player: Artplayer) {
+    if (player.controls[SUBTITLE_CONTROL_NAME]) {
+      player.controls.remove(SUBTITLE_CONTROL_NAME);
+    }
+    if (player.setting.find(SUBTITLE_CONTROL_NAME)) {
+      player.setting.remove(SUBTITLE_CONTROL_NAME);
+    }
+    if (player.setting.find(SUBTITLE_SIZE_NAME)) {
+      player.setting.remove(SUBTITLE_SIZE_NAME);
+    }
+    player.subtitle.show = false;
+  }
+
+  async function subtitleExists(url: string): Promise<boolean> {
+    if (!url) return false;
+    try {
+      const response = await fetch(url);
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -514,6 +690,11 @@ export function usePlayer() {
       fullscreen: true,
       fullscreenWeb: true,
       subtitleOffset: false,
+      cssVar: {
+        "--art-subtitle-bottom": "48px",
+        "--art-subtitle-font-size": subtitleFontSizeValue(subtitleScale),
+        "--art-subtitle-border": "rgba(0, 0, 0, 0.75)",
+      },
       miniProgressBar: true,
       mutex: true,
       backdrop: true,
@@ -629,6 +810,10 @@ export function usePlayer() {
         }),
       ],
     });
+
+    if (art.value) {
+      applySubtitleSize(art.value, subtitleScale);
+    }
 
     // 播放器创建后立即拉分 P 并起播 public HLS
     if (videoId.value) {
@@ -829,6 +1014,7 @@ export function usePlayer() {
   // Cleanup (should be called in onBeforeUnmount)
   // ──────────────────────────────────────────────────────────
   function cleanup() {
+    subtitleLoadId++;
     cleanTimer();
     cleanupToggleButton();
     cleanupFullscreenButton();

@@ -53,6 +53,14 @@ function publicHlsMasterUrl(filePath: string): string {
   return `${minioEndpoint}/${videoBucket}/public/${key}/master.m3u8`;
 }
 
+/** 已发布分P目录下的字幕，和 master.m3u8 同级 */
+function publicSubtitleUrl(filePath: string, fileName: string): string {
+  const key = normalizeKey(filePath);
+  const name = normalizeKey(fileName);
+  if (!key || !name) return "";
+  return `${minioEndpoint}/${videoBucket}/public/${key}/${name}`;
+}
+
 /** 去掉 `tmp/` 前缀得到 plain key */
 function toPlainKey(objectKey: string): string {
   return objectKey.startsWith("tmp/") ? objectKey.slice(4) : objectKey;
@@ -67,5 +75,6 @@ export {
   publicImageThumbUrl,
   videoUploadUrl,
   publicHlsMasterUrl,
+  publicSubtitleUrl,
   toPlainKey,
 };

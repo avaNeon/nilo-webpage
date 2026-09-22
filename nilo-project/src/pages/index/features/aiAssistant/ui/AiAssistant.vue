@@ -113,7 +113,7 @@ function onKeydown(event: Event | KeyboardEvent)
         position: absolute;
         right: 0;
         bottom: 68px;
-        width: 360px;
+        width: 460px;
         height: 520px;
         display: flex;
         flex-direction: column;
