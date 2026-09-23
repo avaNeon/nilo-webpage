@@ -66,13 +66,16 @@ export const ArchiveApi = {
   },
 
   /**
-   * 恢复被删除的视频（从存档中移回正常列表）
+   * 恢复被删除的视频（从存档中移回正常列表）<br/>
+   * 后端要把视频文件从 pending/ 挪回 public/，分P多、切片多时十几秒很正常，所以放宽超时并锁屏
    * @param videoId 视频ID
    */
   async recoverVideo(videoId: string) {
     return request({
       method: "put",
       url: `${Api.videoRecover}/${videoId}`,
+      showLoading: true,
+      timeout: 60 * 1000,
     });
   },
 
