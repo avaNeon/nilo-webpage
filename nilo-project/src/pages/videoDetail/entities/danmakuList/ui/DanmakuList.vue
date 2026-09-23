@@ -28,7 +28,7 @@ function formatSendTime(time: string | undefined) {
                     </el-table-column>
                     <el-table-column label="发送时间" width="120" align="center" header-align="center">
                         <template #default="{ row }">
-                            <span class="post-time" :title="row.postTime">
+                            <span class="post-time" :title="formatBackendDateTime(row.postTime) || ''">
                                 {{ formatSendTime(row.postTime) }}
                             </span>
                         </template>
