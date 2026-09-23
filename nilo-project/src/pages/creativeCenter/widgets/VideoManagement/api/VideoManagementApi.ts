@@ -60,7 +60,8 @@ export const VideoManagementApi = {
   },
 
   /**
-   * 删除视频
+   * 删除视频<br/>
+   * 已发布的视频要把文件从 public/ 挪到 pending/，分P多、切片多时十几秒很正常，所以放宽超时并锁屏
    *
    * @param videoId 视频ID
    * @param detail  删除原因详情
@@ -73,6 +74,8 @@ export const VideoManagementApi = {
       method: "delete",
       url: Api.ccDeleteVideo + videoId,
       params: { detail },
+      showLoading: true,
+      timeout: 60 * 1000,
     });
     if (result === undefined || result === null) {
       return null;

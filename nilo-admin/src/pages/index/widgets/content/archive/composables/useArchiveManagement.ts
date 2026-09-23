@@ -152,8 +152,11 @@ export function useArchiveManagement() {
       return;
     }
 
-    await ArchiveApi.recoverVideo(video.videoId);
-    message.success("已恢复");
+    // 失败时 request 已经弹过错误提示并返回 null，这里只在成功时报喜；列表照样刷新，超时不代表后端没做完
+    const result = await ArchiveApi.recoverVideo(video.videoId);
+    if (result) {
+      message.success("已恢复");
+    }
     loadArchiveList();
   }
 
@@ -172,8 +175,10 @@ export function useArchiveManagement() {
       return;
     }
 
-    await ArchiveApi.deleteVideoArchive([video.videoId]);
-    message.success("已删除");
+    const result = await ArchiveApi.deleteVideoArchive([video.videoId]);
+    if (result) {
+      message.success("已删除");
+    }
     loadArchiveList();
   }
 
