@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
+import { formatBackendDateTime } from '@/shared/utils/DateUtil';
 import type { VideoSeriesInfo } from '../model/VideoSeriesInfo';
 import questSrc from '@/assets/quest.svg'
 import { computed, ref } from 'vue';
@@ -36,7 +37,7 @@ const imgSrc = computed(() =>
                 <div class="count">({{ videoSeriesInfo.videoCount }})</div>
             </div>
             <div class="serie-bottom-info">
-                <div class="serie-update-date">更新于：{{ videoSeriesInfo.updateTime }}</div>
+                <div class="serie-update-date">更新于：{{ formatBackendDateTime(videoSeriesInfo.updateTime) }}</div>
             </div>
         </div>
     </div>
