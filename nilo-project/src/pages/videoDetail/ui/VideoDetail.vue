@@ -2,7 +2,7 @@
 import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue';
 import { useVideoDetail } from '../composables/useVideoDetail';
 import { VIDEO_PAGE_SIDE_PADDING } from '@/shared/config/Config';
-import { inject, onMounted } from 'vue';
+import { computed, inject, onMounted } from 'vue';
 import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import Player from '@/pages/videoDetail/features/player/ui/Player.vue';
@@ -19,6 +19,7 @@ import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue';
 import { useRecommendVideo } from '../composables/useRecommendVideo';
 import { formatBackendDateTime } from '@/shared/utils/DateUtil';
 import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue';
+import VideoSummary from '@/pages/videoDetail/entities/videoSummary/ui/VideoSummary.vue';
 
 const {
     avatarUrl,
@@ -52,11 +53,16 @@ const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
 const avatarSize = 60
 
-/** AI 助手里点了当前视频的片段：交给播放器跳转 */
+/** AI 助手、AI 总结里点了片段或章节：交给播放器跳转 */
 function onAiJump({ fileIndex, startSec }: { fileIndex: number; startSec: number })
 {
     videoStateStore.requestSeek(fileIndex, startSec)
 }
+
+/** 当前正在看的分P。AI 总结是按分P存在 MinIO 里的 */
+const currentFileIndex = computed(() => Number(route.params.index) || 1)
+const currentFilePath = computed(() =>
+    videoStateStore.videoFileList.find(file => file.fileIndex === currentFileIndex.value)?.filePath ?? '')
 
 onMounted(() =>
 {
@@ -161,6 +167,8 @@ onMounted(() =>
                 </div>
                 <div class="action-area">
                     <VideoActionItem @action-done="() => loadVideoInfo(route.params.videoId as string)" />
+                    <VideoSummary v-if="currentFilePath" :file-path="currentFilePath" :file-index="currentFileIndex"
+                        @jump="onAiJump" />
                     <VideoIntroduction :introduction="videoStateStore.videoInfo?.introduction || ''"
                         :tags="videoStateStore.videoInfo.tags || []" />
                     <div class="comment-list">

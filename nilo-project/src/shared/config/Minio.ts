@@ -61,6 +61,11 @@ function publicSubtitleUrl(filePath: string, fileName: string): string {
   return `${minioEndpoint}/${videoBucket}/public/${key}/${name}`;
 }
 
+/** 转码时生成的 AI 总结，和字幕同一目录 */
+function publicSummaryUrl(filePath: string): string {
+  return publicSubtitleUrl(filePath, "summary.json");
+}
+
 /** 去掉 `tmp/` 前缀得到 plain key */
 function toPlainKey(objectKey: string): string {
   return objectKey.startsWith("tmp/") ? objectKey.slice(4) : objectKey;
@@ -76,5 +81,6 @@ export {
   videoUploadUrl,
   publicHlsMasterUrl,
   publicSubtitleUrl,
+  publicSummaryUrl,
   toPlainKey,
 };
