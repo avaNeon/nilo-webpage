@@ -165,10 +165,18 @@ export function useSearchBar(options: UseSearchBarOptions = {}) {
       checkSearchHistoryOverflow();
     });
     document.addEventListener("click", onDocumentClick);
-    if (route.params.keyword) {
-      searchKeyword.value = route.params.keyword as string;
-    }
   });
+
+  // 搜索页里前进/后退换了关键词，输入框跟着变
+  watch(
+    () => route.params.keyword,
+    keyword => {
+      if (typeof keyword === "string" && keyword) {
+        searchKeyword.value = keyword;
+      }
+    },
+    { immediate: true },
+  );
 
   onBeforeUnmount(() => {
     historyListResizeObserver?.disconnect();

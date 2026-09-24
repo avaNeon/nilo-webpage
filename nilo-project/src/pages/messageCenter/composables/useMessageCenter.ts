@@ -6,6 +6,7 @@ import type { UserMessage } from "../model/UserMessage";
 import type { UserMessageCount } from "@/shared/model/UserMessageCount";
 import message from "@/shared/lib/message";
 import { setPageTitle } from "@/shared/utils/PageTitle";
+import { setHeaderUncheckedMessageCount } from "@/shared/widgets/siteHeader/model/useHeaderNav";
 
 export function useMessageCenter() {
   /* ————————数据源———————— */
@@ -48,6 +49,19 @@ export function useMessageCenter() {
       count: messageTypeUnreadCounts.value[item.value],
     })),
   );
+
+  const currentMessageTypeLabel = computed(
+    () =>
+      messageTypeBaseItems.find(item => item.value === currentMessageType.value)
+        ?.label ?? "消息",
+  );
+
+  /** 四类未读数之和；还没拉到时为 null */
+  const totalUnreadCount = computed(() => {
+    const counts = Object.values(messageTypeUnreadCounts.value);
+    if (counts.some(count => count === null)) return null;
+    return counts.reduce<number>((sum, count) => sum + (count ?? 0), 0);
+  });
 
   const pageNo = ref(1);
   const currentMessageTotalCount = ref<number | null>(null);
@@ -139,14 +153,6 @@ export function useMessageCenter() {
       if (currentRequestVersion === requestVersion) {
         loading.value = false;
       }
-    }
-  }
-
-  function handleMessagePanelScroll(event: Event) {
-    const panel = event.target as HTMLElement;
-
-    if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 80) {
-      void loadMessages();
     }
   }
 
@@ -256,13 +262,15 @@ export function useMessageCenter() {
 
   /* ————————初始化———————— */
 
+  // 页面上标记已读/删除后，顶栏消息角标跟着变
+  watch(totalUnreadCount, count => {
+    if (count !== null) setHeaderUncheckedMessageCount(count);
+  });
+
   watch(
     currentMessageType,
     () => {
-      const typeLabel =
-        messageTypeBaseItems.find(item => item.value === currentMessageType.value)
-          ?.label ?? "消息中心";
-      setPageTitle(typeLabel);
+      setPageTitle(currentMessageTypeLabel.value);
       requestVersion++;
       resetMessages();
       void loadCurrentMessageTotalCount();
@@ -277,13 +285,14 @@ export function useMessageCenter() {
     messageTypeItems,
     messages,
     currentMessageType,
+    currentMessageTypeLabel,
     currentMessageTotalCount,
+    totalUnreadCount,
     loading,
     finished,
     deleting,
     checkingAll,
     selectMessageType,
-    handleMessagePanelScroll,
     deleteMessage,
     checkAllCurrentMessages,
     checkMessage,

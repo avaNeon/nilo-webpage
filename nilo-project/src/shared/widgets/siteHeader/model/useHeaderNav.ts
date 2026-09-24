@@ -3,6 +3,14 @@ import { MessageApi } from "@/shared/api/MessageApi";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import { routerToNewPage } from "@/shared/utils/RouteUtil";
 
+/** 未读消息总数：所有顶栏共用一份，消息中心标记已读后直接改这里，角标马上跟着变 */
+const uncheckedMessageCount = ref(0);
+
+/** 消息中心算好未读总数后同步给顶栏 */
+export function setHeaderUncheckedMessageCount(count: number) {
+  uncheckedMessageCount.value = Math.max(0, count);
+}
+
 /**
  * 顶栏导航：需登录的跳转、未读消息数、联系方式弹窗
  * IndexHeader 与 SiteHeader 共用
@@ -13,7 +21,6 @@ export function useHeaderNav() {
   /*——————状态—————— */
 
   const showContactDialog = ref(false);
-  const uncheckedMessageCount = ref(0);
   const uncheckedMessageCountText = computed(() =>
     uncheckedMessageCount.value > 99
       ? "99+"

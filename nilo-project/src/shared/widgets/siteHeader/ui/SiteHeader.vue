@@ -10,8 +10,11 @@ import SiteSearchBar from './SiteSearchBar.vue';
 withDefaults(defineProps<{
     /** 搜索框旁边显示「AI 搜索」按钮（首页用） */
     aiSearch?: boolean,
+    /** 不显示顶栏搜索框（搜索页自己有大搜索框） */
+    hideSearch?: boolean,
 }>(), {
     aiSearch: false,
+    hideSearch: false,
 })
 
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
@@ -29,6 +32,7 @@ const {
 /** 首页和分类页都算「主页」 */
 const isHomeRoute = computed(() => route.name === 'index' || route.name === 'category')
 const isHistoryRoute = computed(() => route.name === 'history')
+const isMessageRoute = computed(() => route.name === 'messageCenter')
 
 const messageLabel = computed(() =>
     uncheckedMessageCount.value > 0 ? `消息（${uncheckedMessageCountText.value} 条未读）` : '消息')
@@ -110,7 +114,7 @@ onBeforeUnmount(() =>
                 </button>
             </nav>
 
-            <div ref="aiSearchRef" class="search-group">
+            <div v-if="!hideSearch" ref="aiSearchRef" class="search-group">
                 <SiteSearchBar />
                 <template v-if="aiSearch">
                     <button type="button" :class="['ai-search-button', { open: aiSearchOpen }]"
@@ -136,8 +140,9 @@ onBeforeUnmount(() =>
                         :width="42">
                     </Avatar>
                 </div>
-                <button type="button" class="message-button" :aria-label="messageLabel" :title="messageLabel"
-                    @click="requireLoginThen('/message/1')">
+                <button type="button" :class="['message-button', { active: isMessageRoute }]"
+                    :aria-label="messageLabel" :title="messageLabel"
+                    :aria-current="isMessageRoute ? 'page' : undefined" @click="requireLoginThen('/message/1')">
                     <span class="bell" aria-hidden="true"></span>
                     <Transition name="badge-pop">
                         <span v-if="uncheckedMessageCount > 0" class="message-badge" aria-hidden="true">
@@ -404,7 +409,9 @@ onBeforeUnmount(() =>
         color: $warm-ink-3;
         transition: background-color 0.2s, color 0.2s;
 
-        &:hover {
+        // 悬停，或者正在消息中心：浅蓝底 + 蓝色铃铛
+        &:hover,
+        &.active {
             background: $warm-accent-soft;
             color: $warm-accent;
         }

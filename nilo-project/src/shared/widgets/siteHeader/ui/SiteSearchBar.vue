@@ -2,6 +2,16 @@
 import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { useSearchBar } from '@/shared/features/searchBar/model/useSearchBar';
 
+const props = withDefaults(defineProps<{
+    /** 搜索页用的大号搜索框：带清空和「搜索」按钮 */
+    large?: boolean,
+    /** 搜索结果在新标签页打开；搜索页里直接跳转 */
+    openInNewPage?: boolean,
+}>(), {
+    large: false,
+    openInNewPage: true,
+})
+
 const {
     searchPanelVisible,
     searchKeyword,
@@ -13,7 +23,7 @@ const {
     showSearchPanel,
     hideSearchPanel,
     toggleSearchHistoryExpanded,
-} = useSearchBar({ openInNewPage: true });
+} = useSearchBar({ openInNewPage: props.openInNewPage });
 
 const searchInputRef = useTemplateRef<HTMLInputElement>('searchInputRef');
 const inputFocused = ref(false);
@@ -49,6 +59,12 @@ function onEnter(event: KeyboardEvent)
     submitSearch();
 }
 
+function clearKeyword()
+{
+    searchKeyword.value = '';
+    searchInputRef.value?.focus();
+}
+
 function onEscape()
 {
     hideSearchPanel();
@@ -78,7 +94,7 @@ onBeforeUnmount(() =>
 </script>
 
 <template>
-    <div ref="searchBarRef" class="site-search" :class="{ active: searchPanelVisible }">
+    <div ref="searchBarRef" class="site-search" :class="{ active: searchPanelVisible, large }">
         <div class="search-box">
             <button type="button" class="search-icon" aria-label="搜索" @click="submitSearch()">
                 <span class="search-icon-ring"></span>
@@ -87,7 +103,12 @@ onBeforeUnmount(() =>
             <input ref="searchInputRef" v-model="searchKeyword" class="search-input" type="text"
                 placeholder="搜索你想看的视频" autocomplete="off" @focus="onFocus" @blur="inputFocused = false"
                 @keydown.enter="onEnter" @keydown.esc="onEscape">
-            <kbd v-show="!inputFocused" class="search-shortcut">{{ shortcutText }}</kbd>
+            <template v-if="large">
+                <button v-show="searchKeyword" type="button" class="clear-button" aria-label="清空"
+                    @click="clearKeyword">×</button>
+                <button type="button" class="submit-button" @click="submitSearch()">搜索</button>
+            </template>
+            <kbd v-else v-show="!inputFocused" class="search-shortcut">{{ shortcutText }}</kbd>
         </div>
         <Transition name="site-search-panel">
             <div v-if="searchPanelVisible" class="search-panel">
@@ -353,5 +374,92 @@ onBeforeUnmount(() =>
 .site-search-panel-leave-to {
     opacity: 0;
     transform: translateY(-4px);
+}
+
+/*——————大号：搜索页顶部，760 宽、60 高，右侧清空 + 搜索按钮—————— */
+
+.site-search.large {
+    width: 760px;
+
+    .search-box {
+        gap: 14px;
+        height: 60px;
+        padding: 0 6px 0 24px;
+    }
+
+    .search-icon {
+        width: 15px;
+        height: 15px;
+
+        .search-icon-ring {
+            width: 11px;
+            height: 11px;
+            border-width: 1.75px;
+            border-color: $warm-ink-3;
+        }
+
+        .search-icon-handle {
+            left: 9px;
+            top: 11px;
+            width: 6px;
+            height: 1.75px;
+            background: $warm-ink-3;
+        }
+    }
+
+    .search-input {
+        font-size: 16px;
+        font-weight: 500;
+    }
+
+    .clear-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #FFFFFF;
+        color: $warm-ink-4;
+        font-size: 15px;
+        line-height: 1;
+        transition: color 0.2s, background-color 0.2s;
+
+        &:hover {
+            color: $warm-ink;
+        }
+    }
+
+    // 聚焦时底色变白，清空按钮换成浅灰才看得见
+    .search-box:focus-within .clear-button {
+        background: $warm-sunken;
+    }
+
+    .submit-button {
+        flex-shrink: 0;
+        height: 48px;
+        padding: 0 26px;
+        border-radius: 999px;
+        background: $warm-accent;
+        color: #FFFFFF;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background-color 0.2s;
+
+        &:hover {
+            background: $warm-ink;
+        }
+
+        &:focus-visible {
+            outline: 2px solid $warm-accent;
+            outline-offset: 2px;
+        }
+    }
+
+    .search-panel {
+        top: 70px;
+        width: 100%;
+    }
 }
 </style>

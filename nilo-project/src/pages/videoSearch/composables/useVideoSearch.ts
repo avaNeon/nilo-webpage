@@ -1,4 +1,4 @@
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { VideoSearchApi } from "@/shared/api/VideoSearchApi";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
@@ -25,7 +25,7 @@ export function useVideoSearch() {
       value: VideoSearchOrderType.COMPREHENSIVE,
     },
     {
-      label: "最新视频",
+      label: "最新发布",
       value: VideoSearchOrderType.NEWEST,
     },
     {
@@ -49,6 +49,10 @@ export function useVideoSearch() {
   const pageNo = ref(1);
   const pageSize = ref(20);
   const totalCount = ref(0);
+  /** 请求进行中：首次显示骨架屏，翻页/换排序时结果区变淡 */
+  const loading = ref(false);
+  // 连续切换排序/翻页时只认最后一次请求的结果
+  let requestSeq = 0;
 
   function getRouteKeyword() {
     const keyword = route.params.keyword;
@@ -85,26 +89,37 @@ export function useVideoSearch() {
     };
   }
 
+  const keyword = computed(() => getRouteKeyword().trim());
+
   async function searchVideo(nextPageNo = 1) {
-    const keyword = getRouteKeyword().trim();
-    if (!keyword) {
+    const currentSeq = ++requestSeq;
+    if (!keyword.value) {
       videoList.value = [];
       totalCount.value = 0;
       pageNo.value = 1;
+      loading.value = false;
       return;
     }
 
     pageNo.value = nextPageNo;
-    const searchResult = await VideoSearchApi.searchVideo(
-      activeOrderType.value,
-      pageNo.value,
-      pageSize.value,
-      keyword,
-    );
+    loading.value = true;
+    try {
+      const searchResult = await VideoSearchApi.searchVideo(
+        activeOrderType.value,
+        pageNo.value,
+        pageSize.value,
+        keyword.value,
+      );
+      if (currentSeq !== requestSeq) return;
 
-    videoList.value =
-      searchResult?.videoInfoDocList.map(item => toVideoInfo(item)) ?? [];
-    totalCount.value = searchResult?.pageCalculator.countTotal ?? 0;
+      videoList.value =
+        searchResult?.videoInfoDocList.map(item => toVideoInfo(item)) ?? [];
+      totalCount.value = searchResult?.pageCalculator.countTotal ?? 0;
+    } finally {
+      if (currentSeq === requestSeq) {
+        loading.value = false;
+      }
+    }
   }
 
   function selectOrderType(orderType: VideoSearchOrderType) {
@@ -115,14 +130,15 @@ export function useVideoSearch() {
   watch(
     () => route.params.keyword,
     () => {
-      const keyword = getRouteKeyword().trim();
-      setPageTitle(keyword ? `搜索：${keyword}` : "搜索");
+      setPageTitle(keyword.value ? `搜索：${keyword.value}` : "搜索");
       searchVideo(1);
     },
     { immediate: true },
   );
 
   return {
+    keyword,
+    loading,
     orderTypeOptions,
     activeOrderType,
     videoList,

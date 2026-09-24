@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-import { inject } from 'vue'
-import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue'
-import defaultBg from '@/assets/banner-background-beach.jpg'
-import { BODY_PADDING } from '@/shared/config/Config'
+import { computed, inject } from 'vue'
+import SiteHeader from '@/shared/widgets/siteHeader/ui/SiteHeader.vue'
+import HomeFooter from '@/pages/index/widgets/homeFooter/ui/HomeFooter.vue'
 import MessageItem from '../entities/messageItem/ui/MessageItem.vue'
 import { useMessageCenter } from '../composables/useMessageCenter'
 
@@ -10,247 +9,405 @@ import { useMessageCenter } from '../composables/useMessageCenter'
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
+/** 首屏骨架屏条数 */
+const SKELETON_COUNT = 4
+
 const {
     messageTypeItems,
     messages,
     currentMessageType,
+    currentMessageTypeLabel,
     currentMessageTotalCount,
+    totalUnreadCount,
     loading,
     finished,
     checkingAll,
     selectMessageType,
-    handleMessagePanelScroll,
     deleteMessage,
     checkAllCurrentMessages,
     checkMessage,
     loadMessages,
 } = useMessageCenter()
+
+const unreadLabel = computed(() =>
+{
+    if (totalUnreadCount.value === null) return ''
+    return totalUnreadCount.value > 0 ? `${totalUnreadCount.value} 条未读` : '全部已读'
+})
+
+function badgeText(count: number)
+{
+    return count > 99 ? '99+' : String(count)
+}
 </script>
 
 <template>
-    <div class="page-content" :style="{
-        'max-width': mainContentMaxWidth + 'px',
-        'min-width': mainContentMinWidth + 'px',
-    }">
-        <header>
-            <div class="header" :style="{
-                'background-image': `url(${defaultBg})`
-            }">
-                <IndexHeader />
-            </div>
-        </header>
-        <div class="content" :style="{
-            'margin-left': BODY_PADDING,
-            'margin-right': BODY_PADDING,
+    <div class="message-page warm-theme">
+        <SiteHeader />
+        <main class="message-main" :style="{
+            'max-width': mainContentMaxWidth + 'px',
+            'min-width': mainContentMinWidth + 'px',
         }">
-            <div class="page-title">消息中心</div>
+            <div class="page-head">
+                <h1>消息中心</h1>
+                <span v-if="unreadLabel" class="head-sub">{{ unreadLabel }}</span>
+            </div>
+
             <div class="message-layout">
-                <aside class="message-type-list">
-                    <button v-for="item in messageTypeItems" :key="item.value"
-                        :class="['message-type-item', { active: item.value === currentMessageType }]"
+                <!-- 左侧分类：选中白底蓝字，未读数角标 -->
+                <aside class="type-list" aria-label="消息分类">
+                    <button v-for="item in messageTypeItems" :key="item.value" type="button"
+                        :class="['type-item', { active: item.value === currentMessageType }]"
+                        :aria-current="item.value === currentMessageType ? 'page' : undefined"
                         @click="selectMessageType(item.value)">
-                        <span class="message-type-label">{{ item.label }}</span>
-                        <span v-if="item.count !== null && item.count !== 0" class="message-type-count">
-                            {{ item.count }}
-                        </span>
+                        {{ item.label }}
+                        <span v-if="item.count" class="type-badge">{{ badgeText(item.count) }}</span>
                     </button>
                 </aside>
-                <section class="message-panel" @scroll="handleMessagePanelScroll">
-                    <div class="message-panel-header">
-                        <span class="message-total-count">共{{ currentMessageTotalCount ?? 0 }}条消息</span>
-                        <div class="message-panel-header-right">
-                            <span class="hint-text">点击消息可标记为已读</span>
-                            <button class="check-all-button" type="button" :disabled="checkingAll"
+
+                <section class="message-panel">
+                    <div class="panel-head">
+                        <div class="panel-title">
+                            <span class="title">{{ currentMessageTypeLabel }}</span>
+                            <span v-if="currentMessageTotalCount !== null" class="total">
+                                共 {{ currentMessageTotalCount }} 条
+                            </span>
+                        </div>
+                        <div class="panel-actions">
+                            <span class="hint">点击消息可标记为已读</span>
+                            <button type="button" class="read-all-button" :disabled="checkingAll"
                                 @click="checkAllCurrentMessages">
-                                {{ checkingAll ? '处理中...' : '全部已读' }}
+                                {{ checkingAll ? '处理中…' : '全部已读' }}
                             </button>
                         </div>
                     </div>
-                    <MessageItem v-for="message in messages"
-                        :key="message.messageId ?? `${message.messageType}-${message.createTime}-${message.videoId}`"
-                        :message="message" @click="checkMessage(message)" @delete="deleteMessage" />
-                    <el-empty v-if="!loading && messages.length === 0" description="暂无消息" />
-                    <div v-if="messages.length > 0" class="load-more" @click="loadMessages">
-                        {{ loading ? '加载中...' : finished ? '没有更多了' : '点击加载更多' }}
+
+                    <template v-if="loading && messages.length === 0">
+                        <div v-for="n in SKELETON_COUNT" :key="n" class="skeleton-item" aria-hidden="true">
+                            <span class="skeleton-block skeleton-avatar"></span>
+                            <span class="skeleton-lines">
+                                <span class="skeleton-block skeleton-name"></span>
+                                <span class="skeleton-block skeleton-text"></span>
+                                <span class="skeleton-block skeleton-time"></span>
+                            </span>
+                        </div>
+                    </template>
+
+                    <div v-else-if="messages.length === 0" class="empty">
+                        <span class="empty-title">暂时没有{{ currentMessageTypeLabel }}</span>
+                        <span class="empty-description">新的消息会第一时间出现在这里</span>
                     </div>
+
+                    <template v-else>
+                        <MessageItem v-for="message in messages"
+                            :key="message.messageId ?? `${message.messageType}-${message.createTime}-${message.videoId}`"
+                            :message="message" @click="checkMessage(message)" @delete="deleteMessage" />
+                        <button v-if="!finished" type="button" class="load-more-button" :disabled="loading"
+                            @click="loadMessages">
+                            {{ loading ? '加载中…' : '加载更多' }}
+                        </button>
+                        <span v-else class="list-end">没有更多了</span>
+                    </template>
                 </section>
             </div>
-        </div>
+        </main>
+        <HomeFooter divider />
     </div>
 </template>
 
 <style lang="scss" scoped>
-.page-content {
-    position: relative;
-    height: 100vh;
-    overflow: hidden;
-    background-color: white;
-    margin: 0 auto;
+.message-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
 
-    header {
-        width: 100%;
-        position: relative;
+    button {
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
 
-        .header {
-            height: 150px;
-            background: no-repeat center;
-            background-size: cover;
+        &:focus-visible {
+            outline: 2px solid $warm-accent;
+            outline-offset: 2px;
+        }
+
+        &:disabled {
+            cursor: not-allowed;
         }
     }
+}
 
-    .content {
-        background-color: white;
-        height: calc(100vh - 130px);
-        box-sizing: border-box;
-        padding: 28px 0 48px;
+.message-main {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 40px 48px 104px;
+}
+
+.page-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid $warm-line;
+
+    h1 {
+        margin: 0;
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+    }
+
+    .head-sub {
+        font-size: 13px;
+        color: $warm-ink-4;
+    }
+}
+
+.message-layout {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+}
+
+// 滚动时分类栏停在顶栏下面
+.type-list {
+    position: sticky;
+    top: calc(#{$warm-header-height} + 24px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 24px;
+    background: $warm-sunken;
+}
+
+.message-page .type-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    padding: 0 12px 0 18px;
+    border-radius: 16px;
+    color: $warm-ink-3;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+
+    &:hover {
+        color: $warm-accent;
+    }
+
+    &:focus-visible {
+        outline-offset: -2px;
+    }
+
+    // 未选中：白底蓝字；选中：蓝底白字
+    .type-badge {
         display: flex;
-        flex-direction: column;
-        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: #FFFFFF;
+        color: $warm-accent;
+        font-size: 11px;
+        font-weight: 600;
+    }
 
-        .page-title {
-            margin-bottom: 24px;
-            font-size: 24px;
-            font-weight: 600;
-            color: $color-text-primary;
+    &.active {
+        background: #FFFFFF;
+        color: $warm-accent;
+        font-weight: 700;
+
+        .type-badge {
+            background: $warm-accent;
+            color: #FFFFFF;
         }
+    }
+}
 
-        .message-layout {
-            flex: 1 1 auto;
-            min-height: 0;
-            display: flex;
-            align-items: flex-start;
-            column-gap: 24px;
+.message-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
 
-            .message-type-list {
-                width: 180px;
-                flex: 0 0 180px;
-                display: flex;
-                flex-direction: column;
-                row-gap: 8px;
-                padding: 8px;
-                border-radius: 8px;
-                background-color: rgba(0, 0, 0, 0.04);
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 
-                .message-type-item {
-                    height: 42px;
-                    border: none;
-                    border-radius: 6px;
-                    background-color: transparent;
-                    color: $color-text-secondary;
-                    font-size: 15px;
-                    font-weight: 500;
-                    text-align: left;
-                    padding: 0 14px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    column-gap: 10px;
-                    cursor: pointer;
-                    transition: background-color 0.2s ease, color 0.2s ease;
+    .panel-title {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+    }
 
-                    .message-type-label {
-                        min-width: 0;
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                    }
+    .title {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+    }
 
-                    .message-type-count {
-                        min-width: 24px;
-                        height: 20px;
-                        flex: 0 0 auto;
-                        border-radius: 10px;
-                        padding: 0 7px;
-                        box-sizing: border-box;
-                        background-color: $color-mask-10;
-                        color: $color-text-muted;
-                        font-size: 12px;
-                        line-height: 20px;
-                        text-align: center;
-                    }
+    .total {
+        font-size: 13px;
+        color: $warm-ink-4;
+    }
 
-                    &:hover,
-                    &.active {
-                        color: $color-bilibili-blue;
-                        background-color: rgba(35, 173, 229, 0.1);
+    .panel-actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
 
-                        .message-type-count {
-                            background-color: rgba(35, 173, 229, 0.14);
-                            color: $color-bilibili-blue;
-                        }
-                    }
-                }
-            }
+    .hint {
+        font-size: 12px;
+        color: $warm-ink-4;
+    }
+}
 
-            .message-panel {
-                min-width: 0;
-                height: 100%;
-                flex: 1 1 auto;
-                display: flex;
-                flex-direction: column;
-                row-gap: 14px;
-                overflow-y: auto;
-                padding-right: 8px;
+.message-page .read-all-button {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: $warm-accent-soft;
+    color: $warm-accent;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color 0.2s, color 0.2s;
 
-                .message-panel-header {
-                    min-height: 36px;
-                    flex: 0 0 auto;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    column-gap: 16px;
+    &:hover:not(:disabled) {
+        background: $warm-accent;
+        color: #FFFFFF;
+    }
 
-                    .message-total-count {
-                        color: $color-text-secondary;
-                        font-size: 14px;
-                        font-weight: 500;
-                    }
+    &:disabled {
+        opacity: 0.6;
+    }
+}
 
-                    .message-panel-header-right {
-                        display: flex;
-                        align-items: center;
-                        column-gap: 20px;
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 96px 0;
+    border-radius: 22px;
+    background: $warm-sunken;
 
-                        .hint-text {
-                            font-size: 14px;
-                        }
+    .empty-title {
+        font-size: 17px;
+        font-weight: 700;
+    }
 
-                        .check-all-button {
-                            border: none;
-                            border-radius: 6px;
-                            padding: 0 14px;
-                            height: 32px;
-                            background-color: rgba(35, 173, 229, 0.1);
-                            color: $color-bilibili-blue;
-                            font-size: 14px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            transition: background-color 0.2s ease, color 0.2s ease;
+    .empty-description {
+        font-size: 13px;
+        color: $warm-ink-4;
+    }
+}
 
-                            &:hover:not(:disabled) {
-                                background-color: rgba(35, 173, 229, 0.16);
-                            }
+.message-page .load-more-button {
+    align-self: center;
+    display: flex;
+    align-items: center;
+    height: 46px;
+    margin-top: 12px;
+    padding: 0 26px;
+    border-radius: 999px;
+    background: $warm-sunken;
+    color: $warm-ink;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s, color 0.2s;
 
-                            &:disabled {
-                                cursor: not-allowed;
-                                color: $color-text-muted;
-                                background-color: $color-mask-10;
-                            }
-                        }
-                    }
+    &:hover:not(:disabled) {
+        background: $warm-accent;
+        color: #FFFFFF;
+    }
+}
 
-                }
+.list-end {
+    align-self: center;
+    margin-top: 12px;
+    font-size: 12px;
+    color: $warm-ink-5;
+}
 
-                .load-more {
-                    flex: 0 0 auto;
-                    text-align: center;
-                    color: $color-text-muted;
-                    font-size: 14px;
-                    padding: 12px 0 4px;
-                    cursor: pointer;
-                }
-            }
-        }
+/*——————骨架屏：和消息卡片同样的头像 + 三行—————— */
+
+.skeleton-item {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 18px;
+    padding: 20px 20px 20px 22px;
+    border-radius: 22px;
+    box-shadow: $warm-shadow-ring;
+}
+
+.skeleton-block {
+    display: block;
+    border-radius: 6px;
+    background: $warm-sunken;
+}
+
+.skeleton-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+
+.skeleton-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 4px;
+}
+
+.skeleton-name {
+    width: 180px;
+    height: 15px;
+}
+
+.skeleton-text {
+    width: 62%;
+    height: 14px;
+}
+
+.skeleton-time {
+    width: 120px;
+    height: 11px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .skeleton-block {
+        animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+}
+
+@keyframes skeleton-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.55;
     }
 }
 </style>

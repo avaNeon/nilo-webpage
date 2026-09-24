@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { sanitizeHighlightHtml } from '@/shared/utils/HighlightUtil';
 import type { VideoInfo } from '@/shared/model/VideoInfo';
 import { calculateDuration, calculateRelativeTime, formatBackendDateTime } from '@/shared/utils/DateUtil';
 import { imgRequestUrl, resolveImageUrl } from '@/shared/utils/ImgUtil';
@@ -89,20 +90,6 @@ const videoNameText = computed(() =>
 const videoNameHtml = computed(() =>
     sanitizeHighlightHtml(props.videoInfo.videoName ?? ''),
 )
-
-function sanitizeHighlightHtml(value: string)
-{
-    return value
-        .replace(/<span\s+class=(["'])highlight\1\s*>/gi, '[[[highlight-open]]]')
-        .replace(/<\/span>/gi, '[[[highlight-close]]]')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\[\[\[highlight-open\]\]\]/g, '<span class="highlight">')
-        .replace(/\[\[\[highlight-close\]\]\]/g, '</span>')
-}
 
 function onEditClick()
 {
