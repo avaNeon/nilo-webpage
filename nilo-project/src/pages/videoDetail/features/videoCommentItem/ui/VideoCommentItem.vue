@@ -9,7 +9,6 @@ import { DefaultFoldReason } from '@/shared/model/VideoComment';
 import { useRoute } from 'vue-router';
 import CommentPostBar from '@/pages/videoDetail/features/commentPostBar/ui/CommentPostBar.vue';
 import { formatPostTime } from '@/shared/utils/DateUtil';
-import { formatCount } from '@/shared/utils/NumberUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import useVideoStateStore from '@/pages/videoDetail/store/VideoStateStore';
 
@@ -41,7 +40,7 @@ const isVideoPublisher = computed(() =>
     return String(currentUserId) === String(publisherUserId)
 })
 
-/** 评论者是否为视频发布者（显示 UP 徽章） */
+/** 评论者是否为视频发布者（显示「作者」徽章） */
 const isAuthorComment = computed(() =>
 {
     const publisherUserId = videoStateStore.videoInfo?.userInfo?.userId
@@ -114,6 +113,39 @@ const canDelete = computed(() =>
 /** 仅视频发布者可置顶顶层评论 */
 const canPin = computed(() => isVideoPublisher.value && !isDeleted.value && props.videoComment.parentCommentId === '0')
 
+// 已删除的评论：按钮不可点，但悬停时仍然展开（颜色变淡）
+function onUpvote()
+{
+    if (!isDeleted.value) upvote(route.params.videoId as string, props.videoComment)
+}
+
+function onDownvote()
+{
+    if (!isDeleted.value) downvote(route.params.videoId as string, props.videoComment)
+}
+
+function onReply()
+{
+    if (!isDeleted.value) toggleReplyFoldState()
+}
+
+function onDelete()
+{
+    deleteComment(props.videoComment, isVideoPublisher.value && props.videoComment.userId != loginStateStore.userInfo?.userId)
+}
+
+function onTogglePin()
+{
+    if (props.videoComment.topType === 1)
+    {
+        cancelTopComment(props.videoComment)
+    }
+    else
+    {
+        topComment(props.videoComment)
+    }
+}
+
 // ----- 默认折叠原因 -----
 const defaultFoldReason = computed(() =>
 {
@@ -157,7 +189,7 @@ const foldBadgeLabel = computed(() =>
         <div class="body">
             <div class="name-row" @click="switchFold">
                 <span class="nick-name">{{ videoComment.nickName }}</span>
-                <span v-if="isAuthorComment" class="badge up">UP</span>
+                <span v-if="isAuthorComment" class="badge author">作者</span>
                 <span class="post-time">{{ postTime }}</span>
                 <span v-if="videoComment.topType === 1" class="badge muted">置顶</span>
                 <!-- 默认折叠原因徽章 -->
@@ -180,39 +212,47 @@ const foldBadgeLabel = computed(() =>
                 </template>
                 <p v-else class="content deleted">[评论已被{{ deletedBy }}删除]</p>
 
-                <div class="actions">
+                <!-- 操作行：悬停时数字 / 文字从图标右侧弹出 -->
+                <div class="bottom-items">
                     <!-- upvote -->
-                    <button type="button" class="action upvote" :class="{ active: videoComment.isUpvoted }"
-                        :disabled="isDeleted" @click="upvote(route.params.videoId as string, props.videoComment)">
-                        {{ videoComment.upvoteCount > 0 ? `赞 ${formatCount(videoComment.upvoteCount)}` : '赞' }}
+                    <button type="button" class="bottom-item upvote"
+                        :class="{ clicked: videoComment.isUpvoted, disabled: isDeleted }" :aria-disabled="isDeleted"
+                        :aria-label="`赞 ${videoComment.upvoteCount}`" @click="onUpvote">
+                        <span class="iconfont icon-upvote"></span>
+                        <span class="detail-text">{{ videoComment.upvoteCount }}</span>
                     </button>
+                    <!-- vote-result -->
+                    <span class="vote-result" title="赞数减踩数">{{ voteResult }}</span>
                     <!-- downvote -->
-                    <button type="button" class="action downvote" :class="{ active: videoComment.isDownvoted }"
-                        :disabled="isDeleted" @click="downvote(route.params.videoId as string, props.videoComment)">
-                        踩
+                    <button type="button" class="bottom-item downvote"
+                        :class="{ clicked: videoComment.isDownvoted, disabled: isDeleted }" :aria-disabled="isDeleted"
+                        :aria-label="`踩 ${videoComment.downvoteCount}`" @click="onDownvote">
+                        <span class="iconfont icon-downvote"></span>
+                        <span class="detail-text">{{ videoComment.downvoteCount }}</span>
                     </button>
                     <!-- reply -->
-                    <button type="button" class="action reply" :class="{ active: !isReplyFolded }" :disabled="isDeleted"
-                        @click="toggleReplyFoldState()">
-                        {{ isDeleted ? '无法回复' : '回复' }}
+                    <button type="button" class="bottom-item reply"
+                        :class="{ clicked: !isReplyFolded, disabled: isDeleted }" :aria-disabled="isDeleted"
+                        @click="onReply">
+                        <span class="iconfont icon-reply"></span>
+                        <span class="description-text">{{ isDeleted ? '无法回复' : '回复' }}</span>
+                        <span class="detail-text">{{ videoComment.replyCount }}</span>
                     </button>
-
-                    <!-- 管理操作：悬停评论时显示 -->
-                    <div v-if="canPin || canDelete" class="manage" :class="{ confirming: isConfirming }">
-                        <!-- pin/un-pin -->
-                        <button v-if="canPin" type="button" class="action"
-                            @click="videoComment.topType === 1 ? cancelTopComment(props.videoComment) : topComment(props.videoComment)">
-                            {{ videoComment.topType === 1 ? '取消置顶' : '置顶' }}
-                        </button>
-                        <!-- delete：第一次点击进入确认，3 秒冷却后才能确认删除 -->
-                        <button v-if="canDelete" type="button" class="action delete"
-                            :class="{ confirming: isConfirming, cooldown: cooldownActive }" :disabled="cooldownActive"
-                            @click="deleteComment(props.videoComment, isVideoPublisher && videoComment.userId != loginStateStore.userInfo?.userId)">
-                            {{ deleteButtonText }}
-                            <span v-if="cooldownActive" class="delete-progress"
-                                :style="{ transform: `scaleX(${borderProgress})` }"></span>
-                        </button>
-                    </div>
+                    <!-- delete：第一次点击进入确认，冷却结束后才能确认删除 -->
+                    <button v-if="canDelete" type="button" class="bottom-item delete"
+                        :class="{ confirming: isConfirming, cooldown: cooldownActive }" :disabled="cooldownActive"
+                        @click="onDelete">
+                        <span class="iconfont icon-delete"></span>
+                        <span class="description-text">{{ deleteButtonText }}</span>
+                        <span v-if="cooldownActive" class="delete-border-overlay"
+                            :style="{ background: `conic-gradient(from -90deg, rgba(255, 68, 68, 0.6) ${borderProgress * 360}deg, transparent 0deg)` }">
+                        </span>
+                    </button>
+                    <!-- pin/un-pin -->
+                    <button v-if="canPin" type="button" class="bottom-item top-comment" @click="onTogglePin">
+                        <span :class="['iconfont', videoComment.topType === 1 ? 'icon-unpin-fill' : 'icon-pin-fill']"></span>
+                        <span class="description-text">{{ videoComment.topType === 1 ? '取消置顶' : '置顶' }}</span>
+                    </button>
                 </div>
             </template>
 
@@ -244,8 +284,8 @@ const foldBadgeLabel = computed(() =>
     align-items: flex-start;
     gap: var(--avatar-gap);
 
-    // 顶层评论：1px 分隔线 + 18px 上内边距
-    padding-top: 18px;
+    // 顶层评论：1px 分隔线 + 20px 上内边距
+    padding-top: 20px;
     border-top: 1px solid $warm-line-soft;
 
     // 楼中楼回复：无分隔线，14px 上内边距
@@ -275,7 +315,7 @@ const foldBadgeLabel = computed(() =>
         position: absolute;
         inset: 0;
         border-radius: 50%;
-        box-shadow: inset 0 0 0 1px rgba(26, 25, 22, 0.06);
+        box-shadow: inset 0 0 0 1px rgba(11, 12, 18, 0.06);
         pointer-events: none;
     }
 
@@ -304,11 +344,10 @@ const foldBadgeLabel = computed(() =>
     padding: 0;
     border: none;
     border-radius: 50%;
-    background: $warm-card;
-    box-shadow: inset 0 0 0 1px $warm-border-strong;
+    background: $warm-sunken;
     color: $warm-ink-3;
     cursor: pointer;
-    transition: box-shadow 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
 
     &::before,
     &::after {
@@ -329,8 +368,8 @@ const foldBadgeLabel = computed(() =>
 
     &:hover,
     &:focus-visible {
-        color: $warm-ink;
-        box-shadow: inset 0 0 0 1px $warm-ink-3;
+        background: $warm-accent-soft;
+        color: $warm-accent;
         outline: none;
     }
 }
@@ -341,7 +380,7 @@ const foldBadgeLabel = computed(() =>
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
 }
 
 // 昵称行：点击折叠 / 展开
@@ -351,18 +390,18 @@ const foldBadgeLabel = computed(() =>
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    margin: -2px -6px;
-    padding: 2px 6px;
-    border-radius: 8px;
+    margin: -2px -8px;
+    padding: 2px 8px;
+    border-radius: 999px;
     cursor: pointer;
     transition: background-color 0.2s ease;
 
     &:hover {
-        background-color: rgba(26, 25, 22, 0.04);
+        background-color: $warm-sunken;
     }
 
     .nick-name {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 600;
         line-height: 20px;
         color: $warm-ink;
@@ -374,15 +413,17 @@ const foldBadgeLabel = computed(() =>
     }
 
     .badge {
-        padding: 1px 6px;
-        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        height: 18px;
+        padding: 0 7px;
+        border-radius: 999px;
         font-size: 10px;
         font-weight: 600;
-        line-height: 16px;
 
-        &.up {
-            color: $warm-accent-text;
-            background: color-mix(in oklch, oklch(0.63 0.14 45) 12%, white);
+        &.author {
+            color: #FFFFFF;
+            background: $warm-accent;
         }
 
         &.muted {
@@ -394,15 +435,21 @@ const foldBadgeLabel = computed(() =>
 
 .content {
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.8;
     color: $warm-ink-2;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    text-wrap: pretty;
 
     &.deleted {
         color: $warm-ink-4;
     }
+}
+
+.reply .content {
+    font-size: 14px;
+    line-height: 1.7;
 }
 
 .images {
@@ -416,88 +463,260 @@ const foldBadgeLabel = computed(() =>
     }
 }
 
-// ==================== 操作行 ====================
-.actions {
+// ==================== 操作行（warm-redesign 之前的弹簧伸缩样式） ====================
+// 图标常驻，悬停时数字 / 文字从 max-width: 0 展开并向右推开，底色换成各自的主题色
+.bottom-items {
     display: flex;
+    column-gap: 8px;
     align-items: center;
-    gap: 18px;
-    font-size: 12px;
+    margin-left: -5px;
+    font-size: 15px;
     color: $warm-ink-4;
 
-    .action {
+    .vote-result {
+        min-width: 12px;
+        padding: 5px 0;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        color: $warm-ink-3;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .bottom-item {
         position: relative;
-        padding: 0;
+        display: flex;
+        align-items: center;
+        padding: 5px;
         border: none;
+        border-radius: 999px;
         background: transparent;
         font: inherit;
-        line-height: 20px;
         color: inherit;
         cursor: pointer;
-        transition: color 0.15s ease;
+        transition: all 0.25s ease;
 
-        &:hover:not(:disabled),
         &:focus-visible {
-            color: $warm-ink;
-            outline: none;
+            outline: 2px solid $warm-accent;
+            outline-offset: 1px;
         }
 
-        &:disabled {
-            color: $warm-ink-5;
+        &.disabled {
             cursor: default;
         }
 
-        &.upvote.active {
-            color: $warm-accent-text;
-            font-weight: 500;
-        }
-
-        &.downvote.active,
-        &.reply.active {
-            color: $warm-ink;
-            font-weight: 500;
-        }
-
-        // 确认删除：陶土色提示
-        &.delete.confirming {
-            color: $warm-accent-text;
-            font-weight: 500;
-        }
-
-        // 冷却中：文字变弱，下方进度条走满后才可确认
-        &.delete.cooldown {
-            color: $warm-ink-4;
+        .iconfont {
+            font-size: 16px;
+            line-height: 18px;
         }
     }
 
-    .manage {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        margin-left: auto;
-        opacity: 0;
-        transition: opacity 0.2s ease;
+    // 数字：默认收起，悬停展开
+    .upvote,
+    .downvote {
+        &:hover {
+            .detail-text {
+                max-width: 50px;
+                padding-right: 10px;
+                transform: translateX(5px);
+            }
+        }
 
+        .detail-text {
+            display: inline-block;
+            max-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            vertical-align: bottom;
+            transition: all 0.25s ease;
+            font-size: 14px;
+            line-height: 18px;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+
+    .upvote {
+        &.clicked {
+            color: $color-upvote-red;
+        }
+
+        &:hover {
+            color: $color-upvote-red;
+            background-color: $color-upvote-red-background;
+        }
+
+        &.disabled:hover {
+            color: rgba(217, 57, 0, 0.5);
+            background-color: rgba(217, 58, 0, 0.06);
+        }
+    }
+
+    .downvote {
+        &.clicked {
+            color: $color-downvote-purple;
+        }
+
+        &:hover {
+            color: $color-downvote-purple;
+            background-color: $color-downvote-purple-background;
+        }
+
+        &.disabled:hover {
+            color: rgba(106, 92, 255, 0.5);
+            background-color: rgba(106, 92, 255, 0.06);
+        }
+    }
+
+    .reply {
+        .iconfont {
+            margin-right: 3px;
+            font-size: 17px;
+        }
+
+        &.clicked {
+            color: $color-reply-green;
+        }
+
+        &:hover {
+            background-color: $color-reply-green-background;
+            color: $color-reply-green;
+
+            .description-text {
+                max-width: 50px;
+                padding-right: 10px;
+                transform: translateX(5px);
+            }
+        }
+
+        &.disabled:hover {
+            color: rgba(68, 160, 2, 0.5);
+            background-color: rgba(68, 160, 2, 0.06);
+
+            .description-text {
+                max-width: 80px;
+            }
+        }
+
+        .description-text {
+            display: inline-block;
+            max-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            vertical-align: bottom;
+            transition: all 0.25s ease;
+        }
+
+        .detail-text {
+            margin-right: 4px;
+        }
+
+        .description-text,
+        .detail-text {
+            font-size: 14px;
+            line-height: 18px;
+        }
+    }
+
+    .delete {
+        overflow: visible;
+
+        .iconfont {
+            margin-right: 6px;
+            font-size: 17px;
+        }
+
+        .description-text {
+            display: inline-block;
+            font-size: 14px;
+            line-height: 15px;
+            vertical-align: middle;
+            max-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: max-width 0.35s ease, margin-right 0.35s ease;
+        }
+
+        // 确认状态：文字常驻展开
         &.confirming {
-            opacity: 1;
+            color: rgb(229, 40, 40);
+
+            .description-text {
+                max-width: 80px;
+            }
+        }
+
+        // 冷却中：不可点，边框走完一圈才能确认
+        &.cooldown {
+            pointer-events: none;
+            cursor: not-allowed;
+            color: rgba(255, 0, 0, 0.35);
+        }
+
+        &:hover:not(.cooldown):not(.confirming) {
+            color: rgb(229, 40, 40);
+            background-color: rgba(255, 0, 0, 0.12);
+
+            .description-text {
+                max-width: 50px;
+                margin-right: 5px;
+            }
+        }
+
+        &.confirming:hover {
+            background-color: rgba(255, 0, 0, 0.12);
+        }
+
+        // 冷却进度：沿按钮边框走一圈
+        .delete-border-overlay {
+            position: absolute;
+            inset: -2px;
+            border-radius: 999px;
+            padding: 2px;
+            pointer-events: none;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
         }
     }
 
-    .delete-progress {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -1px;
-        height: 1.5px;
-        border-radius: 1px;
-        background: $warm-accent;
-        transform-origin: left center;
-    }
-}
+    .top-comment {
+        overflow: visible;
+        padding-left: 10px;
+        padding-right: 5px;
 
-// 悬停 / 键盘聚焦评论时显示管理操作
-.comment-item:hover .actions .manage,
-.comment-item:focus-within .actions .manage {
-    opacity: 1;
+        .iconfont {
+            margin-right: 5px;
+
+            &.icon-pin-fill {
+                font-size: 14px;
+            }
+
+            &.icon-unpin-fill {
+                font-size: 17px;
+            }
+        }
+
+        .description-text {
+            display: inline-block;
+            font-size: 14px;
+            line-height: 15px;
+            vertical-align: middle;
+            max-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: max-width 0.35s ease, margin-right 0.35s ease;
+        }
+
+        &:hover {
+            color: $warm-accent;
+            background-color: $warm-accent-soft;
+
+            .description-text {
+                max-width: 80px;
+                margin-right: 5px;
+            }
+        }
+    }
 }
 
 // 回复输入框：与正文左对齐

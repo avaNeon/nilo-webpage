@@ -14,17 +14,8 @@ const creator = computed(() => props.videoInfo.briefUserInfo ?? props.videoInfo.
 
 const videoPath = computed(() => `/video/${props.videoInfo.videoId ?? ''}`)
 const title = computed(() => (props.videoInfo.videoName ?? '').replace(/<[^>]*>/g, ''))
-const rankText = computed(() => String(props.rank).padStart(2, '0'))
-const subText = computed(() =>
-    `${creator.value?.nickName || '未知UP主'} · ${formatCount(props.videoInfo.playCount)}播放`,
-)
-// 第一名陶土色，二三名墨色，其余弱化
-const rankLevel = computed(() =>
-{
-    if (props.rank === 1) return 'rank-first'
-    if (props.rank <= 3) return 'rank-top'
-    return 'rank-rest'
-})
+const creatorName = computed(() => creator.value?.nickName || '未知UP主')
+const playCountText = computed(() => `${formatCount(props.videoInfo.playCount)}播放`)
 
 /*——————缩略图加载失败时回退原图，最终露出占位底色—————— */
 
@@ -52,69 +43,78 @@ watch(coverSrc, () =>
 </script>
 
 <template>
-    <RouterLink class="hot-video-row" :to="videoPath" target="_blank" :title="title">
-        <span :class="['rank', rankLevel]">{{ rankText }}</span>
+    <!-- 热门榜卡片：细体大号名次 + 封面 + 标题 -->
+    <RouterLink class="hot-video-card" :to="videoPath" target="_blank" :title="title">
+        <span class="rank-row">
+            <span class="rank">{{ rank }}</span>
+            <span class="views">{{ playCountText }}</span>
+        </span>
         <span class="thumb">
             <img v-if="coverSrc" :class="{ loaded: coverLoaded }" :src="coverSrc" alt="" loading="lazy"
                 @load="coverLoaded = true" @error="coverFailCount++">
         </span>
         <span class="text">
             <span class="title">{{ title }}</span>
-            <span class="sub">{{ subText }}</span>
+            <span class="creator">{{ creatorName }}</span>
         </span>
     </RouterLink>
 </template>
 
 <style lang="scss" scoped>
-.hot-video-row {
+.hot-video-card {
     display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 0;
-    border-top: 1px solid $warm-line-soft;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
     color: $warm-ink;
     text-decoration: none;
 
-    &:hover .title {
-        color: $warm-accent-hover;
+    &:hover {
+        .title {
+            color: $warm-accent;
+        }
+
+        .thumb img {
+            transform: scale(1.03);
+        }
     }
 
     &:focus-visible {
         outline: 2px solid $warm-accent;
-        outline-offset: 2px;
-        border-radius: 8px;
+        outline-offset: 4px;
+        border-radius: 14px;
     }
 }
 
+.rank-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
 .rank {
-    width: 26px;
-    flex-shrink: 0;
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 56px;
+    font-weight: 200;
     font-variant-numeric: tabular-nums;
-    line-height: 1;
+    line-height: 0.8;
+    letter-spacing: -0.05em;
+    color: $warm-accent;
+}
 
-    &.rank-first {
-        color: $warm-accent-strong;
-    }
-
-    &.rank-top {
-        color: $warm-ink;
-    }
-
-    &.rank-rest {
-        color: $warm-ink-5;
-    }
+.views {
+    font-size: 12px;
+    color: $warm-ink-4;
+    white-space: nowrap;
 }
 
 .thumb {
     position: relative;
-    width: 88px;
-    height: 50px;
-    border-radius: 8px;
-    flex-shrink: 0;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
     overflow: hidden;
-    background: $warm-sunken;
+    isolation: isolate;
+    background: linear-gradient(160deg, oklch(0.93 0.008 265), oklch(0.83 0.014 265));
 
     img {
         display: block;
@@ -122,7 +122,7 @@ watch(coverSrc, () =>
         height: 100%;
         object-fit: cover;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.3s ease, transform 0.4s ease;
 
         &.loaded {
             opacity: 1;
@@ -133,26 +133,26 @@ watch(coverSrc, () =>
 .text {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    flex: 1;
+    gap: 5px;
     min-width: 0;
 }
 
-.title,
-.sub {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
     font-size: 14px;
     font-weight: 600;
-    color: $warm-ink;
+    line-height: 1.5;
     transition: color 0.2s;
 }
 
-.sub {
+.creator {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 12px;
     color: $warm-ink-4;
 }

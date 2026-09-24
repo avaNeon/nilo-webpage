@@ -1,4 +1,4 @@
-// 暖白主题：只作用于根节点带 .warm-theme 的页面（首页、视频详情页）
+// A5 主题（白底 + 电光蓝）：只作用于根节点带 .warm-theme 的页面（首页、视频详情页）
 
 .warm-theme {
     background: $warm-paper;
@@ -6,14 +6,14 @@
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'tnum';
 
-    // Element Plus 主色改为墨色，浅色/深色梯度为 #1A1916 与白/黑混合后的字面量
-    --el-color-primary: #1A1916;
-    --el-color-primary-light-3: #5F5E5C;
-    --el-color-primary-light-5: #8D8C8B;
-    --el-color-primary-light-7: #BABAB9;
-    --el-color-primary-light-8: #D1D1D0;
-    --el-color-primary-light-9: #E8E8E8;
-    --el-color-primary-dark-2: #151412;
+    // Element Plus 主色改为电光蓝，浅色/深色梯度为 #0000F2 与白/黑混合后的字面量
+    --el-color-primary: #0000F2;
+    --el-color-primary-light-3: #4D4DF6;
+    --el-color-primary-light-5: #8080F9;
+    --el-color-primary-light-7: #B3B3FB;
+    --el-color-primary-light-8: #CCCCFC;
+    --el-color-primary-light-9: #E6E6FE;
+    --el-color-primary-dark-2: #0000C2;
 }
 
 // base.scss 用了通配选择器设置字体，这里同样用通配覆盖（iconfont 自带 !important 不受影响）
@@ -28,29 +28,27 @@
 }
 
 .warm-theme .el-switch {
-    --el-switch-on-color: #{$warm-ink};
+    --el-switch-on-color: #{$warm-accent};
 }
 
 .warm-theme .el-pagination {
-    --el-pagination-border-radius: 8px;
+    --el-pagination-border-radius: 999px;
     --el-pagination-button-bg-color: #{$warm-card};
     --el-pagination-button-color: #{$warm-ink-3};
-    --el-pagination-hover-color: #{$warm-ink};
+    --el-pagination-hover-color: #{$warm-accent};
 
     &.is-background {
 
         .btn-prev,
         .btn-next,
         .el-pager li {
-            background-color: $warm-card;
-            border-radius: 8px;
-            box-shadow: $warm-shadow-ring;
+            background-color: $warm-sunken;
+            border-radius: 999px;
         }
 
         .el-pager li.is-active {
-            background-color: $warm-ink;
+            background-color: $warm-accent;
             color: #FFFFFF;
-            box-shadow: none;
         }
 
         .btn-prev:disabled,
@@ -59,7 +57,7 @@
         .btn-next.is-disabled {
             background-color: $warm-sunken;
             color: $warm-ink-5;
-            box-shadow: none;
+            opacity: 0.6;
         }
     }
 }

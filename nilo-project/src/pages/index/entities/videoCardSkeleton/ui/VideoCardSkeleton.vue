@@ -2,11 +2,11 @@
     <!-- 视频卡片（grid 布局）加载占位，几何尺寸与 VideoCard 保持一致 -->
     <div class="video-card-skeleton" aria-hidden="true">
         <span class="skeleton-cover"></span>
-        <span class="skeleton-info">
-            <span class="skeleton-avatar"></span>
-            <span class="skeleton-lines">
-                <span class="skeleton-line title"></span>
-                <span class="skeleton-line title short"></span>
+        <span class="skeleton-lines">
+            <span class="skeleton-line title"></span>
+            <span class="skeleton-line title short"></span>
+            <span class="skeleton-meta">
+                <span class="skeleton-avatar"></span>
                 <span class="skeleton-line meta"></span>
             </span>
         </span>
@@ -42,26 +42,13 @@
 
     .skeleton-cover {
         aspect-ratio: 16 / 9;
-        border-radius: 14px;
-    }
-
-    .skeleton-info {
-        display: flex;
-        gap: 12px;
-    }
-
-    .skeleton-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        flex-shrink: 0;
+        border-radius: 16px;
     }
 
     .skeleton-lines {
         display: flex;
         flex-direction: column;
         gap: 9px;
-        flex: 1;
         min-width: 0;
         padding-top: 4px;
     }
@@ -79,10 +66,23 @@
         }
 
         &.meta {
-            width: 40%;
+            width: 46%;
             height: 12px;
-            margin-top: 4px;
         }
+    }
+
+    .skeleton-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 3px;
+    }
+
+    .skeleton-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        flex-shrink: 0;
     }
 }
 

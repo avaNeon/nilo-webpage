@@ -103,7 +103,6 @@ onMounted(() =>
             <span class="label">{{ videoActionState.liked ? '已赞' : '点赞' }}</span>
             <span class="count">{{ formatCount(videoState.videoInfo.likeCount) }}</span>
         </button>
-        <span class="divider"></span>
 
         <!-- 投币 -->
         <button type="button"
@@ -113,7 +112,6 @@ onMounted(() =>
             <span class="label">{{ videoActionState.coin > 0 ? '已投币' : '投币' }}</span>
             <span class="count">{{ formatCount(videoState.videoInfo.coinCount) }}</span>
         </button>
-        <span class="divider"></span>
 
         <!-- 收藏 -->
         <button type="button"
@@ -123,7 +121,6 @@ onMounted(() =>
             <span class="label">{{ videoActionState.collected ? '已收藏' : '收藏' }}</span>
             <span class="count">{{ formatCount(videoState.videoInfo.collectCount) }}</span>
         </button>
-        <span class="divider"></span>
 
         <!-- 分享 -->
         <button type="button" class="video-action-item" @click="handleShare">
@@ -133,31 +130,22 @@ onMounted(() =>
 </template>
 
 <style lang="scss" scoped>
+// 每个操作一个浅灰胶囊；点过的换浅蓝底 + 蓝字
 .video-action-items {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    height: 42px;
-    border-radius: 12px;
-    background: $warm-card;
-    box-shadow: $warm-shadow-ring;
-    overflow: hidden;
-
-    .divider {
-        width: 1px;
-        height: 18px;
-        flex-shrink: 0;
-        background: rgba(26, 25, 22, 0.08);
-    }
+    gap: 8px;
 
     .video-action-item {
-        height: 100%;
-        padding: 0 18px;
+        height: 40px;
+        padding: 0 16px;
         display: flex;
         align-items: center;
         gap: 8px;
         border: none;
-        background: transparent;
+        border-radius: 999px;
+        background: $warm-sunken;
         color: $warm-ink;
         font-size: 13px;
         font-weight: 500;
@@ -168,12 +156,12 @@ onMounted(() =>
         perspective: 400px;
 
         &:hover {
-            background: rgba(26, 25, 22, 0.03);
+            background: #E9EBF0;
         }
 
         &:focus-visible {
-            outline: 2px solid rgba(26, 25, 22, 0.2);
-            outline-offset: -2px;
+            outline: 2px solid $warm-accent;
+            outline-offset: 2px;
         }
 
         .count {
@@ -189,6 +177,7 @@ onMounted(() =>
         }
 
         &.active {
+            background: $warm-accent-soft;
             color: $warm-accent-text;
 
             .count {
@@ -245,7 +234,7 @@ onMounted(() =>
 @keyframes like-dot-animation {
     0% {
         transform: scale(0.2);
-        box-shadow: 0 0 0 0 rgba(205, 106, 57, 0.45);
+        box-shadow: 0 0 0 0 rgba(0, 0, 242, 0.45);
     }
 
     25% {
@@ -258,7 +247,7 @@ onMounted(() =>
 
     100% {
         transform: scale(1);
-        box-shadow: 0 0 0 8px rgba(205, 106, 57, 0);
+        box-shadow: 0 0 0 8px rgba(0, 0, 242, 0);
     }
 }
 

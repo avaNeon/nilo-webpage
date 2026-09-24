@@ -22,6 +22,7 @@ import { formatCount } from '@/shared/utils/NumberUtil';
 import useCategoryStore from '@/shared/store/CategoryStore';
 import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue';
 import VideoSummary from '@/pages/videoDetail/entities/videoSummary/ui/VideoSummary.vue';
+import HomeFooter from '@/pages/index/widgets/homeFooter/ui/HomeFooter.vue';
 
 const {
     avatarUrl,
@@ -54,7 +55,7 @@ const route = useRoute();
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
-const AVATAR_SIZE = 44
+const AVATAR_SIZE = 46
 
 /** 分类名：有父子分类时显示「父 · 子」，找不到的分类不显示 */
 const categoryLabel = computed(() =>
@@ -79,17 +80,25 @@ const categoryLabel = computed(() =>
     return names.join(' · ')
 })
 
+interface MetaItem {
+    /** 加粗显示的数字，没有就只显示 text */
+    value?: string
+    text: string
+}
+
 /** 标题下方的元信息，用小圆点分隔 */
-const metaItems = computed(() =>
+const metaItems = computed((): MetaItem[] =>
 {
     const videoInfo = videoStateStore.videoInfo
-    return [
-        `${formatCount(videoInfo.playCount)} 观看`,
-        `${formatCount(videoInfo.danmakuCount)} 弹幕`,
-        formatBackendDateTime(videoInfo.createTime),
-        videoInfo.postType === 1 ? '原创' : '转载',
-        categoryLabel.value,
-    ].filter(Boolean)
+    const publishTime = formatBackendDateTime(videoInfo.createTime)
+    const items: MetaItem[] = [
+        { value: formatCount(videoInfo.playCount), text: ' 观看' },
+        { value: formatCount(videoInfo.danmakuCount), text: ' 弹幕' },
+        { text: publishTime ? `${publishTime} 发布` : '' },
+        { text: videoInfo.postType === 1 ? '原创' : '转载' },
+        { text: categoryLabel.value },
+    ]
+    return items.filter(item => item.value || item.text)
 })
 
 const creator = computed(() => videoStateStore.videoInfo.userInfo ?? null)
@@ -141,7 +150,8 @@ onMounted(() =>
                     <div class="video-meta">
                         <template v-for="(item, index) in metaItems" :key="index">
                             <span v-if="index > 0" class="meta-dot"></span>
-                            <span class="meta-item">{{ item }}</span>
+                            <span class="meta-item"><span v-if="item.value" class="meta-value">{{ item.value
+                            }}</span>{{ item.text }}</span>
                         </template>
                     </div>
                 </section>
@@ -168,7 +178,7 @@ onMounted(() =>
                                 </el-dropdown-menu>
                             </template>
                         </el-dropdown>
-                        <button v-else type="button" class="follow-button" @click="subscribe">关注</button>
+                        <button v-else type="button" class="follow-button" @click="subscribe">+ 关注</button>
                     </div>
                     <VideoActionItem @action-done="() => loadVideoInfo(route.params.videoId as string)" />
                 </section>
@@ -195,32 +205,31 @@ onMounted(() =>
             </div>
 
             <aside class="video-aside">
-                <!-- AI 助手：嵌在侧栏的折叠卡片里（悬浮球会被播放器的迷你窗挡住），默认收起 -->
-                <div class="ai-assistant-card">
-                    <el-collapse class="collapse">
-                        <el-collapse-item class="collapse-item" name="1">
-                            <template #title>
-                                <span class="card-title"><span class="card-dot"></span>AI 视频助手</span>
-                            </template>
-                            <AiAssistant embedded :video-id="route.params.videoId as string" @jump="onAiJump" />
-                        </el-collapse-item>
-                    </el-collapse>
+                <!-- AI 助手：侧栏里的折叠卡片（悬浮球会被播放器的迷你窗挡住），默认收起 -->
+                <div class="aside-card ai-assistant-card">
+                    <AiAssistant embedded collapsible title="AI 视频助手" subtitle="问问这支视频"
+                        :video-id="route.params.videoId as string" @jump="onAiJump" />
                 </div>
                 <DanmakuList v-if="isCommentAvailable()"></DanmakuList>
                 <VideoPartitionList></VideoPartitionList>
                 <section v-if="recommendVideoList.length > 0" class="up-next">
-                    <SectionTitle class="up-next-title" eyebrow="UP NEXT" title="接下来播放" size="sm" />
+                    <div class="up-next-head">
+                        <SectionTitle title="更多推荐" size="sm" as="h3" />
+                    </div>
                     <VideoCard v-for="(videoInfo, index) in recommendVideoList" :key="videoInfo.videoId ?? index"
                         :video-info="videoInfo" layout="list" />
                 </section>
             </aside>
         </main>
+        <HomeFooter v-if="!loading && !notFound" divider />
         <CoinDialog @action-done="afterCoinAction" />
     </div>
 </template>
 
 <style lang="scss" scoped>
 .video-page {
+    display: flex;
+    flex-direction: column;
     width: 100%;
     min-height: 100vh;
 }
@@ -236,7 +245,7 @@ onMounted(() =>
         height: 28px;
         border-radius: 50%;
         border: 2.5px solid $warm-line;
-        border-top-color: $warm-ink;
+        border-top-color: $warm-accent;
         animation: video-page-spin 0.8s linear infinite;
     }
 }
@@ -249,21 +258,24 @@ onMounted(() =>
 
 // 首屏要露出播放器下面的弹幕栏和标题：顶栏（含 1px 底边）+ 上边距 + 弹幕栏 + 行间距
 // + 标题一行 + 标题与元信息的间距 + 元信息 + 底部留白
-$first-screen-reserved: calc(#{$warm-header-height} + 1px + 28px + 56px + 26px + 38px + 10px + 18px + 24px);
+$first-screen-reserved: calc(#{$warm-header-height} + 1px + 8px + 56px + 36px + 48px + 14px + 18px + 24px);
 // 播放器列宽按剩余高度以 16:9 反推，再夹上下限：矮屏不至于缩成小窗，宽屏也不会一直变大
 $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reserved}) * 16 / 9)));
+$aside-width: 392px;
 
 .video-main {
+    flex: 1 0 auto;
+    width: 100%;
     margin: 0 auto;
-    padding: 28px 48px 96px;
+    padding: 8px 48px 104px;
     display: grid;
-    grid-template-columns: minmax(0, $player-column-width) 372px;
+    grid-template-columns: minmax(0, $player-column-width) $aside-width;
     // 播放器列被限宽后，两列整体居中
     justify-content: center;
     // 第一行只由播放器撑开；侧栏跨两行时多出的高度都落到第二行
     grid-template-rows: auto 1fr;
     column-gap: 40px;
-    row-gap: 26px;
+    row-gap: 36px;
     align-items: start;
 
     .player-card {
@@ -284,7 +296,7 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
 
     // 剧场模式：播放器占满整行，侧栏移到第二行右侧
     &.theater {
-        grid-template-columns: minmax(0, 1fr) 372px;
+        grid-template-columns: minmax(0, 1fr) $aside-width;
 
         .player-card {
             grid-column: 1 / -1;
@@ -299,7 +311,7 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
 .video-body {
     display: flex;
     flex-direction: column;
-    gap: 26px;
+    gap: 28px;
     min-width: 0;
 }
 
@@ -307,16 +319,17 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
 .title-block {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
 
     .video-title {
         margin: 0;
-        font-size: 28px;
-        font-weight: 700;
-        line-height: 1.35;
-        letter-spacing: -0.01em;
+        font-size: 38px;
+        font-weight: 800;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
         color: $warm-ink;
         overflow-wrap: anywhere;
+        text-wrap: pretty;
     }
 
     .video-meta {
@@ -327,12 +340,17 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
         font-size: 13px;
         color: $warm-ink-4;
 
+        .meta-value {
+            font-weight: 600;
+            color: $warm-ink;
+        }
+
         .meta-dot {
-            width: 2px;
-            height: 2px;
+            width: 3px;
+            height: 3px;
             border-radius: 50%;
             flex-shrink: 0;
-            background: $warm-ink-5;
+            background: $warm-dot;
         }
     }
 }
@@ -343,7 +361,7 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    padding-bottom: 26px;
+    padding-bottom: 28px;
     border-bottom: 1px solid $warm-line;
 
     .creator {
@@ -361,7 +379,7 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
         }
 
         :deep(.image-container) {
-            border-color: rgba(26, 25, 22, 0.1) !important;
+            border-color: rgba(11, 12, 18, 0.08) !important;
             background: $warm-sunken;
         }
     }
@@ -379,12 +397,12 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
             text-overflow: ellipsis;
             white-space: nowrap;
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             color: $warm-ink;
             transition: color 0.2s;
 
             &:hover {
-                color: $warm-accent-hover;
+                color: $warm-accent;
             }
         }
 
@@ -399,46 +417,46 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
     }
 
     .follow-dropdown {
-        margin-left: 12px;
+        margin-left: 10px;
         flex-shrink: 0;
     }
 
+    // 蓝色胶囊，已关注时换成浅灰
     .follow-button {
         flex-shrink: 0;
-        height: 38px;
-        padding: 0 18px;
+        height: 40px;
+        padding: 0 20px;
         border: none;
-        border-radius: 12px;
-        background: $warm-ink;
+        border-radius: 999px;
+        background: $warm-accent;
         color: #FFFFFF;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 600;
         white-space: nowrap;
         cursor: pointer;
-        transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        transition: background-color 0.2s, color 0.2s;
 
         &:hover {
-            background: #000;
+            background: $warm-ink;
         }
 
         &:focus-visible {
-            outline: 2px solid rgba(26, 25, 22, 0.25);
+            outline: 2px solid $warm-accent;
             outline-offset: 2px;
         }
 
         // 未关注时按钮直接跟在名字后面
         &:not(.followed) {
-            margin-left: 12px;
+            margin-left: 10px;
         }
 
         &.followed {
-            background: $warm-card;
-            border: 1px solid $warm-border-strong;
+            background: $warm-sunken;
             color: $warm-ink-3;
+            font-weight: 500;
 
             &:hover {
                 color: $warm-ink;
-                border-color: rgba(26, 25, 22, 0.2);
             }
         }
     }
@@ -446,17 +464,17 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
 
 // ==================== 评论 ====================
 .comment-block {
-    margin-top: 20px;
+    margin-top: 28px;
 
     .video-comment {
-        // 翻页后滚回评论区时，别被吸顶的顶栏（68px + 1px 底边）挡住
+        // 翻页后滚回评论区时，别被吸顶的顶栏（含 1px 底边）挡住
         scroll-margin-top: calc(#{$warm-header-height} + 1px + 20px);
     }
 
     .pagination-bar {
         display: flex;
         justify-content: center;
-        margin-top: 30px;
+        margin-top: 32px;
     }
 }
 
@@ -464,80 +482,30 @@ $player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reser
 .video-aside {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
 }
 
+// 白底圆角卡片 + 内描边
+.aside-card {
+    border-radius: 24px;
+    background: $warm-card;
+    box-shadow: $warm-shadow-ring;
+}
+
 .ai-assistant-card {
-    .collapse {
-        --el-collapse-header-height: 52px;
-        --el-collapse-header-font-size: 15px;
-        --el-collapse-header-text-color: #{$warm-ink};
-        --el-collapse-header-bg-color: #{$warm-card};
-        --el-collapse-content-bg-color: #{$warm-card};
-        --el-collapse-border-color: #{$warm-line};
-
-        border: none;
-        border-radius: 18px;
-        background: $warm-card;
-        box-shadow: $warm-shadow-ring;
-        overflow: hidden;
-
-        :deep(.el-collapse-item:last-child) {
-            margin-bottom: 0;
-        }
-
-        :deep(.el-collapse-item__header) {
-            padding: 0 18px;
-            font-weight: 600;
-        }
-
-        :deep(.el-collapse-item__header.is-active) {
-            border-bottom-color: $warm-line;
-        }
-
-        :deep(.el-collapse-item__arrow) {
-            color: $warm-ink-4;
-        }
-
-        :deep(.el-collapse-item__wrap) {
-            border-bottom: none;
-        }
-
-        :deep(.el-collapse-item__content) {
-            padding-bottom: 0;
-        }
-
-        // 助手面板自带的分隔线换成暖色
-        :deep(.ai-assistant .panel-header),
-        :deep(.ai-assistant .input-bar) {
-            border-color: $warm-line;
-        }
-    }
-
-    .card-title {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .card-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        background: $warm-accent;
-    }
+    --ai-message-max-height: 320px;
 }
 
 .up-next {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    margin-top: 10px;
+    gap: 16px;
+    margin-top: 28px;
 
-    .up-next-title {
-        margin-bottom: 4px;
+    .up-next-head {
+        padding-bottom: 16px;
+        border-bottom: 1px solid $warm-line;
     }
 }
 </style>

@@ -4,8 +4,8 @@ import request from "@/shared/lib/request"
 import type { VideoInfo } from "@/shared/model/VideoInfo"
 import { computed, ref } from "vue"
 
-/** 「为你推荐」最多展示的视频数（两行） */
-const FOR_YOU_VIDEO_COUNT = 8
+/** 「为你推荐」最多展示的视频数：一个两行两列的大卡片 + 8 个普通卡片，正好三行 */
+const FOR_YOU_VIDEO_COUNT = 9
 
 /**
  * 首页推荐视频：一次请求，前几个给顶部轮播，剩下的给「为你推荐」

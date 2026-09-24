@@ -97,12 +97,12 @@ export function calcDefaultFoldReason(videoComment: VideoComment): number {
 /**
  * 评论头像几何参数（顶层评论 / 楼中楼回复）
  * - size：头像直径
- * - top：头像顶部距评论项顶部的距离（顶层 = 1px 分隔线 + 18px 上内边距；回复无分隔线）
+ * - top：头像顶部距评论项顶部的距离（顶层 = 1px 分隔线 + 20px 上内边距；回复无分隔线）
  * - gap：头像与正文的间距
  * VideoCommentItem 用它排版，CommentThread 用它计算连线位置
  */
 export const COMMENT_AVATAR_METRICS = {
-    root: { size: 38, top: 19, gap: 14 },
+    root: { size: 40, top: 21, gap: 14 },
     reply: { size: 30, top: 14, gap: 12 },
 } as const
 

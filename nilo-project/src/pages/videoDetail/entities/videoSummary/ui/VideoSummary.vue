@@ -63,10 +63,9 @@ function jump(startSec: number)
 <template>
     <section :class="['video-summary', { expanded }]">
         <button type="button" class="summary-header" :aria-expanded="expanded" @click="toggle">
-            <span class="heading">
-                <span class="eyebrow">AI SUMMARY</span>
-                <span class="title">AI 总结</span>
-            </span>
+            <span class="mark" aria-hidden="true"></span>
+            <span class="title">AI 总结</span>
+            <span class="subtitle">根据视频内容生成，仅供参考</span>
             <span class="toggle-text">
                 {{ expanded ? '收起' : '展开' }}
                 <span class="chevron" aria-hidden="true"></span>
@@ -91,11 +90,16 @@ function jump(startSec: number)
 </template>
 
 <style lang="scss" scoped>
+// 白底圆角卡片 + 内描边
 .video-summary {
-    padding: 20px 22px;
-    border-radius: 18px;
+    padding: 22px 26px;
+    border-radius: 22px;
     background: $warm-card;
     box-shadow: $warm-shadow-ring;
+
+    &.expanded {
+        padding-bottom: 20px;
+    }
 
     button {
         border: none;
@@ -108,40 +112,57 @@ function jump(startSec: number)
     .summary-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
+        gap: 10px;
         width: 100%;
         padding: 0;
         color: $warm-ink;
 
         &:focus-visible {
-            outline: 2px solid rgba(26, 25, 22, 0.2);
+            outline: 2px solid $warm-accent;
             outline-offset: 6px;
             border-radius: 10px;
         }
 
         &:hover .toggle-text {
-            color: $warm-ink;
+            color: $warm-accent;
         }
     }
 
-    .heading {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
+    // 蓝色圆点标记：大圆里偏右上一个白点
+    .mark {
+        position: relative;
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: $warm-accent;
 
-    .eyebrow {
-        font-family: $warm-font-mono;
-        font-size: 11px;
-        letter-spacing: 0.14em;
-        color: $warm-ink-4;
+        &::after {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 5px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #FFFFFF;
+        }
     }
 
     .title {
+        flex-shrink: 0;
         font-size: 16px;
         font-weight: 700;
-        color: $warm-ink;
+    }
+
+    .subtitle {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 12px;
+        color: $warm-ink-4;
     }
 
     .toggle-text {
@@ -149,7 +170,7 @@ function jump(startSec: number)
         align-items: center;
         gap: 6px;
         flex-shrink: 0;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
         color: $warm-ink-3;
         transition: color 0.2s;
@@ -171,9 +192,10 @@ function jump(startSec: number)
     }
 
     .panel {
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid $warm-line;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        margin-top: 18px;
 
         .tip {
             font-size: 13px;
@@ -181,48 +203,51 @@ function jump(startSec: number)
         }
 
         .text {
+            max-width: 800px;
             margin: 0;
-            font-size: 14px;
-            line-height: 1.8;
+            font-size: 15px;
+            line-height: 1.9;
             color: $warm-ink-2;
             white-space: pre-wrap;
             text-wrap: pretty;
         }
 
+        // 章节：左侧蓝色等宽时间，点了跳过去
         .chapters {
             display: flex;
             flex-direction: column;
             gap: 2px;
-            margin: 14px -10px 0;
+            margin: 0 -12px;
 
             .chapter {
-                display: flex;
-                align-items: baseline;
+                display: grid;
+                grid-template-columns: 64px minmax(0, 1fr);
                 gap: 14px;
-                padding: 8px 10px;
-                border-radius: 10px;
+                padding: 12px;
+                border-radius: 14px;
                 transition: background-color 0.2s;
 
                 &:hover {
-                    background: $warm-paper;
+                    background: $warm-sunken;
                 }
 
                 &:focus-visible {
-                    outline: 2px solid rgba(26, 25, 22, 0.2);
+                    outline: 2px solid $warm-accent;
                     outline-offset: -2px;
                 }
 
                 .time {
-                    flex-shrink: 0;
-                    min-width: 44px;
+                    padding-top: 1px;
                     font-family: $warm-font-mono;
-                    font-size: 12px;
-                    color: $warm-accent-text;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: $warm-accent;
                 }
 
                 .chapter-title {
                     min-width: 0;
                     font-size: 14px;
+                    font-weight: 700;
                     line-height: 1.6;
                     color: $warm-ink;
                 }

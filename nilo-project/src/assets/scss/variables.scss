@@ -56,27 +56,32 @@ $color-badge-orange-bg: #fdf6ec;
 // 顶栏高度
 $header-bar-height: 64px;
 
-// ========== 暖白主题（首页、视频详情页） ==========
-$warm-paper: #F7F6F3;            // 页面底色
+// ========== 首页、视频详情页主题（A5：白底 + 电光蓝） ==========
+// 变量名沿用 warm-*（上一版暖白主题留下的），取值已换成 A5 配色
+$warm-paper: #FFFFFF;            // 页面底色
 $warm-card: #FFFFFF;             // 卡片
-$warm-sunken: #EFEDE8;           // 分段控件底 / 图片占位
-$warm-ink: #1A1916;              // 主文字、主按钮
-$warm-ink-2: #3A3834;            // 正文段落
-$warm-ink-3: #57544E;            // 次要文字
-$warm-ink-4: #8C8880;            // 弱化文字 / 元信息
-$warm-ink-5: #B5B1A9;            // 更弱（排名4-5、分隔点）
-$warm-line: rgba(26, 25, 22, 0.07);        // 分隔线
-$warm-line-soft: rgba(26, 25, 22, 0.06);   // 列表行分隔
-$warm-border: rgba(26, 25, 22, 0.08);      // 输入框/卡片描边
-$warm-border-strong: rgba(26, 25, 22, 0.12); // 次按钮描边
-$warm-accent: oklch(0.63 0.14 45);         // 陶土色：进度、状态点
-$warm-accent-strong: oklch(0.58 0.14 45);  // 排名第一
-$warm-accent-text: oklch(0.52 0.14 45);    // 陶土色文字（已赞等）
-$warm-accent-hover: oklch(0.55 0.14 45);   // 链接悬停色
-$warm-logo-dot: oklch(0.72 0.14 50);
-$warm-shadow-chip: 0 1px 2px rgba(26, 25, 22, 0.06), 0 0 0 1px rgba(26, 25, 22, 0.04);
-$warm-shadow-card: 0 0 0 1px rgba(26, 25, 22, 0.05), 0 20px 50px -30px rgba(26, 25, 22, 0.18);
-$warm-shadow-ring: 0 0 0 1px rgba(26, 25, 22, 0.08), 0 1px 2px rgba(26, 25, 22, 0.04);
+$warm-sunken: #F3F4F7;           // 浅灰底：输入框、次按钮、图片占位
+$warm-ink: #0B0C12;              // 主文字、主按钮
+$warm-ink-2: #30323A;            // 正文段落
+$warm-ink-3: #3A3D48;            // 次要文字
+$warm-ink-4: #6B6F7B;            // 弱化文字 / 元信息
+$warm-ink-5: #9A9DA8;            // 更弱（未选中序号、禁用）
+$warm-dot: #C3C6CE;              // 元信息之间的分隔点
+$warm-line: rgba(11, 12, 18, 0.08);        // 分隔线
+$warm-line-soft: rgba(11, 12, 18, 0.06);   // 列表行分隔
+$warm-border: rgba(11, 12, 18, 0.09);      // 卡片描边
+$warm-border-strong: rgba(11, 12, 18, 0.12); // 次按钮描边
+$warm-accent: #0000F2;                     // 电光蓝：主按钮、选中态、进度
+$warm-accent-strong: #0000F2;              // 排名数字
+$warm-accent-text: #0000F2;                // 蓝色文字（已赞、时间戳、标签）
+$warm-accent-hover: #0000F2;               // 链接悬停色
+$warm-accent-soft: #EBEBFE;                // 浅蓝底：已赞、选中的子分类
+$warm-accent-on-dark: #C9CCFF;             // 蓝底上的次要文字
+$warm-accent-on-dark-2: #DCDEFF;           // 蓝底上的段落文字
+$warm-logo-dot: #FFFFFF;
+$warm-shadow-chip: 0 1px 2px rgba(11, 12, 18, 0.06), 0 0 0 1px rgba(11, 12, 18, 0.04);
+$warm-shadow-card: 0 0 0 1px rgba(11, 12, 18, 0.06), 0 28px 64px -24px rgba(11, 12, 18, 0.32);
+$warm-shadow-ring: inset 0 0 0 1px rgba(11, 12, 18, 0.09);
 $warm-font-sans: 'Geist Sans', 'PingFang SC', 'HarmonyOS_Regular', 'Microsoft YaHei', system-ui, sans-serif;
 $warm-font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
-$warm-header-height: 68px;
+$warm-header-height: 76px;

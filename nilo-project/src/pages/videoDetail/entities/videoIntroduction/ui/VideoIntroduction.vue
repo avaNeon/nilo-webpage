@@ -132,16 +132,20 @@ watch(windowWidth, () =>
 </template>
 
 <style lang="scss" scoped>
+// 浅灰底圆角卡片
 .introduction-bar {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
+    padding: 24px 26px;
+    border-radius: 22px;
+    background: $warm-sunken;
 
     .introduction-text-wrapper {
         position: relative;
         width: 100%;
-        max-width: 760px;
+        max-width: 780px;
     }
 
     .introduction-text {
@@ -159,24 +163,22 @@ watch(windowWidth, () =>
         :deep(a.inline-link) {
             color: $warm-accent-text;
             text-decoration: none;
-            transition: color 0.2s;
 
             &:hover {
-                color: $warm-accent-hover;
                 text-decoration: underline;
                 text-underline-offset: 3px;
             }
         }
     }
 
-    // 折叠时底部渐隐到页面底色
+    // 折叠时底部渐隐到卡片底色
     .fade-overlay {
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
         height: 80px;
-        background: linear-gradient(to bottom, rgba(247, 246, 243, 0), $warm-paper);
+        background: linear-gradient(to bottom, rgba(243, 244, 247, 0), $warm-sunken);
         cursor: pointer;
         opacity: 0;
         pointer-events: none;
@@ -201,11 +203,11 @@ watch(windowWidth, () =>
         transition: color 0.2s;
 
         &:hover {
-            color: $warm-ink;
+            color: $warm-accent;
         }
 
         &:focus-visible {
-            outline: 2px solid rgba(26, 25, 22, 0.2);
+            outline: 2px solid $warm-accent;
             outline-offset: 2px;
             border-radius: 4px;
         }
@@ -218,12 +220,12 @@ watch(windowWidth, () =>
 
         .tag-item {
             font-size: 13px;
-            font-weight: 500;
-            color: $warm-ink-3;
-            transition: color 0.2s;
+            font-weight: 600;
+            color: $warm-accent;
 
             &:hover {
-                color: $warm-accent-hover;
+                text-decoration: underline;
+                text-underline-offset: 3px;
             }
         }
     }

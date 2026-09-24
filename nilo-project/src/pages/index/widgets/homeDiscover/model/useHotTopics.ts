@@ -2,11 +2,11 @@ import { VideoSearchApi } from '@/shared/api/VideoSearchApi'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-// 热门话题直接取搜索栏的热搜词，最多展示 6 个
-export const HOT_TOPIC_COUNT = 6
+// 热门话题直接取搜索栏的热搜词，最多展示 8 个
+export const HOT_TOPIC_COUNT = 8
 
-// 每张话题卡片的底色色相，按位置依次取用
-const TOPIC_HUES = [240, 40, 330, 160, 285, 85]
+// 每个话题圆标的渐变色相（起点、终点），按位置依次取用
+const TOPIC_HUES: [number, number][] = [[70, 40], [150, 175], [350, 320], [95, 60], [200, 230], [30, 10], [300, 280], [120, 150]]
 
 export interface HotTopic {
     keyword: string
@@ -17,11 +17,11 @@ export interface HotTopic {
     background: string
 }
 
-/** 设计稿里的占位图：细斜纹 + 同色系渐变 */
-function topicBackground(hue: number): string
+/** 话题圆标：彩色渐变 + 偏右上一个白点 */
+function topicBackground([from, to]: [number, number]): string
 {
-    return 'repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 9px), '
-        + `linear-gradient(140deg, oklch(0.95 0.035 ${hue}), oklch(0.86 0.06 ${hue + 35}))`
+    return 'radial-gradient(circle at 68% 30%, #FFFFFF 0 4.5px, transparent 5.5px), '
+        + `linear-gradient(145deg, oklch(0.84 0.13 ${from}), oklch(0.66 0.17 ${to}))`
 }
 
 export function useHotTopics()

@@ -128,7 +128,7 @@ onBeforeUnmount(() =>
 .site-search {
     position: relative;
     flex-shrink: 0;
-    width: 340px;
+    width: 360px;
     font-family: $warm-font-sans;
 
     // 按钮统一去掉默认样式
@@ -145,16 +145,15 @@ onBeforeUnmount(() =>
         display: flex;
         align-items: center;
         gap: 10px;
-        height: 40px;
-        padding: 0 8px 0 14px;
-        background: #FFFFFF;
-        border: 1px solid $warm-border;
-        border-radius: 12px;
-        box-shadow: 0 1px 2px rgba(26, 25, 22, 0.03);
-        transition: border-color 0.2s;
+        height: 42px;
+        padding: 0 8px 0 16px;
+        background: $warm-sunken;
+        border-radius: 999px;
+        transition: background-color 0.2s, box-shadow 0.2s;
 
         &:focus-within {
-            border-color: rgba(26, 25, 22, 0.2);
+            background: #FFFFFF;
+            box-shadow: inset 0 0 0 1.5px $warm-accent;
         }
     }
 
@@ -220,9 +219,9 @@ onBeforeUnmount(() =>
 
     .search-shortcut {
         flex-shrink: 0;
-        padding: 2px 6px;
-        border: 1px solid rgba(26, 25, 22, 0.1);
-        border-radius: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #FFFFFF;
         font-family: $warm-font-mono;
         font-size: 11px;
         color: $warm-ink-4;
@@ -230,14 +229,14 @@ onBeforeUnmount(() =>
 
     .search-panel {
         position: absolute;
-        top: 48px;
-        right: 0;
+        top: 54px;
+        left: 0;
         z-index: 10;
-        width: 420px;
-        padding: 18px;
+        width: 452px;
+        padding: 20px;
         background: #FFFFFF;
-        border-radius: 16px;
-        box-shadow: $warm-shadow-card, 0 18px 40px -20px rgba(26, 25, 22, 0.25);
+        border-radius: 26px;
+        box-shadow: $warm-shadow-card;
     }
 
     .panel-section+.panel-section {
@@ -281,9 +280,9 @@ onBeforeUnmount(() =>
 
     .history-chip {
         max-width: 100%;
-        padding: 5px 11px;
-        border-radius: 8px;
-        background: $warm-paper;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: $warm-sunken;
         font-size: 12px;
         line-height: 18px;
         color: $warm-ink-3;
@@ -293,7 +292,7 @@ onBeforeUnmount(() =>
         transition: color 0.2s;
 
         &:hover {
-            color: $warm-ink;
+            color: $warm-accent;
         }
     }
 
@@ -308,13 +307,13 @@ onBeforeUnmount(() =>
         align-items: center;
         gap: 10px;
         min-width: 0;
-        padding: 7px 8px;
-        border-radius: 8px;
+        padding: 7px 10px;
+        border-radius: 12px;
         text-align: left;
         transition: background 0.2s;
 
         &:hover {
-            background: $warm-paper;
+            background: $warm-sunken;
         }
     }
 

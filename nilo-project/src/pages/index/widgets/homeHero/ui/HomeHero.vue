@@ -23,13 +23,16 @@ interface SlideView {
     key: string | number
     videoPath: string
     title: string
+    /** 视频简介，没有就不显示 */
+    description: string
     cover: string | null
     creatorPath: string | null
     creatorName: string
+    /** 头像旁边的小字：UP 主 · N 天前更新 */
+    creatorSubText: string
     avatar: string | null
-    metaText: string
+    categoryText: string
     playCountText: string
-    danmakuCountText: string
     durationText: string
 }
 
@@ -59,20 +62,19 @@ const slideViews = computed((): SlideView[] => props.slides.map((videoInfo, inde
 {
     const creator = videoInfo.briefUserInfo ?? videoInfo.userInfo ?? null
     const relativeDay = formatRelativeDay(videoInfo.lastUpdateTime ?? videoInfo.createTime)
-    const metaText = [getCategoryLabel(videoInfo), relativeDay ? `${relativeDay}更新` : '']
-        .filter(Boolean)
-        .join(' · ')
     return {
         key: videoInfo.videoId ?? index,
         videoPath: `/video/${videoInfo.videoId ?? ''}`,
         title: (videoInfo.videoName ?? '').replace(/<[^>]*>/g, ''),
+        // 简介里的换行（含转义的 \n）压成一行，交给 CSS 截断
+        description: (videoInfo.introduction ?? '').replace(/\\n|\s+/g, ' ').trim(),
         cover: videoInfo.videoCover,
         creatorPath: creator?.userId ? `/user/${creator.userId}` : null,
         creatorName: creator?.nickName || '未知UP主',
+        creatorSubText: relativeDay ? `UP 主 · ${relativeDay}更新` : 'UP 主',
         avatar: creator?.avatar ?? null,
-        metaText,
+        categoryText: getCategoryLabel(videoInfo),
         playCountText: formatCount(videoInfo.playCount),
-        danmakuCountText: formatCount(videoInfo.danmakuCount),
         durationText: formatDurationClock(videoInfo.duration),
     }
 }))
@@ -87,11 +89,6 @@ const progressCycle = ref(0)
 const pageHidden = ref(false)
 
 const activeView = computed(() => slideViews.value[activeIndex.value] ?? slideViews.value[0] ?? null)
-const counterText = computed(() =>
-{
-    const pad = (value: number) => value.toString().padStart(2, '0')
-    return `${pad(activeIndex.value + 1)} / ${pad(slideViews.value.length)}`
-})
 
 function goTo(index: number)
 {
@@ -129,10 +126,15 @@ onBeforeUnmount(() =>
     document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
-/*——————图片加载状态：封面加载完才显示，失败时逐级回退到占位底色—————— */
+/** 编号 01、02… */
+function slideNumber(index: number): string
+{
+    return (index + 1).toString().padStart(2, '0')
+}
+
+/*——————图片加载状态：封面加载完才显示，失败时露出占位底色—————— */
 
 const coverState = ref<Record<number, 'loaded' | 'failed'>>({})
-const thumbFailCount = ref<Record<number, number>>({})
 const avatarFailed = ref<Record<number, boolean>>({})
 
 watch(() => props.slides, () =>
@@ -141,7 +143,6 @@ watch(() => props.slides, () =>
     prevIndex.value = null
     progressCycle.value++
     coverState.value = {}
-    thumbFailCount.value = {}
     avatarFailed.value = {}
 })
 
@@ -165,23 +166,6 @@ function onCoverError(index: number)
     coverState.value[index] = 'failed'
 }
 
-// 小图优先用缩略图，缩略图缺失时回退原图
-function thumbSrc(index: number): string
-{
-    const cover = slideViews.value[index]?.cover
-    const failCount = thumbFailCount.value[index] ?? 0
-    if (!cover || failCount > 1)
-    {
-        return ''
-    }
-    return imgRequestUrl(cover, failCount === 0)
-}
-
-function onThumbError(index: number)
-{
-    thumbFailCount.value[index] = (thumbFailCount.value[index] ?? 0) + 1
-}
-
 const activeAvatarSrc = computed(() =>
 {
     if (!activeView.value?.avatar || avatarFailed.value[activeIndex.value])
@@ -202,34 +186,31 @@ function onAvatarError()
     <section v-if="loading" class="home-hero is-skeleton" aria-busy="true" aria-label="精选推荐">
         <div class="hero-card">
             <div class="hero-info">
-                <div class="hero-top">
-                    <span class="sk sk-eyebrow"></span>
+                <span class="sk sk-eyebrow"></span>
+                <div class="hero-text">
                     <span class="sk-title-group">
                         <span class="sk sk-title"></span>
                         <span class="sk sk-title short"></span>
                     </span>
-                    <span class="sk sk-meta"></span>
+                    <span class="sk sk-desc"></span>
                     <span class="sk-creator">
                         <span class="sk sk-avatar"></span>
-                        <span class="sk sk-stats"></span>
+                        <span class="sk sk-name"></span>
                     </span>
                 </div>
-                <div class="hero-bottom">
-                    <span class="hero-actions">
-                        <span class="sk sk-button"></span>
-                        <span class="sk sk-button secondary"></span>
-                    </span>
-                    <span class="sk sk-counter"></span>
+                <div class="hero-actions">
+                    <span class="sk sk-button"></span>
+                    <span class="sk sk-button secondary"></span>
                 </div>
             </div>
             <div class="hero-media sk"></div>
         </div>
         <div class="hero-strip" :style="{ gridTemplateColumns: `repeat(${CAROUSEL_VIDEO_COUNT}, minmax(0, 1fr))` }">
             <div v-for="index in CAROUSEL_VIDEO_COUNT" :key="index" class="strip-item">
-                <span class="strip-thumb sk"></span>
+                <span class="strip-track"></span>
                 <span class="strip-text">
-                    <span class="sk sk-strip-title"></span>
-                    <span class="sk sk-strip-creator"></span>
+                    <span class="sk-line sk-strip-title"></span>
+                    <span class="sk-line sk-strip-creator"></span>
                 </span>
             </div>
         </div>
@@ -239,53 +220,42 @@ function onAvatarError()
         aria-roledescription="carousel" aria-label="精选推荐">
         <div class="hero-card">
             <div class="hero-info">
-                <div class="hero-top">
-                    <span class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>精选推荐 · EDITOR'S PICK</span>
-                    <Transition name="hero-swap" mode="out-in">
-                        <div :key="activeIndex" class="hero-text">
-                            <h1 class="hero-title">
-                                <RouterLink :to="activeView.videoPath" target="_blank" :title="activeView.title">
-                                    {{ activeView.title }}
-                                </RouterLink>
-                            </h1>
-                            <p v-if="activeView.metaText" class="hero-meta">{{ activeView.metaText }}</p>
-                            <div class="hero-creator">
-                                <component :is="activeView.creatorPath ? RouterLink : 'span'" class="creator-link"
-                                    v-bind="activeView.creatorPath ? { to: activeView.creatorPath, target: '_blank' } : {}">
-                                    <span class="creator-avatar">
-                                        <img v-if="activeAvatarSrc" :src="activeAvatarSrc" alt=""
-                                            @error="onAvatarError">
-                                    </span>
-                                    <span class="creator-text">
-                                        <span class="creator-name">{{ activeView.creatorName }}</span>
-                                        <span class="creator-role">UP 主</span>
-                                    </span>
-                                </component>
-                                <span class="hero-divider"></span>
-                                <div class="hero-stats">
-                                    <span class="hero-stat">
-                                        <span class="hero-stat-value">{{ activeView.playCountText }}</span>播放
-                                    </span>
-                                    <span class="hero-stat">
-                                        <span class="hero-stat-value">{{ activeView.danmakuCountText }}</span>弹幕
-                                    </span>
-                                    <span class="hero-stat">
-                                        <span class="hero-stat-value">{{ activeView.durationText }}</span>时长
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </Transition>
+                <div class="hero-eyebrow">
+                    <span class="hero-eyebrow-label"><span class="hero-eyebrow-dot"></span>精选推荐</span>
+                    <span class="hero-eyebrow-en">EDITOR'S PICK</span>
                 </div>
+                <Transition name="hero-swap" mode="out-in">
+                    <div :key="activeIndex" class="hero-text">
+                        <h1 class="hero-title">
+                            <RouterLink :to="activeView.videoPath" target="_blank" :title="activeView.title">
+                                {{ activeView.title }}
+                            </RouterLink>
+                        </h1>
+                        <p v-if="activeView.description" class="hero-desc">{{ activeView.description }}</p>
+                        <component :is="activeView.creatorPath ? RouterLink : 'span'" class="hero-creator"
+                            v-bind="activeView.creatorPath ? { to: activeView.creatorPath, target: '_blank' } : {}">
+                            <span class="creator-avatar">
+                                <img v-if="activeAvatarSrc" :src="activeAvatarSrc" alt="" @error="onAvatarError">
+                            </span>
+                            <span class="creator-text">
+                                <span class="creator-name">{{ activeView.creatorName }}</span>
+                                <span class="creator-sub">{{ activeView.creatorSubText }}</span>
+                            </span>
+                        </component>
+                    </div>
+                </Transition>
                 <div class="hero-bottom">
                     <div class="hero-actions">
                         <RouterLink class="hero-button primary" :to="activeView.videoPath" target="_blank">
-                            <span class="play-icon"></span>立即观看
+                            <span class="play-circle"><span class="play-icon"></span></span>立即观看
                         </RouterLink>
                         <RouterLink v-if="activeView.creatorPath" class="hero-button secondary"
                             :to="activeView.creatorPath" target="_blank">UP 主主页</RouterLink>
                     </div>
-                    <span class="hero-counter">{{ counterText }}</span>
+                    <span class="hero-stats">
+                        <span><span class="hero-stat-value">{{ activeView.playCountText }}</span> 观看</span>
+                        <span class="hero-stat-value">{{ activeView.durationText }}</span>
+                    </span>
                 </div>
             </div>
 
@@ -294,33 +264,34 @@ function onAvatarError()
                 <RouterLink class="hero-cover-link" :to="activeView.videoPath" target="_blank" tabindex="-1"
                     :aria-label="activeView.title">
                     <template v-for="(view, index) in slideViews" :key="view.key">
-                        <img v-if="view.cover && coverState[index] !== 'failed'" :class="['hero-cover', coverClass(index)]"
-                            :src="imgRequestUrl(view.cover)" alt="" @load="onCoverLoad(index)"
-                            @error="onCoverError(index)">
+                        <img v-if="view.cover && coverState[index] !== 'failed'"
+                            :class="['hero-cover', coverClass(index)]" :src="imgRequestUrl(view.cover)" alt=""
+                            @load="onCoverLoad(index)" @error="onCoverError(index)">
                     </template>
                 </RouterLink>
-                <div v-if="slideViews.length > 1" class="hero-dots">
-                    <button v-for="(view, index) in slideViews" :key="view.key" type="button"
-                        :class="['hero-dot', { active: index === activeIndex }]" :aria-label="`第 ${index + 1} 个`"
-                        :aria-current="index === activeIndex ? 'true' : undefined" @click="goTo(index)"></button>
-                </div>
+                <span v-if="activeView.categoryText" class="hero-chip">
+                    <span class="hero-chip-dot"></span>{{ activeView.categoryText }}
+                </span>
             </div>
         </div>
 
+        <!-- 下方编号条：当前一条的进度条走完自动切到下一条 -->
         <div v-if="slideViews.length > 1" class="hero-strip"
             :style="{ gridTemplateColumns: `repeat(${slideViews.length}, minmax(0, 1fr))` }">
             <button v-for="(view, index) in slideViews" :key="view.key" type="button"
                 :class="['strip-item', { active: index === activeIndex }]"
                 :aria-current="index === activeIndex ? 'true' : undefined" @click="goTo(index)">
-                <span class="strip-thumb">
-                    <img v-if="thumbSrc(index)" :src="thumbSrc(index)" alt="" @error="onThumbError(index)">
+                <span class="strip-track">
+                    <span v-if="index === activeIndex" :key="`progress-${progressCycle}`" class="strip-progress"
+                        :style="{ animationDuration: `${AUTOPLAY_INTERVAL}ms` }" @animationend="onProgressEnd"></span>
                 </span>
-                <span class="strip-text">
-                    <span class="strip-title">{{ view.title }}</span>
-                    <span class="strip-creator">{{ view.creatorName }}</span>
+                <span class="strip-row">
+                    <span class="strip-num">{{ slideNumber(index) }}</span>
+                    <span class="strip-text">
+                        <span class="strip-title">{{ view.title }}</span>
+                        <span class="strip-creator">{{ view.creatorName }}</span>
+                    </span>
                 </span>
-                <span v-if="index === activeIndex" :key="`progress-${progressCycle}`" class="strip-progress"
-                    :style="{ animationDuration: `${AUTOPLAY_INTERVAL}ms` }" @animationend="onProgressEnd"></span>
             </button>
         </div>
     </section>
@@ -356,10 +327,18 @@ function onAvatarError()
     white-space: nowrap;
 }
 
+// 多行截断
+@mixin clamp($lines) {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
 .home-hero {
     display: flex;
     flex-direction: column;
-    gap: 12px;
 
     button {
         padding: 0;
@@ -371,14 +350,15 @@ function onAvatarError()
     }
 }
 
+// 蓝色色块：左文字、右封面
 .hero-card {
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    height: 480px;
-    border-radius: 24px;
-    overflow: hidden;
-    background: $warm-card;
-    box-shadow: $warm-shadow-card;
+    height: 540px;
+    padding: 14px;
+    border-radius: 32px;
+    background: $warm-accent;
+    color: #FFFFFF;
 }
 
 /*——————左侧信息—————— */
@@ -387,11 +367,38 @@ function onAvatarError()
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 20px;
     min-width: 0;
-    padding: 44px 48px;
+    padding: 30px 36px 26px 30px;
 }
 
-.hero-top,
+.hero-eyebrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: $warm-font-mono;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+}
+
+.hero-eyebrow-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hero-eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FFFFFF;
+}
+
+.hero-eyebrow-en {
+    color: $warm-accent-on-dark;
+}
+
 .hero-text {
     display: flex;
     flex-direction: column;
@@ -399,90 +406,58 @@ function onAvatarError()
     min-width: 0;
 }
 
-.hero-eyebrow {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: $warm-font-mono;
-    font-size: 14px;
-    letter-spacing: 0.14em;
-    color: $warm-ink-3;
-}
-
-.hero-eyebrow-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: $warm-accent;
-}
-
 .hero-title {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    overflow-wrap: anywhere;
+    @include clamp(3);
     margin: 0;
-    font-size: 44px;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    font-size: 54px;
+    font-weight: 800;
+    line-height: 1.16;
+    letter-spacing: -0.025em;
     text-wrap: pretty;
-    color: $warm-ink;
 
     a {
-        transition: color 0.2s;
+        color: #FFFFFF;
+        transition: opacity 0.2s;
 
         &:hover {
-            color: $warm-accent-hover;
+            opacity: 0.85;
         }
     }
 }
 
-.hero-meta {
+.hero-desc {
+    @include clamp(2);
+    max-width: 420px;
     margin: 0;
-    font-size: 15px;
-    line-height: 1.6;
-    color: $warm-ink-3;
+    font-size: 16px;
+    line-height: 1.8;
+    color: $warm-accent-on-dark-2;
+    text-wrap: pretty;
 }
 
 .hero-creator {
     display: flex;
     align-items: center;
     gap: 12px;
+    align-self: flex-start;
     min-width: 0;
-    margin-top: 4px;
-}
-
-.creator-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-    color: $warm-ink;
+    color: #FFFFFF;
 
     &:is(a):hover .creator-name {
-        color: $warm-accent-hover;
+        text-decoration: underline;
+        text-underline-offset: 3px;
     }
 }
 
+// 头像外圈：先一圈蓝色再一圈白色
 .creator-avatar {
-    position: relative;
     width: 36px;
     height: 36px;
     border-radius: 50%;
     flex-shrink: 0;
     overflow: hidden;
-    background: linear-gradient(140deg, oklch(0.93 0.035 60), oklch(0.83 0.055 90));
-
-    &::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        box-shadow: inset 0 0 0 1px rgba(26, 25, 22, 0.06);
-        pointer-events: none;
-    }
+    background: linear-gradient(140deg, oklch(0.92 0.01 265), oklch(0.8 0.02 265));
+    box-shadow: 0 0 0 2px $warm-accent, 0 0 0 3px #FFFFFF;
 
     img {
         display: block;
@@ -501,44 +476,14 @@ function onAvatarError()
 
 .creator-name {
     @include ellipsis;
-    max-width: 140px;
+    max-width: 240px;
     font-size: 14px;
     font-weight: 600;
-    transition: color 0.2s;
 }
 
-.creator-role {
+.creator-sub {
     font-size: 12px;
-    color: $warm-ink-4;
-}
-
-.hero-divider {
-    width: 1px;
-    height: 28px;
-    margin: 0 8px;
-    flex-shrink: 0;
-    background: $warm-border-strong;
-}
-
-.hero-stats {
-    display: flex;
-    gap: 22px;
-    flex-shrink: 0;
-}
-
-.hero-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    font-size: 12px;
-    color: $warm-ink-4;
-    white-space: nowrap;
-}
-
-.hero-stat-value {
-    font-size: 15px;
-    font-weight: 600;
-    color: $warm-ink;
+    color: $warm-accent-on-dark;
 }
 
 .hero-bottom {
@@ -556,40 +501,51 @@ function onAvatarError()
 .hero-button {
     display: inline-flex;
     align-items: center;
-    height: 48px;
-    border-radius: 14px;
+    height: 52px;
+    border-radius: 999px;
     font-size: 15px;
-    font-weight: 500;
     white-space: nowrap;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s, transform 0.2s;
 
     &:focus-visible {
-        outline: 2px solid $warm-ink;
+        outline: 2px solid #FFFFFF;
         outline-offset: 2px;
     }
 
+    // 白底胶囊，左侧蓝色圆形播放键
     &.primary {
-        gap: 10px;
-        padding: 0 24px 0 20px;
-        background: $warm-ink;
-        color: #FFFFFF;
-        box-shadow: 0 8px 20px -10px rgba(26, 25, 22, 0.5);
+        gap: 12px;
+        padding: 0 26px 0 8px;
+        background: #FFFFFF;
+        color: $warm-accent;
+        font-weight: 600;
 
         &:hover {
-            background: #000000;
+            transform: translateY(-1px);
         }
     }
 
     &.secondary {
-        padding: 0 20px;
-        border: 1px solid $warm-border-strong;
-        background: #FFFFFF;
-        color: $warm-ink;
+        padding: 0 22px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+        color: #FFFFFF;
+        font-weight: 500;
 
         &:hover {
-            border-color: $warm-ink;
+            background: rgba(255, 255, 255, 0.1);
         }
     }
+}
+
+.play-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding-left: 3px;
+    border-radius: 50%;
+    background: $warm-accent;
 }
 
 .play-icon {
@@ -600,12 +556,20 @@ function onAvatarError()
     border-bottom: 6px solid transparent;
 }
 
-.hero-counter {
-    font-family: $warm-font-mono;
+.hero-stats {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-shrink: 0;
     font-size: 12px;
-    letter-spacing: 0.08em;
-    color: $warm-ink-4;
+    color: $warm-accent-on-dark;
     white-space: nowrap;
+}
+
+.hero-stat-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #FFFFFF;
 }
 
 // 切换时左侧文字短暂淡出淡入
@@ -632,8 +596,10 @@ function onAvatarError()
 .hero-media {
     position: relative;
     min-width: 0;
+    border-radius: 22px;
     overflow: hidden;
-    background: $warm-sunken;
+    isolation: isolate;
+    background: linear-gradient(150deg, oklch(0.94 0.008 265), oklch(0.83 0.016 265));
 }
 
 .hero-cover-link {
@@ -664,74 +630,60 @@ function onAvatarError()
     }
 }
 
-.hero-dots {
+// 左下角毛玻璃标签：分类
+.hero-chip {
     position: absolute;
-    left: 24px;
-    bottom: 24px;
+    left: 18px;
+    bottom: 18px;
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 9px 12px;
+    gap: 8px;
+    max-width: calc(100% - 36px);
+    height: 34px;
+    padding: 0 14px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 500;
+    color: $warm-ink;
+    white-space: nowrap;
+    pointer-events: none;
 }
 
-.home-hero .hero-dot {
-    position: relative;
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(26, 25, 22, 0.3);
-    transition: width 0.3s ease, background 0.3s ease;
-
-    // 扩大点击区域，不影响排版
-    &::before {
-        content: '';
-        position: absolute;
-        inset: -9px -3px;
-    }
-
-    &.active {
-        width: 20px;
-        background: $warm-ink;
-    }
-
-    &:focus-visible {
-        outline: 2px solid $warm-ink;
-        outline-offset: 3px;
-    }
+.hero-chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: $warm-accent;
 }
 
-/*——————底部缩略条—————— */
+/*——————下方编号条—————— */
 
 .hero-strip {
     display: grid;
-    gap: 12px;
+    gap: 24px;
+    padding: 22px 8px 0;
 }
 
 .home-hero .strip-item {
-    position: relative;
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;
+    gap: 12px;
     min-width: 0;
-    padding: 10px;
-    border-radius: 16px;
-    overflow: hidden;
     text-align: left;
-    transition: background 0.2s, box-shadow 0.2s;
 
-    &:hover {
-        background: rgba(255, 255, 255, 0.6);
+    &:hover .strip-title {
+        color: $warm-ink;
     }
 
     &.active {
-        background: #FFFFFF;
-        box-shadow: $warm-shadow-chip;
+        .strip-num {
+            color: $warm-accent;
+        }
 
         .strip-title {
             color: $warm-ink;
@@ -739,55 +691,24 @@ function onAvatarError()
     }
 
     &:focus-visible {
-        outline: 2px solid $warm-ink;
-        outline-offset: 2px;
+        outline: 2px solid $warm-accent;
+        outline-offset: 4px;
+        border-radius: 4px;
     }
 }
 
-.strip-thumb {
+.strip-track {
     position: relative;
-    width: 72px;
-    height: 46px;
-    border-radius: 9px;
-    flex-shrink: 0;
+    display: block;
+    height: 2px;
+    border-radius: 2px;
     overflow: hidden;
-    background: $warm-sunken;
-
-    img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-}
-
-.strip-text {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-}
-
-.strip-title {
-    @include ellipsis;
-    font-size: 13px;
-    font-weight: 600;
-    color: $warm-ink-3;
-    transition: color 0.2s;
-}
-
-.strip-creator {
-    @include ellipsis;
-    font-size: 12px;
-    color: $warm-ink-4;
+    background: #E6E8EE;
 }
 
 .strip-progress {
     position: absolute;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    height: 2px;
+    inset: 0;
     background: $warm-accent;
     transform: scaleX(0);
     transform-origin: left center;
@@ -799,18 +720,55 @@ function onAvatarError()
     animation-play-state: paused;
 }
 
+.strip-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
+.strip-num {
+    flex-shrink: 0;
+    font-family: $warm-font-mono;
+    font-size: 12px;
+    color: $warm-ink-5;
+    transition: color 0.2s;
+}
+
+.strip-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.strip-title {
+    @include ellipsis;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4A4E5A;
+    transition: color 0.2s;
+}
+
+.strip-creator {
+    @include ellipsis;
+    font-size: 12px;
+    color: $warm-ink-4;
+}
+
 /*——————骨架屏—————— */
 
 .is-skeleton {
     .sk {
         display: block;
         border-radius: 8px;
-        background: $warm-sunken;
+        background: rgba(255, 255, 255, 0.16);
         animation: hero-skeleton-pulse 1.6s ease-in-out infinite;
     }
 
     .hero-media.sk {
-        border-radius: 0;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.12);
     }
 
     .sk-eyebrow {
@@ -826,16 +784,16 @@ function onAvatarError()
 
     .sk-title {
         width: 88%;
-        height: 42px;
-        border-radius: 10px;
+        height: 52px;
+        border-radius: 12px;
 
         &.short {
             width: 56%;
         }
     }
 
-    .sk-meta {
-        width: 200px;
+    .sk-desc {
+        width: 72%;
         height: 16px;
     }
 
@@ -843,7 +801,6 @@ function onAvatarError()
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-top: 4px;
     }
 
     .sk-avatar {
@@ -852,41 +809,35 @@ function onAvatarError()
         border-radius: 50%;
     }
 
-    .sk-stats {
-        width: 240px;
-        height: 30px;
+    .sk-name {
+        width: 120px;
+        height: 14px;
     }
 
     .sk-button {
-        width: 136px;
-        height: 48px;
-        border-radius: 14px;
+        width: 150px;
+        height: 52px;
+        border-radius: 999px;
 
         &.secondary {
             width: 112px;
         }
     }
 
-    .sk-counter {
-        width: 64px;
-        height: 12px;
-    }
-
     .strip-item {
         cursor: default;
-
-        &:hover {
-            background: transparent;
-        }
-    }
-
-    .strip-thumb.sk {
-        border-radius: 9px;
     }
 
     .strip-text {
         flex: 1;
         gap: 7px;
+    }
+
+    .sk-line {
+        display: block;
+        border-radius: 6px;
+        background: $warm-sunken;
+        animation: hero-skeleton-pulse 1.6s ease-in-out infinite;
     }
 
     .sk-strip-title {
@@ -910,7 +861,8 @@ function onAvatarError()
         transition: none;
     }
 
-    .is-skeleton .sk {
+    .is-skeleton .sk,
+    .is-skeleton .sk-line {
         animation: none;
     }
 }

@@ -2,6 +2,13 @@
 import { CONTACT_EMAIL } from '@/shared/config/Config'
 import { inject } from 'vue'
 
+withDefaults(defineProps<{
+    /** 顶部画一条分隔线（上方不是色块时用） */
+    divider?: boolean,
+}>(), {
+    divider: false,
+})
+
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
@@ -9,7 +16,7 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-    <footer class="home-footer">
+    <footer :class="['home-footer', { divider }]">
         <div class="footer-inner" :style="{
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
@@ -31,8 +38,10 @@ const currentYear = new Date().getFullYear()
 <style lang="scss" scoped>
 .home-footer {
     width: 100%;
-    margin-top: 96px;
-    border-top: 1px solid $warm-line;
+
+    &.divider {
+        border-top: 1px solid $warm-line-soft;
+    }
 }
 
 .footer-inner {
@@ -41,8 +50,7 @@ const currentYear = new Date().getFullYear()
     justify-content: space-between;
     gap: 24px;
     margin: 0 auto;
-    // 右侧给 AI 助手悬浮球让位（right 24px + 直径 52px + 24px 间距），免得挡住「联系我们」
-    padding: 28px 100px 36px 48px;
+    padding: 40px 48px 44px;
     font-size: 12px;
     color: $warm-ink-4;
 }
@@ -53,15 +61,28 @@ const currentYear = new Date().getFullYear()
     gap: 10px;
 }
 
+// 蓝色圆 + 偏右上的白点，与顶栏 logo 一致
 .brand-mark {
-    width: 16px;
-    height: 16px;
+    position: relative;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    background: $warm-ink;
+    background: $warm-accent;
+
+    &::after {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 4px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #FFFFFF;
+    }
 }
 
 .brand-name {
-    font-weight: 600;
+    font-weight: 700;
     color: $warm-ink;
 }
 
@@ -75,7 +96,7 @@ const currentYear = new Date().getFullYear()
         transition: color 0.2s;
 
         &:hover {
-            color: $warm-ink;
+            color: $warm-accent;
         }
     }
 }

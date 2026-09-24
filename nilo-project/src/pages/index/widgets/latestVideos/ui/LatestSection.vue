@@ -126,22 +126,19 @@ watch(
 <template>
     <section ref="sectionRef" class="latest-section" aria-label="最新视频">
         <div class="section-head">
-            <div class="head-main">
-                <SectionTitle eyebrow="LATEST" title="最新视频" size="lg" />
-                <!-- 当前一级分类有子分类时展示 -->
-                <div v-if="subCategories.length" class="sub-categories" role="group" aria-label="子分类">
-                    <button type="button" :class="['sub-pill', { active: !categoryStore.currentCategoryNumber }]"
-                        :aria-pressed="!categoryStore.currentCategoryNumber"
-                        @click="navigate(subCategoryPath())">全部</button>
-                    <button v-for="sub in subCategories" :key="sub.categoryNumber" type="button"
-                        :class="['sub-pill', { active: categoryStore.currentCategoryNumber === sub.categoryNumber }]"
-                        :aria-pressed="categoryStore.currentCategoryNumber === sub.categoryNumber"
-                        @click="navigate(subCategoryPath(sub.categoryNumber))">
-                        {{ sub.categoryName }}
-                    </button>
-                </div>
-            </div>
+            <SectionTitle title="最新视频" size="lg" />
             <CategoryChips @navigate="navigate" />
+        </div>
+        <!-- 当前一级分类有子分类时展示 -->
+        <div v-if="subCategories.length" class="sub-categories" role="group" aria-label="子分类">
+            <button type="button" :class="['sub-pill', { active: !categoryStore.currentCategoryNumber }]"
+                :aria-pressed="!categoryStore.currentCategoryNumber" @click="navigate(subCategoryPath())">全部</button>
+            <button v-for="sub in subCategories" :key="sub.categoryNumber" type="button"
+                :class="['sub-pill', { active: categoryStore.currentCategoryNumber === sub.categoryNumber }]"
+                :aria-pressed="categoryStore.currentCategoryNumber === sub.categoryNumber"
+                @click="navigate(subCategoryPath(sub.categoryNumber))">
+                {{ sub.categoryName }}
+            </button>
         </div>
 
         <div v-if="showSkeleton" class="video-grid" aria-busy="true">
@@ -165,7 +162,7 @@ watch(
             <button v-if="hasMore" type="button" class="load-more" :disabled="isLoadingMore || isSwitching"
                 :aria-busy="isLoadingMore" @click="loadMore">
                 <template v-if="isLoadingMore"><span class="spinner" aria-hidden="true"></span>加载中…</template>
-                <template v-else>显示更多</template>
+                <template v-else>加载更多</template>
             </button>
             <span v-else class="end-text">— 已经到底了 —</span>
         </div>
@@ -180,7 +177,7 @@ watch(
 }
 
 .latest-section {
-    margin-top: 80px;
+    margin-top: 96px;
     scroll-margin-top: calc(#{$warm-header-height} + 20px);
 
     button {
@@ -193,17 +190,14 @@ watch(
     }
 }
 
+// 标题 + 右侧一级分类，底部一条分隔线
 .section-head {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: 24px;
-}
-
-.head-main {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
+    padding-bottom: 22px;
+    border-bottom: 1px solid $warm-line;
 }
 
 /*——————子分类—————— */
@@ -211,36 +205,35 @@ watch(
 .sub-categories {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 16px;
+    align-items: center;
+    gap: 4px;
+    margin-top: 18px;
 }
 
 .latest-section .sub-pill {
     display: inline-flex;
     align-items: center;
-    height: 30px;
-    padding: 0 12px;
-    border: 1px solid $warm-border-strong;
-    border-radius: 8px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
     font-size: 13px;
-    color: $warm-ink-3;
+    font-weight: 500;
+    color: #4A4E5A;
     white-space: nowrap;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    transition: background 0.2s, color 0.2s;
 
     &:hover {
-        border-color: $warm-ink;
-        color: $warm-ink;
+        color: $warm-accent;
     }
 
     &.active {
-        border-color: $warm-ink;
-        background: $warm-ink;
-        color: #FFFFFF;
-        font-weight: 500;
+        background: $warm-accent-soft;
+        color: $warm-accent;
+        font-weight: 600;
     }
 
     &:focus-visible {
-        outline: 2px solid $warm-ink;
+        outline: 2px solid $warm-accent;
         outline-offset: 2px;
     }
 }
@@ -268,25 +261,24 @@ watch(
     gap: 14px;
     height: 200px;
     margin-top: 28px;
-    border: 1px dashed $warm-border-strong;
-    border-radius: 16px;
+    border-radius: 22px;
+    background: $warm-sunken;
     font-size: 14px;
     color: $warm-ink-4;
 }
 
 .latest-section .retry-button {
-    height: 32px;
-    padding: 0 14px;
-    border: 1px solid $warm-border-strong;
-    border-radius: 9px;
-    background: $warm-card;
+    height: 34px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: $warm-accent;
     font-size: 13px;
-    font-weight: 500;
-    color: $warm-ink;
-    transition: border-color 0.2s;
+    font-weight: 600;
+    color: #FFFFFF;
+    transition: background 0.2s;
 
     &:hover {
-        border-color: $warm-ink;
+        background: $warm-ink;
     }
 }
 
@@ -295,29 +287,29 @@ watch(
 .section-foot {
     display: flex;
     justify-content: center;
-    margin-top: 40px;
+    margin-top: 36px;
 }
 
 .latest-section .load-more {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    height: 44px;
-    padding: 0 28px;
-    border: 1px solid $warm-border-strong;
-    border-radius: 12px;
-    background: $warm-card;
+    height: 46px;
+    padding: 0 26px;
+    border-radius: 999px;
+    background: $warm-sunken;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     color: $warm-ink;
-    transition: border-color 0.2s, color 0.2s;
+    transition: background 0.2s, color 0.2s;
 
     &:hover:not(:disabled) {
-        border-color: $warm-ink;
+        background: $warm-accent;
+        color: #FFFFFF;
     }
 
     &:disabled {
-        color: $warm-ink-3;
+        color: $warm-ink-4;
         cursor: default;
     }
 
@@ -326,7 +318,7 @@ watch(
     }
 
     &:focus-visible {
-        outline: 2px solid $warm-ink;
+        outline: 2px solid $warm-accent;
         outline-offset: 2px;
     }
 }
@@ -334,7 +326,7 @@ watch(
 .spinner {
     width: 14px;
     height: 14px;
-    border: 1.5px solid rgba(26, 25, 22, 0.15);
+    border: 1.5px solid rgba(11, 12, 18, 0.15);
     border-top-color: $warm-ink;
     border-radius: 50%;
     animation: latest-spin 0.8s linear infinite;

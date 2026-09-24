@@ -737,8 +737,8 @@ export function usePlayer() {
       playsInline: true,
       autoPlayback: true,
       airplay: true,
-      // 暖白主题的陶土色（进度条、选中态）
-      theme: "oklch(0.63 0.14 45)",
+      // A5 主题的电光蓝（进度条、选中态）
+      theme: "#0000F2",
       lang: navigator.language.toLowerCase(),
       moreVideoAttr: {
         crossOrigin: "anonymous",

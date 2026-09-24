@@ -90,8 +90,7 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
     // 视频区域 + 弹幕栏合成一张卡片；弹幕设置面板向上弹出，仍在卡片内部
     // 卡片本身不裁剪、不铺底色：圆角裁剪会让黑底从抗锯齿边缘透出来，在浅色画面的上方两角看着像一圈黑边
     // 所以圆角分别交给视频区域（clip-path 整体裁剪）和弹幕栏（自带白底）
-    border-radius: 22px;
-    box-shadow: 0 30px 60px -36px rgba(26, 25, 22, 0.35);
+    border-radius: 28px;
 
     .video-area {
         position: relative;
@@ -99,7 +98,7 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
         aspect-ratio: 16 / 9;
         min-height: 0;
         background: #000;
-        clip-path: inset(0 round 22px 22px 0 0);
+        clip-path: inset(0 round 28px 28px 0 0);
     }
 
     &.theater .video-area {
@@ -109,13 +108,14 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
 
     .danmaku-panel {
         height: 56px;
-        padding: 0 18px;
+        padding: 0 10px 0 22px;
         display: flex;
         align-items: center;
         gap: 20px;
-        border-top: 1px solid $warm-line;
-        border-radius: 0 0 22px 22px;
+        border-radius: 0 0 28px 28px;
         background: $warm-card;
+        // 白底页面上靠一圈内描边勾出弹幕栏
+        box-shadow: $warm-shadow-ring;
 
         .watching-danmaku-info {
             flex-shrink: 0;
@@ -144,7 +144,7 @@ $icon-height: 30px;
 
 // 弹幕发送栏（非全屏时挂在卡片底部的 #danmaku 上）
 .player-panel>.danmaku-panel>.danmaku>.artplayer-plugin-danmuku {
-    height: 36px;
+    height: 40px;
     gap: 14px;
 
     .apd-icon {
@@ -157,16 +157,18 @@ $icon-height: 30px;
         }
     }
 
+    // 浅灰胶囊输入框，聚焦时换白底 + 蓝色描边
     .apd-emitter {
-        height: 36px;
-        padding: 0 4px 0 6px;
-        background-color: #FFFFFF;
-        border: 1px solid $warm-border;
-        border-radius: 10px;
-        transition: border-color 0.2s;
+        height: 40px;
+        padding: 0 4px 0 8px;
+        background-color: $warm-sunken;
+        border: none;
+        border-radius: 999px;
+        transition: background-color 0.2s, box-shadow 0.2s;
 
         &:focus-within {
-            border-color: rgba(26, 25, 22, 0.2);
+            background-color: #FFFFFF;
+            box-shadow: inset 0 0 0 1.5px $warm-accent;
         }
 
         .apd-input {
@@ -180,17 +182,17 @@ $icon-height: 30px;
         }
 
         .apd-send {
-            height: 28px;
+            height: 32px;
             width: 64px;
-            border-radius: 8px;
+            border-radius: 999px;
             background-color: $warm-ink;
             color: #FFFFFF;
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
             transition: background-color 0.2s;
 
             &:hover {
-                background-color: #000;
+                background-color: $warm-accent;
             }
 
             &.apd-lock {
@@ -206,17 +208,17 @@ $icon-height: 30px;
         }
     }
 
-    // 弹出面板：墨色底 + 陶土色选中态
+    // 弹出面板：墨色底 + 蓝色选中态
     .apd-config-panel-inner,
     .apd-style-panel-inner {
         border-radius: 12px;
-        background-color: rgba(26, 25, 22, 0.92);
+        background-color: rgba(11, 12, 18, 0.92);
         color: #FFFFFF;
     }
 
     .apd-modes .apd-mode:hover,
     .apd-config-other .apd-other:hover {
-        color: $warm-logo-dot;
+        color: $warm-accent-on-dark;
     }
 
     .apd-slider .apd-slider-progress,

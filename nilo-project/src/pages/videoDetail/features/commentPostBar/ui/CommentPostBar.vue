@@ -31,8 +31,8 @@ const emit = defineEmits<{
 
 const loginStateStore = useLoginStateStore();
 /** 顶层评论框 / 楼中楼回复框的头像尺寸 */
-const AVATAR_WIDTH = 38
-const REPLY_AVATAR_WIDTH = 32
+const AVATAR_WIDTH = 40
+const REPLY_AVATAR_WIDTH = 30
 const MAX_COMMENT_LENGTH = 1000
 const PREVIEW_IMAGE_WIDTH = 120
 /**
@@ -354,7 +354,7 @@ async function postComment()
 </template>
 
 <style lang="scss" scoped>
-$bar-height: 44px;
+$bar-height: 48px;
 
 .comment-post-bar {
     display: flex;
@@ -387,7 +387,7 @@ $bar-height: 44px;
             position: absolute;
             inset: 0;
             border-radius: 50%;
-            box-shadow: inset 0 0 0 1px rgba(26, 25, 22, 0.06);
+            box-shadow: inset 0 0 0 1px rgba(11, 12, 18, 0.06);
             pointer-events: none;
         }
 
@@ -420,13 +420,14 @@ $bar-height: 44px;
         display: flex;
         align-items: flex-end;
         min-height: $bar-height;
-        border-radius: 12px;
-        background: $warm-card;
-        box-shadow: 0 0 0 1px $warm-border;
-        transition: box-shadow 0.2s ease;
+        border-radius: calc(#{$bar-height} / 2);
+        background: $warm-sunken;
+        transition: background-color 0.2s ease, box-shadow 0.2s ease;
 
+        // 浅灰胶囊，聚焦时换白底 + 蓝色描边
         &:focus-within {
-            box-shadow: 0 0 0 1.5px $warm-ink;
+            background: #FFFFFF;
+            box-shadow: inset 0 0 0 1.5px $warm-accent;
         }
 
         .textarea {
@@ -435,8 +436,8 @@ $bar-height: 44px;
 
             :deep(.el-textarea__inner) {
                 min-height: $bar-height;
-                padding: 12px 16px;
-                border-radius: 12px;
+                padding: 14px 20px;
+                border-radius: calc(#{$bar-height} / 2);
                 font-size: 13px;
                 line-height: 20px;
                 color: $warm-ink;
@@ -470,7 +471,7 @@ $bar-height: 44px;
     }
 
     &.disabled .input-box {
-        background: $warm-sunken;
+        opacity: 0.6;
         box-shadow: none;
     }
 
@@ -481,7 +482,7 @@ $bar-height: 44px;
         align-items: center;
         gap: 2px;
         height: $bar-height;
-        padding: 0 8px 0 4px;
+        padding: 0 10px 0 4px;
 
         .word-count {
             margin-right: 6px;
@@ -494,9 +495,9 @@ $bar-height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             color: $warm-ink-3;
             transition: color 0.15s ease, background-color 0.15s ease;
 
@@ -508,8 +509,8 @@ $bar-height: 44px;
             &:hover,
             &:focus-visible,
             &.active {
-                color: $warm-ink;
-                background-color: $warm-paper;
+                color: $warm-accent;
+                background-color: rgba(11, 12, 18, 0.06);
                 outline: none;
             }
         }
@@ -522,17 +523,17 @@ $bar-height: 44px;
         align-items: center;
         gap: 8px;
         height: $bar-height;
-        padding: 0 20px;
-        border-radius: 12px;
-        background: $warm-ink;
+        padding: 0 24px;
+        border-radius: 999px;
+        background: $warm-accent;
         color: #FFFFFF;
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 14px;
+        font-weight: 600;
         transition: background-color 0.2s ease, opacity 0.2s ease;
 
         &:hover:not(:disabled),
         &:focus-visible {
-            background: #000000;
+            background: $warm-ink;
             outline: none;
         }
 
@@ -562,9 +563,9 @@ $bar-height: 44px;
             z-index: 550;
             width: 380px;
             padding: 12px;
-            border-radius: 14px;
+            border-radius: 20px;
             background: $warm-card;
-            box-shadow: $warm-shadow-card, 0 18px 40px -20px rgba(26, 25, 22, 0.25);
+            box-shadow: $warm-shadow-card;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -595,8 +596,8 @@ $bar-height: 44px;
             flex-shrink: 0;
             width: 24px;
             height: 28px;
-            border-radius: 8px;
-            background: $warm-paper;
+            border-radius: 999px;
+            background: $warm-sunken;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -606,7 +607,7 @@ $bar-height: 44px;
             transition: background-color 0.2s ease, color 0.2s ease;
 
             &:hover {
-                background: $warm-sunken;
+                background: #E9EBF0;
                 color: $warm-ink;
             }
 
@@ -638,21 +639,21 @@ $bar-height: 44px;
             height: 26px;
             padding: 0 10px;
             font-size: 12px;
-            border-radius: 8px;
+            border-radius: 999px;
             cursor: pointer;
             user-select: none;
-            background: $warm-paper;
+            background: $warm-sunken;
             color: $warm-ink-3;
             transition: background-color 0.2s ease, color 0.2s ease;
             white-space: nowrap;
 
             &:hover {
-                background: $warm-sunken;
+                background: #E9EBF0;
                 color: $warm-ink;
             }
 
             &.active {
-                background: $warm-ink;
+                background: $warm-accent;
                 color: #FFFFFF;
                 font-weight: 500;
             }
@@ -682,17 +683,17 @@ $bar-height: 44px;
             }
 
             &::-webkit-scrollbar-thumb {
-                background: rgba(26, 25, 22, 0.16);
+                background: rgba(11, 12, 18, 0.16);
                 border-radius: 3px;
 
                 &:hover {
-                    background: rgba(26, 25, 22, 0.28);
+                    background: rgba(11, 12, 18, 0.28);
                 }
             }
 
             // Firefox 滚动条样式
             scrollbar-width: thin;
-            scrollbar-color: rgba(26, 25, 22, 0.16) transparent;
+            scrollbar-color: rgba(11, 12, 18, 0.16) transparent;
 
             .emoji-item {
                 display: flex;
@@ -708,7 +709,7 @@ $bar-height: 44px;
                 transition: transform 0.1s ease;
 
                 &:hover {
-                    background-color: #F7F6F3; // 硬编码颜色，避免 CSS 变量过渡开销
+                    background-color: #F3F4F7; // 硬编码颜色，避免 CSS 变量过渡开销
                 }
 
                 &:active {
@@ -752,13 +753,13 @@ $bar-height: 44px;
             width: 22px;
             height: 22px;
             border-radius: 50%;
-            background: rgba(26, 25, 22, 0.62);
+            background: rgba(11, 12, 18, 0.62);
             color: #FFFFFF;
             backdrop-filter: blur(8px);
             transition: background-color 0.2s ease;
 
             &:hover:not(:disabled) {
-                background: rgba(26, 25, 22, 0.85);
+                background: rgba(11, 12, 18, 0.85);
             }
 
             &:disabled {

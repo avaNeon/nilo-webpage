@@ -254,10 +254,10 @@ function handleLoadMore()
 </template>
 
 <style lang="scss" scoped>
-// 连线颜色：等价于 rgba(26, 25, 22, 0.1) 叠在 $warm-paper 上
+// 连线颜色：浅冷灰，悬停整条线程变蓝
 // 用不透明色，避免竖线与连接线重叠的地方颜色加深
-$line-color: #E1E0DD;
-$line-color-hover: $warm-ink-3;
+$line-color: #E4E6EB;
+$line-color-hover: $warm-accent;
 
 // ==================== 评论线程根容器 ====================
 .comment-thread {
@@ -395,7 +395,7 @@ $line-color-hover: $warm-ink-3;
 
             &:hover,
             &:focus-visible {
-                color: $warm-ink;
+                color: $warm-accent;
                 outline: none;
 
                 .show-more-connector {

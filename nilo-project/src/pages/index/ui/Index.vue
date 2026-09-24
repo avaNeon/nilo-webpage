@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { inject, onMounted } from 'vue'
 import SiteHeader from '@/shared/widgets/siteHeader/ui/SiteHeader.vue'
-import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue'
 import HomeHero from '@/pages/index/widgets/homeHero/ui/HomeHero.vue'
 import ForYouSection from '@/pages/index/widgets/forYou/ui/ForYouSection.vue'
 import LatestSection from '@/pages/index/widgets/latestVideos/ui/LatestSection.vue'
-import HomeDiscover from '@/pages/index/widgets/homeDiscover/ui/HomeDiscover.vue'
+import HotVideoPanel from '@/pages/index/widgets/homeDiscover/ui/HotVideoPanel.vue'
+import HotTopicPanel from '@/pages/index/widgets/homeDiscover/ui/HotTopicPanel.vue'
 import HomeFooter from '@/pages/index/widgets/homeFooter/ui/HomeFooter.vue'
 import { useCategory } from '../composables/useCategory'
 import { useRecommendVideos } from '../composables/useRecommendVideos'
@@ -29,7 +29,8 @@ onMounted(() =>
 
 <template>
     <div class="home-page warm-theme">
-        <SiteHeader />
+        <!-- AI 助手放在顶栏搜索框旁边（「AI 搜索」弹层） -->
+        <SiteHeader ai-search />
         <main class="home-main" :style="{
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
@@ -37,11 +38,11 @@ onMounted(() =>
             <HomeHero :slides="heroSlides" :loading="isRecommendLoading" />
             <ForYouSection :videos="forYouVideos" :loading="isRecommendLoading" />
             <LatestSection :scroll-ready="!isRecommendLoading" />
-            <HomeDiscover />
+            <HotVideoPanel />
         </main>
+        <!-- 热门话题是通栏色块，放在 main 外面 -->
+        <HotTopicPanel />
         <HomeFooter />
-        <!-- AI 助手：右下角常驻按钮，fixed 定位，放哪里都不影响布局 -->
-        <AiAssistant />
     </div>
 </template>
 
@@ -57,6 +58,6 @@ onMounted(() =>
     flex: 1 0 auto;
     width: 100%;
     margin: 0 auto;
-    padding: 32px 48px 0;
+    padding: 8px 48px 0;
 }
 </style>

@@ -1,104 +1,149 @@
 <script setup lang="ts">
 import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
-import Dialog from '@/shared/ui/Dialog.vue';
-import { CONTACT_EMAIL } from '@/shared/config/Config';
+import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import { Connection } from '@element-plus/icons-vue';
-import { inject } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { useRoute } from 'vue-router';
 import { useHeaderNav } from '../model/useHeaderNav';
 import SiteSearchBar from './SiteSearchBar.vue';
+
+withDefaults(defineProps<{
+    /** 搜索框旁边显示「AI 搜索」按钮（首页用） */
+    aiSearch?: boolean,
+}>(), {
+    aiSearch: false,
+})
 
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
+const route = useRoute()
+
 const {
     loginStateStore,
-    showContactDialog,
     uncheckedMessageCount,
     uncheckedMessageCountText,
     requireLoginThen,
 } = useHeaderNav()
+
+/** 首页和分类页都算「主页」 */
+const isHomeRoute = computed(() => route.name === 'index' || route.name === 'category')
+
+const messageLabel = computed(() =>
+    uncheckedMessageCount.value > 0 ? `消息（${uncheckedMessageCountText.value} 条未读）` : '消息')
+
+/*——————滚动后才显示底部分隔线—————— */
+
+const scrolled = ref(false)
+
+function onScroll()
+{
+    scrolled.value = window.scrollY > 0
+}
+
+/*——————AI 搜索弹层：点外面或按 Esc 关闭，关了不清空对话—————— */
+
+const aiSearchOpen = ref(false)
+const aiSearchRef = useTemplateRef<HTMLDivElement>('aiSearchRef')
+
+function onDocumentPointerDown(event: PointerEvent)
+{
+    if (aiSearchOpen.value && !aiSearchRef.value?.contains(event.target as Node))
+    {
+        aiSearchOpen.value = false
+    }
+}
+
+function onDocumentKeydown(event: KeyboardEvent)
+{
+    if (event.key === 'Escape')
+    {
+        aiSearchOpen.value = false
+    }
+}
+
+onMounted(() =>
+{
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    document.addEventListener('pointerdown', onDocumentPointerDown)
+    document.addEventListener('keydown', onDocumentKeydown)
+})
+
+onBeforeUnmount(() =>
+{
+    window.removeEventListener('scroll', onScroll)
+    document.removeEventListener('pointerdown', onDocumentPointerDown)
+    document.removeEventListener('keydown', onDocumentKeydown)
+})
 </script>
 
 <template>
-    <header class="site-header">
+    <header :class="['site-header', { scrolled }]">
         <div class="site-header-inner" :style="{
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
         }">
             <RouterLink to="/" class="brand">
-                <span class="brand-mark"><span class="brand-dot"></span></span>
+                <span class="brand-mark"></span>
                 <span class="brand-name">nilo</span>
                 <span class="brand-tag">VIDEO</span>
             </RouterLink>
 
             <nav class="nav">
-                <button type="button" class="nav-item" @click="requireLoginThen('/message/1')">
-                    <span class="nav-row">
-                        <span class="nav-icon iconfont icon-message"></span>
-                        <span class="nav-label">消息</span>
-                        <span v-if="uncheckedMessageCount > 0" class="nav-badge">{{ uncheckedMessageCountText }}</span>
-                    </span>
-                    <span class="nav-dot"></span>
-                </button>
+                <RouterLink to="/" :class="['nav-item', { active: isHomeRoute }]"
+                    :aria-current="isHomeRoute ? 'page' : undefined">
+                    主页<span class="nav-dot"></span>
+                </RouterLink>
                 <button type="button" class="nav-item"
                     @click="requireLoginThen(() => `/user/${loginStateStore.userInfo!.userId}/collection`)">
-                    <span class="nav-row">
-                        <span class="nav-icon iconfont icon-collection"></span>
-                        <span class="nav-label">收藏</span>
-                    </span>
-                    <span class="nav-dot"></span>
+                    收藏<span class="nav-dot"></span>
                 </button>
                 <button type="button" class="nav-item"
                     @click="requireLoginThen(() => `/history/${loginStateStore.userInfo!.userId}`)">
-                    <span class="nav-row">
-                        <span class="nav-icon iconfont icon-history"></span>
-                        <span class="nav-label">历史</span>
-                    </span>
-                    <span class="nav-dot"></span>
+                    历史<span class="nav-dot"></span>
                 </button>
                 <button type="button" class="nav-item" @click="requireLoginThen('/cc')">
-                    <span class="nav-row">
-                        <span class="nav-icon iconfont icon-light"></span>
-                        <span class="nav-label">创作中心</span>
-                    </span>
-                    <span class="nav-dot"></span>
-                </button>
-                <button type="button" class="nav-item" @click="showContactDialog = true">
-                    <span class="nav-row">
-                        <el-icon class="nav-icon" :size="16">
-                            <Connection />
-                        </el-icon>
-                        <span class="nav-label">联系</span>
-                    </span>
-                    <span class="nav-dot"></span>
+                    创作中心<span class="nav-dot"></span>
                 </button>
             </nav>
 
+            <div ref="aiSearchRef" class="search-group">
+                <SiteSearchBar />
+                <template v-if="aiSearch">
+                    <button type="button" :class="['ai-search-button', { open: aiSearchOpen }]"
+                        :aria-expanded="aiSearchOpen" aria-haspopup="dialog" @click="aiSearchOpen = !aiSearchOpen">
+                        <span class="ai-mark" aria-hidden="true"></span>AI 搜索
+                    </button>
+                    <Transition name="ai-search-pop">
+                        <!-- v-show：关掉再打开还能接着聊 -->
+                        <div v-show="aiSearchOpen" class="ai-search-popover" role="dialog" aria-label="AI 搜索">
+                            <AiAssistant embedded closable title="AI 搜索" subtitle="用一句话找到想看的"
+                                @close="aiSearchOpen = false" />
+                        </div>
+                    </Transition>
+                </template>
+            </div>
+
             <div class="spacer"></div>
 
-            <SiteSearchBar />
-
             <div class="actions">
-                <button type="button" class="upload-button" @click="requireLoginThen('/cc/upload')">
-                    <span class="upload-plus">+</span>投稿
-                </button>
                 <div class="avatar-slot">
                     <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar, true) : ''"
                         :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
-                        :width="40">
+                        :width="42">
                     </Avatar>
                 </div>
+                <button type="button" class="message-button" :aria-label="messageLabel" :title="messageLabel"
+                    @click="requireLoginThen('/message/1')">
+                    <span class="bell" aria-hidden="true"></span>
+                    <span v-if="uncheckedMessageCount > 0" class="message-dot" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="upload-button" @click="requireLoginThen('/cc/upload')">
+                    <span class="upload-plus">+</span>投稿
+                </button>
             </div>
         </div>
-
-        <!-- 顶栏有 backdrop-filter，会成为 fixed 元素的定位容器，弹窗需挂到 body -->
-        <Teleport to="body">
-            <Dialog :show="showContactDialog" title="联系方式" :width="420" :top="160" :show-cancel="false"
-                :handle-close="() => { showContactDialog = false }">
-                <p class="contact-email">邮箱：{{ CONTACT_EMAIL }}</p>
-            </Dialog>
-        </Teleport>
     </header>
 </template>
 
@@ -108,13 +153,19 @@ const {
     top: 0;
     z-index: 600;
     width: 100%;
-    background: rgba(247, 246, 243, 0.92);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: saturate(1.2) blur(12px);
     -webkit-backdrop-filter: saturate(1.2) blur(12px);
-    border-bottom: 1px solid $warm-line;
+    // 页面顶部时不画分隔线，滚动后内容从顶栏下面经过才显示
+    border-bottom: 1px solid transparent;
     color: $warm-ink;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'tnum';
+    transition: border-color 0.2s;
+
+    &.scrolled {
+        border-bottom-color: $warm-line-soft;
+    }
 
     // 不依赖外层 .warm-theme，自带字体
     &,
@@ -125,7 +176,7 @@ const {
     .site-header-inner {
         display: flex;
         align-items: center;
-        gap: 40px;
+        gap: 44px;
         height: $warm-header-height;
         margin: 0 auto;
         padding: 0 48px;
@@ -149,39 +200,43 @@ const {
         text-decoration: none;
     }
 
+    // 蓝色圆 + 偏右上的白点
     .brand-mark {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 26px;
-        height: 26px;
+        position: relative;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
-        background: $warm-ink;
-    }
+        background: $warm-accent;
 
-    .brand-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: $warm-logo-dot;
+        &::after {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 6px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #FFFFFF;
+        }
     }
 
     .brand-name {
-        font-size: 18px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
+        font-size: 19px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
     }
 
     .brand-tag {
+        padding-top: 2px;
         font-family: $warm-font-mono;
         font-size: 10px;
-        letter-spacing: 0.18em;
+        letter-spacing: 0.2em;
         color: $warm-ink-4;
     }
 
     .nav {
         display: flex;
-        gap: 28px;
+        gap: 30px;
         height: $warm-header-height;
         flex-shrink: 0;
     }
@@ -193,51 +248,27 @@ const {
         justify-content: center;
         gap: 5px;
         padding-top: 9px;
+        font-size: 14px;
+        font-weight: 500;
         color: $warm-ink-4;
+        text-decoration: none;
+        white-space: nowrap;
         transition: color 0.2s;
 
         &:hover,
         &:focus-visible {
             color: $warm-ink;
+            outline: none;
+        }
+
+        &.active {
+            font-weight: 600;
+            color: $warm-accent;
 
             .nav-dot {
                 background: $warm-accent;
             }
         }
-
-        &:focus-visible {
-            outline: none;
-        }
-    }
-
-    .nav-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-    }
-
-    .nav-icon {
-        font-size: 16px;
-        line-height: 1;
-    }
-
-    .nav-label {
-        font-size: 14px;
-        font-weight: 500;
-    }
-
-    .nav-badge {
-        min-width: 16px;
-        height: 16px;
-        padding: 0 5px;
-        border-radius: 999px;
-        background: $warm-accent;
-        color: #FFFFFF;
-        font-size: 10px;
-        font-weight: 600;
-        line-height: 16px;
-        text-align: center;
     }
 
     .nav-dot {
@@ -248,6 +279,80 @@ const {
         transition: background 0.2s;
     }
 
+    .search-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .ai-search-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 42px;
+        padding: 0 16px 0 8px;
+        border-radius: 999px;
+        background: $warm-accent-soft;
+        color: $warm-accent;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: background-color 0.2s, color 0.2s;
+
+        .ai-mark {
+            position: relative;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: $warm-accent;
+            transition: background-color 0.2s;
+
+            &::after {
+                content: '';
+                position: absolute;
+                left: 14px;
+                top: 6px;
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: #FFFFFF;
+                transition: background-color 0.2s;
+            }
+        }
+
+        &.open {
+            background: $warm-accent;
+            color: #FFFFFF;
+
+            .ai-mark {
+                background: #FFFFFF;
+
+                &::after {
+                    background: $warm-accent;
+                }
+            }
+        }
+
+        &:focus-visible {
+            outline: 2px solid $warm-accent;
+            outline-offset: 2px;
+        }
+    }
+
+    .ai-search-popover {
+        position: absolute;
+        left: 0;
+        top: 54px;
+        z-index: 30;
+        width: 452px;
+        border-radius: 26px;
+        background: #FFFFFF;
+        box-shadow: $warm-shadow-card;
+        --ai-message-max-height: 340px;
+    }
+
     .spacer {
         flex: 1;
         min-width: 0;
@@ -256,48 +361,24 @@ const {
     .actions {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 24px;
         flex-shrink: 0;
-    }
-
-    .upload-button {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 40px;
-        padding: 0 18px;
-        border-radius: 12px;
-        background: $warm-ink;
-        color: #FFFFFF;
-        font-size: 13px;
-        font-weight: 500;
-        transition: background 0.2s;
-
-        &:hover {
-            background: #000000;
-        }
-    }
-
-    .upload-plus {
-        font-size: 16px;
-        font-weight: 400;
-        line-height: 1;
     }
 
     .avatar-slot {
         display: flex;
         align-items: center;
-        height: 40px;
+        height: 42px;
 
         :deep(.onLogin > .avatar) {
             display: block;
         }
 
         :deep(.onLogin .image-container) {
-            border-color: rgba(26, 25, 22, 0.1) !important;
+            border-color: rgba(11, 12, 18, 0.08) !important;
         }
 
-        // 头像在最右侧，个人面板改为右对齐，避免超出页面产生横向滚动
+        // 个人面板右对齐，避免超出页面产生横向滚动
         :deep(.onLogin .user-panel) {
             left: auto;
             right: 0;
@@ -309,14 +390,82 @@ const {
             transform: translateY(20px) scale(1.3);
         }
     }
+
+    // 消息：浅灰圆底 + 线条铃铛，有未读时右上角一个蓝点
+    .message-button {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: $warm-sunken;
+        color: $warm-ink-3;
+        transition: background-color 0.2s, color 0.2s;
+
+        &:hover {
+            background: $warm-accent-soft;
+            color: $warm-accent;
+        }
+
+        &:focus-visible {
+            outline: 2px solid $warm-accent;
+            outline-offset: 2px;
+        }
+
+        .bell {
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid currentColor;
+            border-radius: 7px 7px 3px 3px;
+        }
+
+        .message-dot {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: $warm-accent;
+            box-shadow: 0 0 0 2px $warm-sunken;
+        }
+    }
+
+    .upload-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 42px;
+        padding: 0 20px;
+        border-radius: 999px;
+        background: $warm-ink;
+        color: #FFFFFF;
+        font-size: 13px;
+        font-weight: 500;
+        transition: background 0.2s;
+
+        &:hover {
+            background: $warm-accent;
+        }
+    }
+
+    .upload-plus {
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1;
+    }
 }
 
-.contact-email {
-    margin: 0;
-    font-family: $warm-font-sans;
-    font-size: 15px;
-    line-height: 1.6;
-    color: $warm-ink;
-    word-break: break-all;
+.ai-search-pop-enter-active,
+.ai-search-pop-leave-active {
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.ai-search-pop-enter-from,
+.ai-search-pop-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
 }
 </style>

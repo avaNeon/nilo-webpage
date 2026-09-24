@@ -6,10 +6,13 @@ import router from '@/app/router'
 
 import '@/assets/scss/base.scss'
 import '@/app/styles/warm-theme.scss'
+// 200：热门榜的细体大号名次；800：区块标题
+import '@fontsource/geist-sans/latin-200.css'
 import '@fontsource/geist-sans/latin-400.css'
 import '@fontsource/geist-sans/latin-500.css'
 import '@fontsource/geist-sans/latin-600.css'
 import '@fontsource/geist-sans/latin-700.css'
+import '@fontsource/geist-sans/latin-800.css'
 import '@fontsource/geist-mono/latin-400.css'
 import '@fontsource/geist-mono/latin-500.css'
 import '@/assets/icon/iconfont.css'

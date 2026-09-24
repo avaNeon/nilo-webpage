@@ -1,162 +1,169 @@
 <script lang="ts" setup>
+import { ref } from 'vue';
 import { useDanmakuStore } from '@/pages/videoDetail/features/player/store/DanmakuStore';
 import { calculateDuration, formatBackendDateTime } from '@/shared/utils/DateUtil';
+import { formatCount } from '@/shared/utils/NumberUtil';
 
 const danmakuStore = useDanmakuStore()
 
+// 默认收起：弹幕多的视频一展开就是几千行
+const open = ref(false)
+
 function formatSendTime(time: string | undefined) {
-    return formatBackendDateTime(time, 'YYYY-MM-DD');
+    return formatBackendDateTime(time, 'MM-DD HH:mm');
 }
 </script>
 
 <template>
-    <div class="danmaku-list">
-        <el-collapse class="collapse">
-            <el-collapse-item class="collapse-item" name="1">
-                <template #title>
-                    <span class="card-title">
-                        <span class="card-dot"></span>弹幕列表
-                        <span class="card-count">{{ danmakuStore.danmakuList.length }}</span>
+    <div :class="['danmaku-list', { open }]">
+        <button type="button" class="card-header" :aria-expanded="open" @click="open = !open">
+            <span class="card-title">弹幕列表</span>
+            <span class="card-count">{{ formatCount(danmakuStore.danmakuList.length) }} 条</span>
+            <span class="spacer"></span>
+            <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div v-if="open" class="card-body">
+            <div class="table-row table-head">
+                <span>时间</span>
+                <span>内容</span>
+                <span class="align-right">发送于</span>
+            </div>
+            <div class="table-body">
+                <div v-for="(danmaku, index) in danmakuStore.danmakuList" :key="danmaku.danmakuId ?? index"
+                    class="table-row">
+                    <span class="moment">{{ calculateDuration(Math.round(danmaku.displayMoment / 1000)) }}</span>
+                    <span class="content" :title="danmaku.content">{{ danmaku.content }}</span>
+                    <span class="post-time align-right" :title="formatBackendDateTime(danmaku.postTime) || ''">
+                        {{ formatSendTime(danmaku.postTime) }}
                     </span>
-                </template>
-                <el-table :data="danmakuStore.danmakuList" height="400" :show-header="true" class="danmaku-table"
-                    size="small" empty-text="暂无弹幕">
-                    <el-table-column label="时间" width="64" align="left" header-align="left">
-                        <template #default="{ row }">
-                            <span class="moment">{{ calculateDuration(Math.round(row.displayMoment / 1000)) }}</span>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="弹幕内容" min-width="150" show-overflow-tooltip align="left"
-                        header-align="left">
-                        <template #default="{ row }">
-                            <span class="danmaku-content">{{ row.content }}</span>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="发送时间" width="92" align="right" header-align="right">
-                        <template #default="{ row }">
-                            <span class="post-time" :title="formatBackendDateTime(row.postTime) || ''">
-                                {{ formatSendTime(row.postTime) }}
-                            </span>
-                        </template>
-                    </el-table-column>
-                </el-table>
-            </el-collapse-item>
-        </el-collapse>
+                </div>
+                <div v-if="danmakuStore.danmakuList.length === 0" class="empty">暂无弹幕</div>
+            </div>
+        </div>
     </div>
 </template>
 
 <style lang="scss" scoped>
-// 侧栏卡片：白底圆角 + 细描边阴影
-.collapse {
-    --el-collapse-header-height: 52px;
-    --el-collapse-header-font-size: 15px;
-    --el-collapse-header-text-color: #{$warm-ink};
-    --el-collapse-header-bg-color: #{$warm-card};
-    --el-collapse-content-bg-color: #{$warm-card};
-    --el-collapse-border-color: #{$warm-line};
-
-    border: none;
-    border-radius: 18px;
+// 侧栏卡片：白底圆角 + 内描边
+.danmaku-list {
+    border-radius: 24px;
     background: $warm-card;
     box-shadow: $warm-shadow-ring;
-    overflow: hidden;
+}
 
-    :deep(.el-collapse-item:last-child) {
-        margin-bottom: 0;
-    }
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 60px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 24px;
+    background: transparent;
+    font: inherit;
+    color: $warm-ink;
+    cursor: pointer;
 
-    :deep(.el-collapse-item__header) {
-        padding: 0 18px;
-        font-weight: 600;
-    }
-
-    :deep(.el-collapse-item__header.is-active) {
-        border-bottom-color: $warm-line;
-    }
-
-    :deep(.el-collapse-item__arrow) {
-        color: $warm-ink-4;
-    }
-
-    :deep(.el-collapse-item__wrap) {
-        border-bottom: none;
-    }
-
-    :deep(.el-collapse-item__content) {
-        padding-bottom: 0;
+    &:focus-visible {
+        outline: 2px solid $warm-accent;
+        outline-offset: -2px;
     }
 
     .card-title {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .card-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        background: $warm-accent;
+        font-size: 15px;
+        font-weight: 700;
     }
 
     .card-count {
-        margin-left: -4px;
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 12px;
         color: $warm-ink-4;
+    }
+
+    .spacer {
+        flex: 1;
+    }
+
+    .chevron {
+        width: 8px;
+        height: 8px;
+        margin-right: 2px;
+        border-right: 1.5px solid $warm-ink-3;
+        border-bottom: 1.5px solid $warm-ink-3;
+        transform: translateY(2px) rotate(-135deg);
+        transition: transform 0.2s;
     }
 }
 
-.danmaku-table {
-    --el-table-bg-color: #{$warm-card};
-    --el-table-tr-bg-color: #{$warm-card};
-    --el-table-header-bg-color: #{$warm-card};
-    --el-table-row-hover-bg-color: #{$warm-paper};
-    --el-table-border-color: #{$warm-line-soft};
-    --el-table-border: 1px solid #{$warm-line-soft};
-    --el-table-text-color: #{$warm-ink-2};
-    --el-table-header-text-color: #{$warm-ink-4};
+.open .card-header .chevron {
+    transform: translateY(-2px) rotate(45deg);
+}
 
-    padding: 0 8px;
+.card-body {
+    padding-bottom: 12px;
+}
+
+// 三列：时间 / 内容 / 发送时间
+.table-row {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 76px;
+    gap: 10px;
+    align-items: center;
+}
+
+.table-head {
+    padding: 8px 20px;
+    border-top: 1px solid $warm-line-soft;
+    border-bottom: 1px solid $warm-line-soft;
+    font-size: 11px;
+    color: $warm-ink-4;
+}
+
+.table-body {
+    max-height: 320px;
+    padding: 4px 8px 0;
+    overflow-y: auto;
+
+    .table-row {
+        height: 38px;
+        padding: 0 12px;
+        border-radius: 10px;
+        transition: background-color 0.15s;
+
+        &:hover {
+            background: $warm-sunken;
+        }
+    }
+}
+
+.moment {
+    font-family: $warm-font-mono;
     font-size: 12px;
+    color: $warm-accent;
+}
 
-    :deep(.el-table__inner-wrapper::before) {
-        display: none;
-    }
+.content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: $warm-ink-2;
+}
 
-    :deep(th.el-table__cell) {
-        font-size: 12px;
-        font-weight: 500;
-    }
+.post-time {
+    font-size: 11px;
+    color: $warm-ink-4;
+    white-space: nowrap;
+}
 
-    // 行与行之间不画分隔线，悬停整行变浅底
-    :deep(td.el-table__cell) {
-        border-bottom: none;
-    }
+.align-right {
+    text-align: right;
+}
 
-    :deep(.el-table__body tr.hover-row > td.el-table__cell),
-    :deep(.el-table__body tr:hover > td.el-table__cell) {
-        background-color: $warm-paper;
-    }
-
-    :deep(.el-table__empty-text) {
-        font-size: 13px;
-        color: $warm-ink-4;
-    }
-
-    .moment {
-        font-family: $warm-font-mono;
-        color: $warm-ink-4;
-    }
-
-    .danmaku-content {
-        font-size: 13px;
-        color: $warm-ink;
-    }
-
-    .post-time {
-        color: $warm-ink-4;
-    }
+.empty {
+    padding: 20px 0 12px;
+    font-size: 13px;
+    color: $warm-ink-4;
+    text-align: center;
 }
 </style>

@@ -43,7 +43,7 @@ function selectSortType(sortType: string)
     <section id="video-comment-section" class="video-comment-section">
         <div class="comment-header">
             <h2 class="comment-title">
-                评论 <span class="comment-number">{{ formatCount(commentNumberRef) }}</span>
+                评论<span class="comment-number">{{ formatCount(commentNumberRef) }}</span>
             </h2>
             <div class="sort-type" role="tablist" aria-label="评论排序">
                 <button v-for="sortItem in sorttype" :key="sortItem.key" type="button" role="tab" class="sort-tab"
@@ -77,52 +77,65 @@ function selectSortType(sortType: string)
 .video-comment-section {
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 24px;
     color: $warm-ink;
 
+    // 标题 + 评论数，右侧排序胶囊
     .comment-header {
         display: flex;
-        align-items: baseline;
+        align-items: center;
+        justify-content: space-between;
         gap: 20px;
 
         .comment-title {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
             margin: 0;
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.015em;
             color: $warm-ink;
 
             .comment-number {
-                font-size: 15px;
-                font-weight: 500;
+                font-size: 14px;
+                font-weight: 400;
+                letter-spacing: 0;
                 color: $warm-ink-4;
             }
         }
 
         .sort-type {
             display: flex;
-            align-items: baseline;
-            gap: 20px;
+            gap: 6px;
         }
 
         .sort-tab {
-            padding: 0;
+            height: 32px;
+            padding: 0 14px;
             border: none;
-            background: transparent;
+            border-radius: 999px;
+            background: $warm-sunken;
             font: inherit;
             font-size: 13px;
-            color: $warm-ink-4;
+            font-weight: 500;
+            color: $warm-ink-3;
             cursor: pointer;
-            transition: color 0.15s ease;
+            transition: background-color 0.15s ease, color 0.15s ease;
 
-            &:hover:not(:disabled),
-            &:focus-visible {
+            &:hover:not(:disabled) {
                 color: $warm-ink;
-                outline: none;
+            }
+
+            &:focus-visible {
+                outline: 2px solid $warm-accent;
+                outline-offset: 2px;
             }
 
             &.active {
+                background: $warm-accent;
                 font-weight: 600;
-                color: $warm-ink;
+                color: #FFFFFF;
             }
 
             &:disabled {
@@ -135,9 +148,8 @@ function selectSortType(sortType: string)
     // 评论区关闭 / 暂无评论
     .comment-state {
         padding: 32px;
-        border-radius: 16px;
-        background: $warm-card;
-        box-shadow: $warm-shadow-ring;
+        border-radius: 22px;
+        background: $warm-sunken;
         font-size: 14px;
         color: $warm-ink-4;
         text-align: center;

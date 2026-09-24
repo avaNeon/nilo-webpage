@@ -264,9 +264,7 @@ onBeforeUnmount(clearCloseTimer)
     position: relative;
     display: flex;
     flex-shrink: 0;
-    padding: 4px;
-    border-radius: 12px;
-    background: $warm-sunken;
+    gap: 8px;
 
     button {
         padding: 0;
@@ -281,29 +279,34 @@ onBeforeUnmount(clearCloseTimer)
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 32px;
-    padding: 0 14px;
-    border-radius: 9px;
+    height: 34px;
+    padding: 0 15px;
+    border-radius: 999px;
+    background: $warm-sunken;
     font-size: 13px;
     font-weight: 500;
     color: $warm-ink-3;
     white-space: nowrap;
-    transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+    transition: background 0.2s, color 0.2s;
 
     &:hover {
+        background: #E9EBF0;
         color: $warm-ink;
     }
 
     &.active {
-        background: $warm-card;
-        box-shadow: $warm-shadow-chip;
+        background: $warm-accent;
         font-weight: 600;
-        color: $warm-ink;
+        color: #FFFFFF;
+
+        .chevron {
+            color: inherit;
+        }
     }
 
     &:focus-visible {
-        outline: 2px solid $warm-ink;
-        outline-offset: 1px;
+        outline: 2px solid $warm-accent;
+        outline-offset: 2px;
     }
 }
 
@@ -327,14 +330,14 @@ onBeforeUnmount(clearCloseTimer)
     gap: 4px;
     min-width: 300px;
     padding: 8px;
-    border-radius: 14px;
+    border-radius: 20px;
     background: $warm-card;
-    box-shadow: $warm-shadow-card, 0 18px 40px -20px rgba(26, 25, 22, 0.25);
+    box-shadow: $warm-shadow-card;
 }
 
 .category-chips .menu-option {
     padding: 8px 12px;
-    border-radius: 9px;
+    border-radius: 12px;
     font-size: 13px;
     color: $warm-ink-3;
     text-align: left;
@@ -345,12 +348,12 @@ onBeforeUnmount(clearCloseTimer)
 
     &:hover,
     &:focus-visible {
-        background: $warm-paper;
-        color: $warm-ink;
+        background: $warm-sunken;
+        color: $warm-accent;
     }
 
     &:focus-visible {
-        outline: 2px solid $warm-ink;
+        outline: 2px solid $warm-accent;
         outline-offset: -2px;
     }
 }
