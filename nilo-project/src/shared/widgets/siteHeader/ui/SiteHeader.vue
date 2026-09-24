@@ -137,7 +137,11 @@ onBeforeUnmount(() =>
                 <button type="button" class="message-button" :aria-label="messageLabel" :title="messageLabel"
                     @click="requireLoginThen('/message/1')">
                     <span class="bell" aria-hidden="true"></span>
-                    <span v-if="uncheckedMessageCount > 0" class="message-dot" aria-hidden="true"></span>
+                    <Transition name="badge-pop">
+                        <span v-if="uncheckedMessageCount > 0" class="message-badge" aria-hidden="true">
+                            {{ uncheckedMessageCountText }}
+                        </span>
+                    </Transition>
                 </button>
                 <button type="button" class="upload-button" @click="requireLoginThen('/cc/upload')">
                     <span class="upload-plus">+</span>投稿
@@ -378,20 +382,14 @@ onBeforeUnmount(() =>
             border-color: rgba(11, 12, 18, 0.08) !important;
         }
 
-        // 个人面板右对齐，避免超出页面产生横向滚动
+        // 面板位置沿用 Avatar 自己的居中逻辑（悬停后头像正好落在面板顶边中点），这里只换外观
         :deep(.onLogin .user-panel) {
-            left: auto;
-            right: 0;
-            transform: none;
-            transform-origin: top right;
-        }
-
-        :deep(.onLogin:hover .user-panel) {
-            transform: translateY(20px) scale(1.3);
+            border-radius: 16px;
+            box-shadow: $warm-shadow-card;
         }
     }
 
-    // 消息：浅灰圆底 + 线条铃铛，有未读时右上角一个蓝点
+    // 消息：浅灰圆底 + 线条铃铛，有未读时右上角一个蓝色数字角标
     .message-button {
         position: relative;
         display: flex;
@@ -421,15 +419,24 @@ onBeforeUnmount(() =>
             border-radius: 7px 7px 3px 3px;
         }
 
-        .message-dot {
+        // 左边固定，位数多了往右长，不会盖住铃铛
+        .message-badge {
             position: absolute;
-            right: 10px;
-            top: 10px;
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
+            left: 25px;
+            top: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
             background: $warm-accent;
-            box-shadow: 0 0 0 2px $warm-sunken;
+            box-shadow: 0 0 0 2px #FFFFFF;
+            color: #FFFFFF;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 18px;
+            text-align: center;
+            white-space: nowrap;
+            pointer-events: none;
         }
     }
 
@@ -467,5 +474,19 @@ onBeforeUnmount(() =>
 .ai-search-pop-leave-to {
     opacity: 0;
     transform: translateY(-4px);
+}
+
+.badge-pop-enter-active {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+}
+
+.badge-pop-leave-active {
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.badge-pop-enter-from,
+.badge-pop-leave-to {
+    opacity: 0;
+    transform: scale(0.4);
 }
 </style>

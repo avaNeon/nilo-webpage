@@ -1,4 +1,4 @@
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { MessageApi } from "@/shared/api/MessageApi";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import { routerToNewPage } from "@/shared/utils/RouteUtil";
@@ -54,6 +54,16 @@ export function useHeaderNav() {
     },
     { immediate: true },
   );
+
+  // 消息中心在新标签页打开，看完切回来时重新拉一次，角标数字不会停在旧值
+  function onVisibilityChange() {
+    if (document.visibilityState === "visible" && loginStateStore.loginState) {
+      loadUncheckedMessageCount();
+    }
+  }
+
+  onMounted(() => document.addEventListener("visibilitychange", onVisibilityChange));
+  onBeforeUnmount(() => document.removeEventListener("visibilitychange", onVisibilityChange));
 
   return {
     loginStateStore,
