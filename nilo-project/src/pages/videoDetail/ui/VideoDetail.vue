@@ -186,7 +186,8 @@ onMounted(() =>
                             currentPage = 1
                             await loadCommentsBySortType(sortType)
                         }" :comment-number="videoStateStore.videoInfo.commentCount ?? 0" />
-                    <div v-if="isCommentAvailable()" class="pagination-bar">
+                    <!-- 没有评论或只有一页时不显示分页 -->
+                    <div v-if="isCommentAvailable() && firstLevelCommentCount > PAGE_SIZE" class="pagination-bar">
                         <el-pagination v-model:current-page="currentPage" :page-size="PAGE_SIZE" background
                             @current-change="pageChange" :total="firstLevelCommentCount" />
                     </div>
@@ -246,11 +247,19 @@ onMounted(() =>
     }
 }
 
+// 首屏要露出播放器下面的弹幕栏和标题：顶栏（含 1px 底边）+ 上边距 + 弹幕栏 + 行间距
+// + 标题一行 + 标题与元信息的间距 + 元信息 + 底部留白
+$first-screen-reserved: calc(#{$warm-header-height} + 1px + 28px + 56px + 26px + 38px + 10px + 18px + 24px);
+// 播放器列宽按剩余高度以 16:9 反推，再夹上下限：矮屏不至于缩成小窗，宽屏也不会一直变大
+$player-column-width: min(1280px, max(640px, calc((100vh - #{$first-screen-reserved}) * 16 / 9)));
+
 .video-main {
     margin: 0 auto;
     padding: 28px 48px 96px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 372px;
+    grid-template-columns: minmax(0, $player-column-width) 372px;
+    // 播放器列被限宽后，两列整体居中
+    justify-content: center;
     // 第一行只由播放器撑开；侧栏跨两行时多出的高度都落到第二行
     grid-template-rows: auto 1fr;
     column-gap: 40px;
@@ -275,6 +284,8 @@ onMounted(() =>
 
     // 剧场模式：播放器占满整行，侧栏移到第二行右侧
     &.theater {
+        grid-template-columns: minmax(0, 1fr) 372px;
+
         .player-card {
             grid-column: 1 / -1;
         }

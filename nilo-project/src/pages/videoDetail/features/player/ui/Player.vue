@@ -87,10 +87,10 @@ onBeforeUnmount(() =>
 $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
 
 .player-panel {
-    // 视频区域 + 弹幕栏合成一张卡片；弹幕设置面板向上弹出，仍在卡片内部，不会被裁掉
+    // 视频区域 + 弹幕栏合成一张卡片；弹幕设置面板向上弹出，仍在卡片内部
+    // 卡片本身不裁剪、不铺底色：圆角裁剪会让黑底从抗锯齿边缘透出来，在浅色画面的上方两角看着像一圈黑边
+    // 所以圆角分别交给视频区域（clip-path 整体裁剪）和弹幕栏（自带白底）
     border-radius: 22px;
-    overflow: hidden;
-    background: $warm-card;
     box-shadow: 0 30px 60px -36px rgba(26, 25, 22, 0.35);
 
     .video-area {
@@ -99,6 +99,7 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
         aspect-ratio: 16 / 9;
         min-height: 0;
         background: #000;
+        clip-path: inset(0 round 22px 22px 0 0);
     }
 
     &.theater .video-area {
@@ -113,6 +114,8 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
         align-items: center;
         gap: 20px;
         border-top: 1px solid $warm-line;
+        border-radius: 0 0 22px 22px;
+        background: $warm-card;
 
         .watching-danmaku-info {
             flex-shrink: 0;

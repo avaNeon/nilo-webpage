@@ -41,7 +41,8 @@ const currentYear = new Date().getFullYear()
     justify-content: space-between;
     gap: 24px;
     margin: 0 auto;
-    padding: 28px 48px 36px;
+    // 右侧给 AI 助手悬浮球让位（right 24px + 直径 52px + 24px 间距），免得挡住「联系我们」
+    padding: 28px 100px 36px 48px;
     font-size: 12px;
     color: $warm-ink-4;
 }

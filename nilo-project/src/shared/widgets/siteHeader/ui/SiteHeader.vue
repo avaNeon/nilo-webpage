@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import Dialog from '@/shared/ui/Dialog.vue';
-import useCategoryStore from '@/shared/store/CategoryStore';
 import { CONTACT_EMAIL } from '@/shared/config/Config';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { Connection } from '@element-plus/icons-vue';
@@ -12,7 +11,6 @@ import SiteSearchBar from './SiteSearchBar.vue';
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
-const categoryStore = useCategoryStore()
 const {
     loginStateStore,
     showContactDialog,
@@ -28,24 +26,11 @@ const {
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
         }">
-            <!-- 悬停 logo 展开分类菜单 -->
-            <el-popover placement="bottom-start" trigger="hover" popper-class="site-category-popper" width="auto"
-                :show-arrow="false" :offset="10" :disabled="categoryStore.categoryList.length === 0">
-                <template #reference>
-                    <RouterLink to="/" class="brand">
-                        <span class="brand-mark"><span class="brand-dot"></span></span>
-                        <span class="brand-name">nilo</span>
-                        <span class="brand-tag">VIDEO</span>
-                    </RouterLink>
-                </template>
-                <div class="site-category-menu">
-                    <RouterLink v-for="item in categoryStore.categoryList" :key="item.categoryNumber"
-                        class="site-category-item" :to="`/c/${item.categoryNumber}`">
-                        <img v-if="item.icon" class="site-category-icon" :src="imgRequestUrl(item.icon, true)" alt="">
-                        <span>{{ item.categoryName }}</span>
-                    </RouterLink>
-                </div>
-            </el-popover>
+            <RouterLink to="/" class="brand">
+                <span class="brand-mark"><span class="brand-dot"></span></span>
+                <span class="brand-name">nilo</span>
+                <span class="brand-tag">VIDEO</span>
+            </RouterLink>
 
             <nav class="nav">
                 <button type="button" class="nav-item" @click="requireLoginThen('/message/1')">
@@ -116,56 +101,6 @@ const {
         </Teleport>
     </header>
 </template>
-
-<style lang="scss">
-// 分类菜单弹层挂在 body 下，样式不能 scoped
-.site-category-popper.el-popover.el-popper {
-    --el-popover-border-radius: 14px;
-    --el-popover-padding: 10px;
-    --el-popover-border-color: #{$warm-border};
-
-    width: max-content !important;
-    box-shadow: $warm-shadow-card, 0 18px 40px -20px rgba(26, 25, 22, 0.25);
-    transition: opacity 0.2s ease, transform 0.2s ease !important;
-
-    &,
-    * {
-        font-family: $warm-font-sans;
-    }
-}
-
-.site-category-menu {
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-rows: repeat(5, auto);
-    gap: 2px 4px;
-
-    .site-category-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        height: 40px;
-        padding: 0 14px 0 10px;
-        border-radius: 10px;
-        font-size: 14px;
-        color: $warm-ink-2;
-        text-decoration: none;
-        white-space: nowrap;
-        transition: background 0.2s, color 0.2s;
-
-        &:hover {
-            background: $warm-paper;
-            color: $warm-ink;
-        }
-    }
-
-    .site-category-icon {
-        width: 20px;
-        height: 20px;
-        object-fit: contain;
-    }
-}
-</style>
 
 <style lang="scss" scoped>
 .site-header {
