@@ -1,5 +1,4 @@
-import { computed, reactive, ref, useTemplateRef } from "vue";
-import { type FormInstance, type FormRules } from "element-plus";
+import { computed, reactive, ref } from "vue";
 import type { UpdatedUserInfo } from "../model/UpdatedUserInfo";
 import { imageApi } from "@/shared/api/ImageApi";
 import { imgRequestUrl } from "@/shared/utils/ImgUtil";
@@ -13,8 +12,6 @@ export function useUserInfoEditor() {
   const systemConfigStore = useSystemConfigStore();
 
   /* ————————表单———————— */
-  const formRef = useTemplateRef<FormInstance>("formRef");
-
   const formData = reactive<UpdatedUserInfo>({
     nickName: "",
     avatar: "",
@@ -24,46 +21,6 @@ export function useUserInfoEditor() {
     personalIntroduction: "",
     noticeInfo: "",
   });
-
-  const rules: FormRules = {
-    nickName: [
-      { required: true, message: "请输入昵称", trigger: "blur" },
-      { min: 1, max: 20, message: "昵称长度为 1-20 个字符", trigger: "blur" },
-    ],
-    avatar: [{ required: true, message: "请上传头像", trigger: "change" }],
-    gender: [{ required: true, message: "请选择性别", trigger: "change" }],
-    birthday: [
-      {
-        pattern: /^\d{4}-\d{2}-\d{2}$/,
-        message: "生日格式为 yyyy-MM-dd",
-        trigger: "blur",
-      },
-    ],
-    school: [
-      {
-        min: 0,
-        max: 150,
-        message: "学校名长度为 0-150 个字符",
-        trigger: "blur",
-      },
-    ],
-    personalIntroduction: [
-      {
-        min: 0,
-        max: 200,
-        message: "个人简介长度为 0-200 个字符",
-        trigger: "blur",
-      },
-    ],
-    noticeInfo: [
-      {
-        min: 0,
-        max: 300,
-        message: "公告信息长度为 0-300 个字符",
-        trigger: "blur",
-      },
-    ],
-  };
 
   /* ————————头像上传———————— */
   /** 上传进度百分比，null 表示未在上传中 */
@@ -116,7 +73,6 @@ export function useUserInfoEditor() {
     pendingAvatarFile.value = file;
     pendingAvatarUrl.value = URL.createObjectURL(file);
     formData.avatar = PENDING_AVATAR_PLACEHOLDER;
-    formRef.value?.validateField("avatar");
     return true;
   }
 
@@ -146,8 +102,7 @@ export function useUserInfoEditor() {
         // 此处不清理本地预览 URL：保存流程（updateUserInfo）尚未完成，
         // 继续用本地 blob 预览即可，避免额外的网络请求。
         // 待整个保存流程结束（成功关闭对话框 / 取消）时统一清理。
-        formRef.value?.validateField("avatar");
-        return true;
+            return true;
       }
       return false;
     } catch {
@@ -158,9 +113,7 @@ export function useUserInfoEditor() {
   }
 
   return {
-    formRef,
     formData,
-    rules,
     /** 头像预览完整 URL */
     avatarPreviewUrl,
     /** 头像上传进度百分比，null 表示未在上传中 */

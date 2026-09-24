@@ -1,0 +1,85 @@
+// 个人主页的液态玻璃（设计稿 5b）：半透明白 + 背景模糊 + 顶边高光描边，壁纸从下面透上来
+
+/** 玻璃底色：默认「清透」档，暗壁纸上页面会把 --glass-tint 换成「磨砂」档，保证字看得清 */
+$glass-tint: var(--glass-tint, rgba(255, 255, 255, 0.3));
+/** 顶边一道高光 + 一圈白色细描边 */
+$glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+$glass-chip-edge: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+$glass-drop: 0 30px 70px -30px rgba(11, 12, 18, 0.4);
+/** 卡片悬停时的白雾 */
+$glass-hover: rgba(255, 255, 255, 0.55);
+/** 冷灰占位，封面没加载出来时用 */
+$glass-placeholder: linear-gradient(160deg, oklch(0.93 0.008 265), oklch(0.83 0.014 265));
+
+/// 大面板：主页信息、内容区、侧栏
+@mixin glass-panel($blur: 32px, $drop: $glass-drop) {
+    background: $glass-tint;
+    backdrop-filter: blur($blur) saturate(1.8);
+    -webkit-backdrop-filter: blur($blur) saturate(1.8);
+    box-shadow: $glass-edge, $drop;
+}
+
+/// 面板里的小胶囊：查看全部、排序、取消
+@mixin glass-chip {
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: $glass-chip-edge;
+}
+
+/// 去掉按钮默认样式
+@mixin reset-button {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid #0000F2;
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+    }
+}
+
+/// 小胶囊按钮：白雾底，悬停变白
+@mixin glass-chip-button($height: 34px) {
+    @include reset-button;
+    @include glass-chip;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: $height;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+
+    &:hover:not(:disabled) {
+        background: #FFFFFF;
+    }
+}
+
+/// 蓝色实心胶囊：确认、创建、保存
+@mixin accent-button($height: 46px) {
+    @include reset-button;
+    display: flex;
+    align-items: center;
+    height: $height;
+    padding: 0 28px;
+    border-radius: 999px;
+    background: #0000F2;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.2s, opacity 0.2s;
+
+    &:disabled {
+        background: rgba(0, 0, 242, 0.35);
+    }
+}

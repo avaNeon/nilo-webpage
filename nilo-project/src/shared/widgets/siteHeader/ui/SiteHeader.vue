@@ -7,18 +7,32 @@ import { useRoute } from 'vue-router';
 import { useHeaderNav } from '../model/useHeaderNav';
 import SiteSearchBar from './SiteSearchBar.vue';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
     /** 搜索框旁边显示「AI 搜索」按钮（首页用） */
     aiSearch?: boolean,
     /** 不显示顶栏搜索框（搜索页自己有大搜索框） */
     hideSearch?: boolean,
+    /** 液态玻璃：悬浮的毛玻璃胶囊，底下的壁纸透上来（个人主页用） */
+    glass?: boolean,
 }>(), {
     aiSearch: false,
     hideSearch: false,
+    glass: false,
 })
 
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
+
+/** 玻璃胶囊左右各缩进 24px，和下面内容的 48px 边距错开 */
+const GLASS_INSET = 24
+const innerStyle = computed(() =>
+{
+    const inset = props.glass ? GLASS_INSET * 2 : 0
+    return {
+        'max-width': mainContentMaxWidth - inset + 'px',
+        'min-width': mainContentMinWidth - inset + 'px',
+    }
+})
 
 const route = useRoute()
 
@@ -84,11 +98,8 @@ onBeforeUnmount(() =>
 </script>
 
 <template>
-    <header :class="['site-header', { scrolled }]">
-        <div class="site-header-inner" :style="{
-            'max-width': mainContentMaxWidth + 'px',
-            'min-width': mainContentMinWidth + 'px',
-        }">
+    <header :class="['site-header', { scrolled, glass }]">
+        <div class="site-header-inner" :style="innerStyle">
             <RouterLink to="/" class="brand">
                 <span class="brand-mark"></span>
                 <span class="brand-name">nilo</span>
@@ -497,5 +508,69 @@ onBeforeUnmount(() =>
 .badge-pop-leave-to {
     opacity: 0;
     transform: scale(0.4);
+}
+
+/*——————液态玻璃（个人主页）：悬浮胶囊，下面的壁纸透上来—————— */
+
+.site-header.glass {
+    top: 16px;
+    margin-top: 16px;
+    padding: 0 24px;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+
+    .site-header-inner {
+        gap: 36px;
+        height: 68px;
+        padding: 0 12px 0 24px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(28px) saturate(1.8);
+        -webkit-backdrop-filter: blur(28px) saturate(1.8);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 20px 50px -28px rgba(11, 12, 18, 0.4);
+    }
+
+    :deep(.site-search) {
+        width: 340px;
+    }
+
+    :deep(.site-search .search-box) {
+        height: 44px;
+        background: rgba(255, 255, 255, 0.45);
+        box-shadow: inset 0 1px 2px rgba(11, 12, 18, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+
+        &:focus-within {
+            background: #FFFFFF;
+            box-shadow: inset 0 0 0 1.5px $warm-accent;
+        }
+    }
+
+    :deep(.site-search .search-shortcut) {
+        background: rgba(255, 255, 255, 0.7);
+        color: $warm-ink-3;
+    }
+
+    .actions {
+        gap: 12px;
+    }
+
+    .message-button {
+        width: 44px;
+        height: 44px;
+        background: rgba(255, 255, 255, 0.5);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+
+        &:hover,
+        &.active {
+            background: rgba(255, 255, 255, 0.85);
+            color: $warm-accent;
+        }
+    }
+
+    .upload-button {
+        height: 44px;
+    }
 }
 </style>

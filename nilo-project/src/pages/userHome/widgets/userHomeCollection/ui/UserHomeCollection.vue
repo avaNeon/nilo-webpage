@@ -1,116 +1,74 @@
 <script lang="ts" setup>
+import { useTemplateRef } from "vue";
+import { formatCount } from "@/shared/utils/NumberUtil";
+import { formatRelativeDay } from "@/shared/utils/DateUtil";
+import GlassSection from "@/pages/userHome/shared/ui/GlassSection.vue";
+import GlassVideoCard from "@/pages/userHome/shared/ui/GlassVideoCard.vue";
+import GlassVideoSkeleton from "@/pages/userHome/shared/ui/GlassVideoSkeleton.vue";
+import GlassPagination from "@/pages/userHome/shared/ui/GlassPagination.vue";
+import GlassEmpty from "@/pages/userHome/shared/ui/GlassEmpty.vue";
+import type { CollectedVideoInfo } from "../model/CollectedVideoInfo";
 import { useUserHomeCollection } from "../composables/useUserHomeCollection";
-import VideoItem from "@/shared/entities/videoItem/ui/VideoItem.vue";
-import noneSrc from "@/assets/icon/img/none.svg"
 
 const {
     count,
     pageNo,
     pageSize,
     videoList,
+    loading,
+    loadedOnce,
     loadCollection,
 } = useUserHomeCollection()
+
+const sectionRef = useTemplateRef<HTMLElement>('sectionRef')
+
+/** 「UP 主 · 收藏于 N 天前」 */
+function collectMeta(video: CollectedVideoInfo)
+{
+    const creator = (video.briefUserInfo ?? video.userInfo)?.nickName
+    const collected = formatRelativeDay(video.collectDate)
+    return [creator, collected && `收藏于 ${collected}`].filter(Boolean).join(' · ')
+}
+
+async function changePage(newPageNo: number)
+{
+    sectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    await loadCollection(newPageNo)
+}
 </script>
+
 <template>
-    <div class="content">
-        <div class="main-content">
-            <div class="label">
-                <span class="theme-text">TA的收藏</span>
-                <span class="counter-text">({{ count ?? 0 }})</span>
+    <div ref="sectionRef" class="collection-anchor">
+        <GlassSection title="收藏" :count="loadedOnce ? formatCount(count) : null">
+            <div v-if="!loadedOnce" class="video-grid" aria-busy="true">
+                <GlassVideoSkeleton :count="10" />
             </div>
-            <div v-if="count !== 0" class="video-items">
-                <div class="video-item" v-for="(videoItem, index) in videoList" :key="videoItem.videoId ?? index">
-                    <VideoItem class="item" :video-info="videoItem" type="horizontal" date-description="收藏于 · " :date="videoItem.collectDate as string" />
-                </div>
+            <GlassEmpty v-else-if="videoList.length === 0" title="还没有收藏视频" />
+            <div v-else :class="['video-grid', { refreshing: loading }]" :aria-busy="loading">
+                <GlassVideoCard v-for="(videoItem, index) in videoList" :key="videoItem.videoId ?? index"
+                    :video="videoItem" :meta="collectMeta(videoItem)" />
             </div>
-            <div v-else class="no-data">
-                <img :src="noneSrc" alt="none">
-                <span>此用户暂时没有收藏视频</span>
-            </div>
-            <div v-if="count !== 0" class="pagination">
-                <el-pagination layout="prev, pager, next" :total="count" :page-size="pageSize"
-                    @current-change="(newPageNo: number) => loadCollection(newPageNo)" :current-page="pageNo" />
-            </div>
-        </div>
+
+            <GlassPagination v-if="pageSize > 0 && count > pageSize" :total="count" :page-size="pageSize"
+                :current-page="pageNo" @change="changePage" />
+        </GlassSection>
     </div>
 </template>
 
 <style lang="scss" scoped>
-.content {
-    width: 98%;
-    margin: 0 auto;
-    padding: 10px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    position: relative;
-    padding-bottom: 70px;
+.collection-anchor {
+    scroll-margin-top: 104px;
+}
 
-    display: flex;
-    flex-direction: column;
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    transition: opacity 0.2s;
 
-    .main-content {
-        display: flex;
-        flex-direction: column;
-        padding: 10px 20px;
-
-        .label {
-            display: flex;
-            column-gap: 10px;
-            align-items: baseline;
-            margin: 10px 0;
-
-            .theme-text {
-                font-size: 20px;
-                font-weight: 500;
-            }
-
-            .counter-text {
-                color: $color-text-secondary;
-                font-size: 16px;
-            }
-        }
-
-        .video-items {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: start;
-            column-gap: 20px;
-            row-gap: 20px;
-
-            .video-item {
-                width: 265px;
-                height: 200px;
-
-                .item {
-                    background-color: rgba(255, 255, 255, 0.5);
-                    border: 1px solid rgba(255, 255, 255, 0.35);
-                    box-shadow:
-                        0 8px 30px rgba(0, 0, 0, 0.12),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.45);
-                }
-            }
-        }
-
-        .no-data {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .pagination {
-            position: absolute;
-            bottom: 20px;
-
-            :deep(.el-pager li),
-            :deep(.btn-prev),
-            :deep(.btn-next) {
-                background-color: rgba(255, 255, 255, 0.5);
-                border-radius: 50%;
-                margin: 0 3px;
-            }
-        }
+    &.refreshing {
+        opacity: 0.5;
+        pointer-events: none;
     }
 }
 </style>

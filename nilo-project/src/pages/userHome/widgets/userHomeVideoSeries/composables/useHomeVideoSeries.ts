@@ -42,6 +42,9 @@ export function useHomeVideoSeries() {
   const dragging = ref(false);
 
   const hasSeries = computed(() => seriesList.value.length > 0);
+  /** 系列列表、系列视频第一次加载完之前显示骨架屏 */
+  const seriesLoaded = ref(false);
+  const videosLoaded = ref(false);
   const dialogVisible = ref(false);
   const draggingTmpSeriesList = ref<VideoSeriesInfo[]>([]);
 
@@ -167,6 +170,7 @@ export function useHomeVideoSeries() {
     draggingTmpSeriesList.value = draggingTmpSeriesList.value.filter(
       series => series.seriesId !== seriesId,
     );
+    hostUserDetailStore.setCount("series", seriesList.value.length);
 
     message.success("系列已删除");
   }
@@ -234,12 +238,15 @@ export function useHomeVideoSeries() {
   /** 加载视频信息 */
   async function loadVideos(videoId: string) {
     const result = await UserHomeVideoSeriesApi.loadSeriesVideo(videoId);
+    // 请求期间切到了别的系列
+    if (route.params.seriesId !== videoId) return;
 
     if (result) {
       videoList.value = result;
     } else {
       videoList.value = [];
     }
+    videosLoaded.value = true;
   }
 
   /** 获取系列视频数量 */
@@ -269,6 +276,7 @@ export function useHomeVideoSeries() {
     currentSerieInfo.value = null;
     videoList.value = [];
     videoCount.value = 0;
+    videosLoaded.value = false;
   }
 
   /** 填充发布者信息到视频中 */
@@ -295,17 +303,14 @@ export function useHomeVideoSeries() {
     }
   }
 
-  /** 开启拖拽模式 */
+  /** 开启拖拽模式（操作提示写在标题栏里） */
   function startDragging() {
     if (!route.params.seriesId) {
       draggingTmpSeriesList.value = [...seriesList.value];
-      dragging.value = true;
-      message.info("拖拽系列卡片即可调整顺序，完成后点击「确定」保存");
     } else {
       draggingTmpVideoList.value = [...videoList.value];
-      dragging.value = true;
-      message.info("拖拽视频卡片即可调整顺序，完成后点击「确定」保存");
     }
+    dragging.value = true;
   }
 
   /** 关闭拖拽模式 */
@@ -322,12 +327,10 @@ export function useHomeVideoSeries() {
       route.params.userId as string,
     );
 
-    if (result === null || result.length === 0) {
-      seriesList.value = [];
-      return;
-    }
-
-    seriesList.value = result;
+    seriesList.value = result ?? [];
+    seriesLoaded.value = true;
+    // 顺带把标签栏上的系列数填上
+    hostUserDetailStore.setCount("series", seriesList.value.length);
   }
 
   onMounted(async () => {
@@ -391,6 +394,8 @@ export function useHomeVideoSeries() {
     isMySelf,
     seriesList,
     hasSeries,
+    seriesLoaded,
+    videosLoaded,
     canDrag,
     dialogVisible,
     viewSerieMode,

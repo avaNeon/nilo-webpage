@@ -1,51 +1,51 @@
 import { UserHomeCollectionApi } from "../api/UserHomeCollectionApi";
 import type { CollectedVideoInfo } from "../model/CollectedVideoInfo";
-import { computed, onMounted, ref } from "vue";
+import { useHostUserDetailStore } from "@/shared/store/HostUserDetailStore";
+import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 export function useUserHomeCollection() {
   const route = useRoute();
+  const hostUserDetailStore = useHostUserDetailStore();
 
   /* ——————状态—————— */
 
-  const pageNo = ref(0);
+  const pageNo = ref(1);
   const videoList = ref<CollectedVideoInfo[]>([]);
   const count = ref(0);
   const pageSize = ref(0);
-  const pageTotal = computed(() => {
-    if (pageSize.value === 0) {
-      return 1;
-    }
-    return Math.ceil(count.value / pageSize.value);
-  });
+  const loading = ref(false);
+  /** 第一次加载完之前显示骨架屏，之后翻页只把旧结果调淡 */
+  const loadedOnce = ref(false);
+  /** 丢弃过期响应：连续翻页时只认最后一次 */
+  let requestSeq = 0;
 
   /* ——————方法—————— */
 
   /** 加载收藏视频 */
   async function loadCollection(newPageNo: number) {
-    if (pageTotal.value < newPageNo) {
-      return;
-    }
-
-    pageNo.value = newPageNo;
+    const seq = ++requestSeq;
+    loading.value = true;
 
     const result = await UserHomeCollectionApi.loadCollection(
       route.params.userId as string,
-      pageNo.value,
+      newPageNo,
     );
+
+    if (seq !== requestSeq) return;
+    loading.value = false;
 
     if (result === null) {
       return;
     }
-    if (result.totalCount !== null) {
-      count.value = result.totalCount;
-    }
-    if (result.pageSize !== null) {
-      pageSize.value = result.pageSize;
-    }
-    if (result.list !== null) {
-      videoList.value = result.list;
-    }
+
+    loadedOnce.value = true;
+    pageNo.value = newPageNo;
+    count.value = result.totalCount ?? 0;
+    pageSize.value = result.pageSize ?? 0;
+    videoList.value = result.list ?? [];
+    // 顺带把标签栏上的收藏数填上
+    hostUserDetailStore.setCount("collection", count.value);
   }
 
   /* ——————初始化—————— */
@@ -58,8 +58,9 @@ export function useUserHomeCollection() {
     count,
     pageNo,
     pageSize,
-    pageTotal,
     videoList,
+    loading,
+    loadedOnce,
     loadCollection,
   };
 }

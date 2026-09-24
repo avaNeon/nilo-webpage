@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { FollowApi } from '@/shared/api/FollowApi';
 import defaultAvatar from '@/assets/user.svg';
@@ -14,13 +14,19 @@ const emit = defineEmits<{
     (e: 'toggle', userId: string, followed: boolean): void;
 }>();
 
+const pending = ref(false);
+const avatarFailed = ref(false);
+
+const avatarSrc = computed(() =>
+    props.user.avatar && !avatarFailed.value ? imgRequestUrl(props.user.avatar, true) : defaultAvatar)
+
 const hintLabel = computed(() =>
 {
     if (props.listType === 'follower')
     {
         return props.user.followed ? '已互关' : '';
     }
-    return props.user.following ? '该用户已互关' : '';
+    return props.user.following ? '已互关' : '';
 });
 
 const buttonText = computed(() =>
@@ -34,190 +40,142 @@ const buttonText = computed(() =>
 
 async function handleToggle()
 {
-    await FollowApi.follow(props.user.userId);
-    const newFollowed = !props.user.followed;
-    emit('toggle', props.user.userId, newFollowed);
+    if (pending.value) return;
+
+    pending.value = true;
+    try
+    {
+        await FollowApi.follow(props.user.userId);
+        emit('toggle', props.user.userId, !props.user.followed);
+    }
+    finally
+    {
+        pending.value = false;
+    }
 }
 </script>
 
 <template>
     <div class="user-item-row">
-        <RouterLink :to="`/user/${user.userId}`" target="_blank" class="left-section">
-            <img class="avatar" :src="user.avatar ? imgRequestUrl(user.avatar, true) : defaultAvatar" :alt="user.nickName" />
-            <div class="info">
+        <RouterLink :to="`/user/${user.userId}`" target="_blank" class="user-link">
+            <img class="avatar" :src="avatarSrc" alt="" loading="lazy" @error="avatarFailed = true">
+            <span class="info">
                 <span class="nick-name">{{ user.nickName }}</span>
-                <span class="intro">{{ user.personalIntroduction }}</span>
-            </div>
+                <span class="intro">{{ user.personalIntroduction || '这个人很神秘，什么都没有写' }}</span>
+            </span>
         </RouterLink>
 
         <div class="right-section">
             <span v-if="hintLabel" class="hint-label">{{ hintLabel }}</span>
-            <el-button :class="user.followed ? 'follow-btn glass--default' : 'follow-btn glass--primary'" size="small"
-                @click.stop="handleToggle">
+            <button type="button" :class="['follow-button', { followed: user.followed }]" :disabled="pending"
+                @click="handleToggle">
                 {{ buttonText }}
-            </el-button>
+            </button>
         </div>
     </div>
 </template>
 
 <style lang="scss" scoped>
+@use '@/pages/userHome/shared/styles/glass' as *;
+
 .user-item-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+    gap: 16px;
+    padding: 12px 16px 12px 12px;
+    border-radius: 20px;
+    transition: background-color 0.2s;
 
     &:hover {
-        background-color: rgba(255, 255, 255, 0.4);
+        background: $glass-hover;
     }
+}
 
-    .left-section {
-        display: flex;
-        align-items: center;
-        column-gap: 16px;
-        text-decoration: none;
-        flex: 1;
-        min-width: 0;
+.user-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    color: $warm-ink;
+    text-decoration: none;
+
+    &:hover .nick-name {
+        color: $warm-accent;
+    }
+}
+
+.avatar {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: $glass-placeholder;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+
+    .nick-name {
         overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 15px;
+        font-weight: 700;
+        transition: color 0.2s;
+    }
 
-        .avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            flex-shrink: 0;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            background-color: white;
-        }
+    .intro {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        color: $warm-ink-3;
+    }
+}
 
-        .info {
-            display: flex;
-            flex-direction: column;
-            row-gap: 4px;
-            overflow: hidden;
+.right-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 
-            .nick-name {
-                font-size: 15px;
-                font-weight: 600;
-                color: #222;
-            }
+    .hint-label {
+        font-size: 12px;
+        color: $warm-ink-3;
+    }
+}
 
-            .intro {
-                font-size: 13px;
-                color: $color-text-secondary;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
+// 未关注：蓝色实心；已关注：白雾
+.follow-button {
+    @include reset-button;
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: $warm-accent;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+
+    &.followed {
+        @include glass-chip;
+        color: $warm-ink-3;
+
+        &:hover:not(:disabled) {
+            background: #FFFFFF;
         }
     }
 
-    .right-section {
-        display: flex;
-        align-items: center;
-        column-gap: 10px;
-        flex-shrink: 0;
-        margin-left: 16px;
-
-        .hint-label {
-            font-size: 14px;
-            color: $color-bilibili-blue;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        .follow-btn {
-            position: relative;
-            min-width: 76px;
-            height: 30px;
-            padding: 0 16px;
-            overflow: hidden;
-            border: 1px solid transparent;
-            border-radius: 999px;
-            font-weight: 600;
-            --el-button-hover-border-color: transparent;
-            --el-button-active-border-color: transparent;
-            background:
-                linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.14)) padding-box,
-                linear-gradient(135deg,
-                    rgba(255, 255, 255, 0.9),
-                    rgba(0, 174, 236, 0.42) 34%,
-                    rgba(255, 255, 255, 0.2) 62%,
-                    rgba(255, 255, 255, 0.72)) border-box;
-            backdrop-filter: blur(14px) saturate(170%);
-            -webkit-backdrop-filter: blur(14px) saturate(170%);
-            box-shadow:
-                0 8px 18px rgba(0, 0, 0, 0.08),
-                inset 0 1px 0 rgba(255, 255, 255, 0.72),
-                inset 0 -12px 20px rgba(255, 255, 255, 0.12);
-            transition:
-                transform 0.18s ease,
-                box-shadow 0.18s ease,
-                background 0.18s ease;
-
-            &::before {
-                content: "";
-                position: absolute;
-                inset: 1px 8px auto;
-                height: 45%;
-                border-radius: inherit;
-                background: linear-gradient(180deg, rgba(255, 255, 255, 0.64), rgba(255, 255, 255, 0));
-                pointer-events: none;
-            }
-
-            &:hover,
-            &:focus {
-                transform: translateY(-1px);
-                box-shadow:
-                    0 10px 22px rgba(0, 174, 236, 0.16),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-                    inset 0 -12px 22px rgba(255, 255, 255, 0.18);
-            }
-
-            &:active {
-                transform: translateY(0);
-            }
-
-            :deep(span) {
-                position: relative;
-                z-index: 200;
-            }
-        }
-
-        .glass--primary {
-            color: #fff;
-            --el-button-text-color: #fff;
-            --el-button-hover-text-color: #fff;
-            --el-button-active-text-color: #fff;
-            border-color: $color-bilibili-blue;
-            background: $color-bilibili-blue;
-            box-shadow: 0 6px 14px rgba(0, 174, 236, 0.18);
-
-            &::before {
-                display: none;
-            }
-
-            &:hover,
-            &:focus {
-                background: #15b7ef;
-                box-shadow: 0 8px 18px rgba(0, 174, 236, 0.22);
-            }
-        }
-
-        .glass--default {
-            color: #4f5b66;
-            background:
-                linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.12)) padding-box,
-                linear-gradient(135deg,
-                    rgba(255, 255, 255, 0.82),
-                    rgba(170, 186, 198, 0.38) 38%,
-                    rgba(255, 255, 255, 0.18) 62%,
-                    rgba(255, 255, 255, 0.62)) border-box;
-        }
-
+    &:disabled {
+        opacity: 0.6;
     }
 }
 </style>

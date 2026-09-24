@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { useUserHomeBgImg } from '../model/useUserHomeBgImg';
 import { UserHomeBgImgApi } from '../api/UserHomeBgImgApi';
 
@@ -17,13 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const { backgroundList, selectedIndex, selectWallpaper } = useUserHomeBgImg();
-const shouldRenderWallpapers = ref(false);
-
-// 将show属性包装
-const drawerShow = computed({
-    get: () => props.show,
-    set: (value: boolean) => emit('update:show', value),
-})
+const saving = ref(false);
 
 /** 点击选中壁纸，同时发出预览事件 */
 function onSelectWallpaper(index: number)
@@ -39,96 +33,273 @@ function beforeDrawerClose()
     emit('update:show', false);
 }
 
-async function handleSave() {
-    const result = await UserHomeBgImgApi.saveTheme(selectedIndex.value)
+async function handleSave()
+{
+    if (saving.value) return
 
-    if (result) {
-        emit('update:show', false);
-        emit('saveTheme', selectedIndex.value);
+    // 没换就直接关掉
+    if (selectedIndex.value === props.currentThemeIndex)
+    {
+        beforeDrawerClose()
+        return
+    }
+
+    saving.value = true
+    try
+    {
+        const result = await UserHomeBgImgApi.saveTheme(selectedIndex.value)
+
+        if (result)
+        {
+            emit('update:show', false);
+            emit('saveTheme', selectedIndex.value);
+        }
+    }
+    finally
+    {
+        saving.value = false
     }
 }
 
-// drawer 打开时同步选中状态
+function onKeydown(event: KeyboardEvent)
+{
+    if (event.key === 'Escape') beforeDrawerClose()
+}
+
+// 打开时同步选中状态
 watch(() => props.show, (newVal) =>
 {
     if (newVal)
     {
         selectedIndex.value = props.currentThemeIndex;
+        window.addEventListener('keydown', onKeydown)
     }
     else
     {
-        shouldRenderWallpapers.value = false;
+        window.removeEventListener('keydown', onKeydown)
     }
 })
 
+onBeforeUnmount(() =>
+{
+    window.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <template>
-    <div class="background-img-editor">
-        <el-drawer v-model="drawerShow" append-to-body title="更换主页壁纸" direction="btt" :before-close="beforeDrawerClose"
-            size="400px" @opened="shouldRenderWallpapers = true" @closed="shouldRenderWallpapers = false">
-            <template #default>
-                <div v-if="shouldRenderWallpapers" class="wallpaper-grid">
-                    <div v-for="item in backgroundList" :key="item.index"
-                        :class="['wallpaper-item', { active: item.index === selectedIndex }]"
-                        @click="onSelectWallpaper(item.index)">
-                        <img :src="item.url" :alt="`壁纸 ${item.index}`" loading="lazy" decoding="async" />
-                        <span class="wallpaper-index">{{ item.index }}</span>
+    <!-- 底部玻璃面板：选中即预览，保存才写回后端 -->
+    <Teleport to="body">
+        <Transition name="wallpaper-sheet">
+            <div v-if="show" class="wallpaper-sheet-layer warm-theme">
+                <div class="wallpaper-sheet" role="dialog" aria-modal="true" aria-label="更换主页壁纸">
+                    <div class="sheet-head">
+                        <div class="sheet-title">
+                            <span class="title">更换主页壁纸</span>
+                            <span class="subtitle">选中即可预览，背景会固定铺满整个页面</span>
+                        </div>
+                        <button type="button" class="close-button" aria-label="关闭" @click="beforeDrawerClose">×</button>
+                    </div>
+
+                    <div class="wallpaper-grid" role="radiogroup" aria-label="壁纸">
+                        <button v-for="item in backgroundList" :key="item.index" type="button"
+                            :class="['wallpaper-item', { active: item.index === selectedIndex }]" role="radio"
+                            :aria-checked="item.index === selectedIndex" :aria-label="`壁纸 ${item.index}`"
+                            @click="onSelectWallpaper(item.index)">
+                            <img :src="item.url" alt="" loading="lazy" decoding="async" />
+                            <span class="wallpaper-no">{{ String(item.index).padStart(2, '0') }}</span>
+                            <span v-if="item.index === selectedIndex" class="wallpaper-tag">已选</span>
+                            <span v-else-if="item.index === currentThemeIndex" class="wallpaper-tag">当前</span>
+                        </button>
+                    </div>
+
+                    <div class="sheet-actions">
+                        <button type="button" class="cancel-button" @click="beforeDrawerClose">取消</button>
+                        <button type="button" class="save-button" :disabled="saving" @click="handleSave">
+                            {{ saving ? '保存中…' : '保存' }}
+                        </button>
                     </div>
                 </div>
-            </template>
-            <template #footer>
-                <el-button type="primary" @click="handleSave">保存</el-button>
-            </template>
-        </el-drawer>
-    </div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <style lang="scss" scoped>
+@use '@/pages/userHome/shared/styles/glass' as *;
+
+// 不压暗页面，方便看预览效果
+.wallpaper-sheet-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 1900;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 24px 24px;
+    background: transparent;
+
+    button {
+        @include reset-button;
+    }
+}
+
+.wallpaper-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    width: 100%;
+    max-width: 1392px;
+    padding: 26px 28px 28px;
+    border-radius: 36px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    box-shadow: $glass-chip-edge, 0 40px 90px -30px rgba(11, 12, 18, 0.5);
+}
+
+.sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.sheet-title {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+
+    .title {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+        font-size: 13px;
+        color: $warm-ink-3;
+    }
+}
+
+.wallpaper-sheet-layer .close-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+    color: $warm-ink-3;
+    font-size: 18px;
+    transition: background-color 0.2s;
+
+    &:hover {
+        background: #FFFFFF;
+    }
+}
+
 .wallpaper-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
-    padding: 8px 0;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+}
 
-    .wallpaper-item {
-        position: relative;
-        min-width: 0;
-        aspect-ratio: 16 / 9;
-        contain: paint;
-        background-color: #f5f7fa;
-        border-radius: 12px;
-        overflow: hidden;
-        cursor: pointer;
-        border: 3px solid transparent;
-        transition: border-color 0.2s ease, transform 0.2s ease;
+.wallpaper-sheet-layer .wallpaper-item {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 20px;
+    overflow: hidden;
+    background: $glass-placeholder;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+    transition: box-shadow 0.2s, transform 0.2s;
 
-        &:hover {
-            transform: scale(1.03);
-        }
+    &:hover {
+        transform: translateY(-2px);
+    }
 
-        &.active {
-            border-color: #409eff;
-            box-shadow: 0 0 12px rgba(64, 158, 255, 0.4);
-        }
+    // 选中：白圈 + 蓝圈（键盘焦点同样）
+    &.active,
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 5px $warm-accent;
+    }
 
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
+    img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
 
-        .wallpaper-index {
-            position: absolute;
-            bottom: 6px;
-            right: 8px;
-            background: rgba(0, 0, 0, 0.5);
-            color: #fff;
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 10px;
-        }
+    .wallpaper-no {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+        font-family: $warm-font-mono;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        color: rgba(255, 255, 255, 0.9);
+        text-shadow: 0 1px 3px rgba(11, 12, 18, 0.45);
+    }
+
+    .wallpaper-tag {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        display: flex;
+        align-items: center;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: $warm-accent;
+        color: #FFFFFF;
+        font-size: 11px;
+        font-weight: 600;
+    }
+}
+
+.sheet-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.wallpaper-sheet-layer .cancel-button {
+    display: flex;
+    align-items: center;
+    height: 46px;
+    padding: 0 24px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+
+    &:hover {
+        background: #FFFFFF;
+    }
+}
+
+.wallpaper-sheet-layer .save-button {
+    @include accent-button;
+}
+
+.wallpaper-sheet-enter-active,
+.wallpaper-sheet-leave-active {
+    transition: opacity 0.25s ease;
+
+    .wallpaper-sheet {
+        transition: transform 0.25s ease;
+    }
+}
+
+.wallpaper-sheet-enter-from,
+.wallpaper-sheet-leave-to {
+    opacity: 0;
+
+    .wallpaper-sheet {
+        transform: translateY(24px);
     }
 }
 </style>

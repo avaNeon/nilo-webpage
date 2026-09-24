@@ -1,12 +1,17 @@
 import { UserHomeSharedApi } from "@/pages/userHome/shared/api/UserHomeSharedApi";
 import type { SortType } from "@/pages/userHome/shared/model/SortType";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
+import { useHostUserDetailStore } from "@/shared/store/HostUserDetailStore";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+
+/** 每页 4 行 */
+const PAGE_SIZE = 20;
 
 export function useUserHomeUpload() {
   const route = useRoute();
   const router = useRouter();
+  const hostUserDetailStore = useHostUserDetailStore();
 
   /* ——————数据源—————— */
   const SortTypes: SortType[] = [
@@ -17,17 +22,18 @@ export function useUserHomeUpload() {
 
   /* ——————状态—————— */
 
-  const pageNo = ref(0);
+  const pageNo = ref(1);
   const videoList = ref<VideoInfo[]>([]);
-  const sortTypeValue = computed(() => {
-    const value = route.params.sortType as string;
+  const loading = ref(false);
+  /** 第一次加载完之前显示骨架屏，之后换页只把旧结果调淡 */
+  const loadedOnce = ref(false);
+  /** 丢弃过期响应：连点排序/翻页时只认最后一次 */
+  let requestSeq = 0;
 
+  const sortTypeValue = computed(() => {
+    const value = Number(route.params.sortType);
     // 默认类型为1（最新更新视频）
-    if (value === undefined || value === null || value === "") {
-      return 1;
-    } else {
-      return Number(value);
-    }
+    return SortTypes.some(sortType => sortType.value === value) ? value : 1;
   });
 
   /** 从路由 query 读取搜索关键词 */
@@ -37,22 +43,17 @@ export function useUserHomeUpload() {
   });
 
   const count = ref(0);
-  const pageSize = ref(0);
-  const pageTotal = computed(() => {
-    if (pageSize.value === 0) {
-      return 1;
-    }
-    return Math.ceil(count.value / pageSize.value);
-  });
+  const pageSize = ref(PAGE_SIZE);
 
   /* ——————方法—————— */
   async function changeSortType(newSortTypeValue: number) {
-    await router.push(
-      "/user/" + route.params.userId + "/upload/" + newSortTypeValue,
-    );
+    if (newSortTypeValue === sortTypeValue.value) return;
 
-    // 下面刷新一下分页和视频数据
-    pageNo.value = 0;
+    await router.push({
+      name: "userUpload",
+      params: { userId: route.params.userId, sortType: newSortTypeValue },
+      query: route.query,
+    });
     await loadVideos(1, newSortTypeValue);
   }
 
@@ -60,39 +61,40 @@ export function useUserHomeUpload() {
 
   /** 加载视频 */
   async function loadVideos(newPageNo: number, sortType = sortTypeValue.value) {
-    if (pageTotal.value < newPageNo) {
-      return;
-    }
-
-    pageNo.value = newPageNo;
+    const seq = ++requestSeq;
+    const keyword = searchKeyword.value;
+    loading.value = true;
 
     const result = await UserHomeSharedApi.loadVideo(
       route.params.userId as string,
-      pageNo.value,
-      20,
+      newPageNo,
+      PAGE_SIZE,
       sortType,
-      searchKeyword.value || undefined,
+      keyword || undefined,
     );
 
-    if (result === false || result === null) {
+    if (seq !== requestSeq) return;
+    loading.value = false;
+
+    if (result === false) {
       return;
     }
-    if (result.totalCount !== null) {
-      count.value = result.totalCount;
-    }
-    if (result.pageSize !== null) {
-      pageSize.value = result.pageSize;
-    }
-    if (result.list !== null) {
-      videoList.value = result.list;
+
+    loadedOnce.value = true;
+    pageNo.value = newPageNo;
+    count.value = result?.totalCount ?? 0;
+    pageSize.value = result?.pageSize || PAGE_SIZE;
+    videoList.value = result?.list ?? [];
+
+    // 不带关键词时就是总投稿数，顺带填到标签栏
+    if (!keyword) {
+      hostUserDetailStore.setCount("upload", count.value);
     }
   }
 
   /** 监听搜索关键词变化，重新加载 */
   watch(searchKeyword, () => {
-    pageNo.value = 0;
-    count.value = 0;
-    pageSize.value = 0;
+    loadedOnce.value = false;
     loadVideos(1);
   });
 
@@ -107,8 +109,9 @@ export function useUserHomeUpload() {
     count,
     pageNo,
     pageSize,
-    pageTotal,
     videoList,
+    loading,
+    loadedOnce,
     loadVideos,
     changeSortType,
   };

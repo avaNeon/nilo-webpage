@@ -141,6 +141,8 @@ export function useVideoSeriesEditor() {
     step,
     videoList,
     loadingVideos: videoLoading,
+    /** 可选视频已经全部加载 */
+    allVideosLoaded: lastPageAcceeded,
     addedVideoList,
     seriesId,
     excludedVideoCount,

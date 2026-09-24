@@ -1,11 +1,15 @@
 <script lang="ts" setup>
-import VideoItem from '@/shared/entities/videoItem/ui/VideoItem.vue';
+import { computed, watch } from 'vue';
 import { useVideoSeriesEditor } from '../model/useVideoSeriesEditor';
 import message from '@/shared/lib/message';
-import { watch } from 'vue';
-import noneSrc from "@/assets/icon/img/none.svg"
 import type { VideoInfo } from '@/shared/model/VideoInfo';
+import { formatCount } from '@/shared/utils/NumberUtil';
+import { formatDurationClock, formatRelativeDay } from '@/shared/utils/DateUtil';
+import { imgRequestUrl } from '@/shared/utils/ImgUtil';
+import GlassModal from '@/pages/userHome/shared/ui/GlassModal.vue';
 
+const NAME_MAX = 100
+const DESCRIPTION_MAX = 300
 
 const props = defineProps<{
     visible: boolean;
@@ -28,17 +32,31 @@ const {
     description,
     step,
     videoList,
+    loadingVideos,
+    allVideosLoaded,
     addedVideoList,
     seriesId,
-    excludedVideoCount,
     addedVideoLength,
     loadNextPageVideos,
     validateForm,
     clear,
     addVideo,
     removeVideo,
-    loadAvailableVideoCount,
 } = useVideoSeriesEditor()
+
+const isEdit = computed(() => Boolean(seriesId.value))
+const modalTitle = computed(() => isEdit.value ? '修改系列' : '新建系列')
+const canNext = computed(() => title.value.trim().length > 0)
+const maxVideos = computed(() => props.maxVideosNumber ?? 100)
+
+/** 列表底部的提示 */
+const loadHint = computed(() =>
+{
+    if (loadingVideos.value) return '加载中…'
+    if (!allVideosLoaded.value) return '继续向下滚动，自动加载更多…'
+    if (videoList.value.length === 0) return isEdit.value ? '所有视频都已经在这个系列里了' : '还没有可以添加的视频'
+    return `已显示全部 ${videoList.value.length} 个视频`
+})
 
 function handleVideoItemsScroll(event: Event)
 {
@@ -46,7 +64,7 @@ function handleVideoItemsScroll(event: Event)
 
     if (!el) return
 
-    const bottomThreshold = 32
+    const bottomThreshold = 60
     const reachedBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - bottomThreshold
 
     if (reachedBottom)
@@ -55,15 +73,20 @@ function handleVideoItemsScroll(event: Event)
     }
 }
 
-function handleCheckboxToggle(videoId: string | null | undefined, checked: unknown)
+function isSelected(videoId: string | null)
+{
+    return !!videoId && addedVideoList.value.includes(videoId)
+}
+
+function toggleVideo(videoId: string | null | undefined)
 {
     if (!videoId) return
 
-    if (checked === true)
+    if (!addedVideoList.value.includes(videoId))
     {
-        if (props.maxVideosNumber && addedVideoList.value.length >= props.maxVideosNumber)
+        if (addedVideoList.value.length >= maxVideos.value)
         {
-            message.warning(`每个系列最多只能添加 ${props.maxVideosNumber} 个视频`)
+            message.warning(`每个系列最多只能添加 ${maxVideos.value} 个视频`)
             return
         }
         addVideo(videoId)
@@ -76,6 +99,7 @@ function handleCheckboxToggle(videoId: string | null | undefined, checked: unkno
     }
 }
 
+/** 勾选的视频挪到列表最前面 */
 function moveVideoToAddedArea(videoId: string)
 {
     const index = videoList.value.findIndex(video => video.videoId === videoId)
@@ -94,16 +118,30 @@ function handleSubmit()
         message.warning("请至少选择一个视频")
         return;
     }
-    emit('submit', seriesId.value, title.value, description.value, addedVideoList.value)
-    clear()
+    emit('submit', seriesId.value, title.value.trim(), description.value, addedVideoList.value)
     emit('update:visible', false)
 }
 
-
 function handleNextStep()
 {
+    if (!canNext.value) return
+    // 从第二步退回来再点「下一步」时列表已经有了，不再多加载一页
+    if (videoList.value.length > 0)
+    {
+        step.value = 2
+        return
+    }
     validateForm()
-    loadAvailableVideoCount()
+}
+
+function coverSrc(video: VideoInfo)
+{
+    return video.videoCover ? imgRequestUrl(video.videoCover, true) : ''
+}
+
+function plainTitle(video: VideoInfo)
+{
+    return (video.videoName ?? '').replace(/<[^>]*>/g, '')
 }
 
 /**
@@ -128,168 +166,383 @@ watch(
     assemblePropsData,
     { immediate: true },
 )
-
 </script>
+
 <template>
-    <el-dialog :model-value="visible" append-to-body @update:model-value="emit('update:visible', false)" @closed="clear"
-        width="600">
-        <div v-if="step === 1" class="dialog-content">
-            <div class="serie-name-input">
-                <span class="name-label must">系列名称</span>
-                <el-input placeholder="请输入系列名称" v-model="title" style="width: 300px;" maxlength="100" show-word-limit />
-            </div>
-            <div class="serie-description-input">
-                <span class="description-label">系列简介</span>
-                <el-input placeholder="请输入系列简介" v-model="description" style="width: 300px;" maxlength="300"
-                    type="textarea" show-word-limit />
-            </div>
-            <div class="buttons">
-                <el-button @click="emit('update:visible', false)">取消</el-button>
-                <el-button type="primary" @click="handleNextStep">下一步</el-button>
-            </div>
-        </div>
-        <div v-else-if="step === 2" class="select-videos">
-            <div class="video-count">
-                <span class="count-title">添加视频</span>
-                <span class="count-text">已添加{{ addedVideoList.length }}/{{ maxVideosNumber }}个视频</span>
-            </div>
-            <div v-if="!seriesId || videoList.length > 0 || excludedVideoCount !== 0" class="video-items"
-                @scroll="handleVideoItemsScroll">
-                <div class="select-item" v-for="(video, index) in videoList" :key="video.videoId ?? index">
-                    <div class="toggle">
-                        <el-checkbox class="video-checkbox"
-                            :model-value="!!video.videoId && addedVideoList.includes(video.videoId)"
-                            @change="handleCheckboxToggle(video.videoId, $event)" />
-                    </div>
-                    <video-item class="video-item" :video-info="video" type="vertical" width="36%" />
+    <GlassModal :visible="visible" :title="modalTitle" :width="620" @close="emit('update:visible', false)"
+        @closed="clear">
+        <template #title>
+            <div class="modal-title">
+                <span class="title-text">{{ modalTitle }}</span>
+                <div class="steps">
+                    <span :class="['step', { active: step === 1 }]">01 基本信息</span>
+                    <span class="step-line" aria-hidden="true"></span>
+                    <span :class="['step', { active: step === 2 }]">02 选择视频</span>
                 </div>
             </div>
-            <div v-else class="no-data">
-                <img :src="noneSrc" alt="none">
-                <span>所有的视频已经添加！</span>
+        </template>
+
+        <template v-if="step === 1">
+            <div class="form">
+                <label class="field">
+                    <span class="field-label">系列名称 <span class="required">*</span></span>
+                    <span class="input-wrap">
+                        <input v-model="title" :maxlength="NAME_MAX" placeholder="给系列起个名字" class="text-input"
+                            @keyup.enter="handleNextStep">
+                        <span class="counter">{{ title.length }} / {{ NAME_MAX }}</span>
+                    </span>
+                </label>
+                <label class="field">
+                    <span class="field-label">系列简介</span>
+                    <span class="input-wrap">
+                        <textarea v-model="description" :maxlength="DESCRIPTION_MAX" placeholder="简单介绍一下这个系列（选填）"
+                            class="text-area"></textarea>
+                        <span class="counter bottom">{{ description.length }} / {{ DESCRIPTION_MAX }}</span>
+                    </span>
+                </label>
             </div>
-            <div class="buttons">
-                <el-button @click="step = 1">上一步</el-button>
-                <el-button type="primary" @click="handleSubmit">创建</el-button>
+            <div class="actions">
+                <button type="button" class="plain-button" @click="emit('update:visible', false)">取消</button>
+                <button type="button" class="primary-button" :disabled="!canNext" @click="handleNextStep">下一步</button>
             </div>
-        </div>
-    </el-dialog>
+        </template>
+
+        <template v-else>
+            <div class="pick-head">
+                <span class="pick-hint">勾选要加入「<b>{{ title.trim() }}</b>」的视频</span>
+                <span class="pick-count">已选 {{ addedVideoList.length }} / {{ maxVideos }}</span>
+            </div>
+            <div class="pick-list" @scroll="handleVideoItemsScroll">
+                <button v-for="(video, index) in videoList" :key="video.videoId ?? index" type="button"
+                    :class="['pick-row', { selected: isSelected(video.videoId) }]" role="checkbox"
+                    :aria-checked="isSelected(video.videoId)" @click="toggleVideo(video.videoId)">
+                    <span class="check-box" aria-hidden="true">{{ isSelected(video.videoId) ? '✓' : '' }}</span>
+                    <span class="pick-cover">
+                        <img v-if="coverSrc(video)" :src="coverSrc(video)" alt="" loading="lazy">
+                        <span v-if="video.duration != null" class="pick-duration">
+                            {{ formatDurationClock(video.duration) }}
+                        </span>
+                    </span>
+                    <span class="pick-text">
+                        <span class="pick-title" :title="plainTitle(video)">{{ plainTitle(video) }}</span>
+                        <span class="pick-meta">
+                            {{ formatCount(video.playCount) }} 播放 · {{ formatRelativeDay(video.lastUpdateTime ??
+                                video.createTime) }}
+                        </span>
+                    </span>
+                </button>
+                <span class="load-hint">{{ loadHint }}</span>
+            </div>
+            <div class="actions split">
+                <button type="button" class="plain-button" @click="step = 1">← 上一步</button>
+                <div class="actions">
+                    <button type="button" class="plain-button" @click="emit('update:visible', false)">取消</button>
+                    <button type="button" class="primary-button" @click="handleSubmit">
+                        {{ isEdit ? '保存修改' : '创建系列' }}
+                    </button>
+                </div>
+            </div>
+        </template>
+    </GlassModal>
 </template>
 
 <style lang="scss" scoped>
-.dialog-content {
+@use '@/pages/userHome/shared/styles/glass' as *;
+
+button {
+    @include reset-button;
+}
+
+.modal-title {
     display: flex;
     flex-direction: column;
-    row-gap: 30px;
+    gap: 8px;
 
-    .serie-name-input,
-    .serie-description-input {
-        display: flex;
-        column-gap: 15px;
-        align-items: start;
-
-        font-size: 14px;
-    }
-
-    .name-label,
-    .description-label {
-        width: 80px;
-    }
-
-    .buttons {
-        display: flex;
-        justify-content: end;
-        column-gap: 15px;
+    .title-text {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
     }
 }
 
-.select-videos {
+// 步骤：当前步蓝底白字
+.steps {
     display: flex;
-    flex-direction: column;
-    row-gap: 10px;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
 
-    .video-count {
-        padding: 5px 10px;
-
+    .step {
         display: flex;
-        flex-direction: column;
-        row-gap: 5px;
-
-        .count-title {
-            font-size: 16px;
-            font-weight: 500;
-        }
-
-        .count-text {
-            font-size: 16px;
-            font-weight: 400;
-            color: $color-text-secondary;
-        }
-    }
-
-    .video-items {
-        padding: 20px 40px;
-        height: 500px;
-        overflow-y: scroll;
-
-        .select-item {
-            display: flex;
-
-            .toggle {
-                width: 18%;
-
-                display: flex;
-                justify-content: center;
-                align-items: center;
-
-                .video-checkbox {
-                    margin-right: 0;
-
-                    :deep(.el-checkbox__inner) {
-                        width: 18px;
-                        height: 18px;
-
-                        border: 1px solid $color-mask-40;
-                        border-radius: 4px;
-                    }
-
-                    :deep(.el-checkbox__inner::after) {
-                        width: 4px;
-                        height: 9px;
-                    }
-                }
-            }
-
-            .video-item {
-                width: 80%;
-                height: 80px;
-
-                pointer-events: none;
-            }
-        }
-
-    }
-
-    .no-data {
-        padding: 20px 40px;
-
-        display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.8);
+        color: $warm-ink-3;
+
+        &.active {
+            background: $warm-accent;
+            color: #FFFFFF;
+        }
     }
 
-    .buttons {
-        display: flex;
-        justify-content: end;
-        column-gap: 15px;
+    .step-line {
+        width: 16px;
+        height: 1px;
+        background: rgba(11, 12, 18, 0.2);
     }
 }
 
-.must {
-    &::after {
-        content: '*';
-        color: red;
+/*——————第一步：名称 + 简介—————— */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .field-label {
+        font-size: 13px;
+        font-weight: 600;
     }
+
+    .required {
+        color: $warm-accent;
+    }
+}
+
+.input-wrap {
+    position: relative;
+    display: block;
+}
+
+@mixin glass-input {
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    outline: 0;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: inset 0 1px 2px rgba(11, 12, 18, 0.08), inset 0 0 0 1px rgba(11, 12, 18, 0.1);
+    color: $warm-ink;
+    font: inherit;
+    transition: box-shadow 0.2s, background-color 0.2s;
+
+    &::placeholder {
+        color: $warm-ink-4;
+    }
+
+    &:focus {
+        background: #FFFFFF;
+        box-shadow: inset 0 0 0 1.5px $warm-accent;
+    }
+}
+
+.text-input {
+    @include glass-input;
+    height: 50px;
+    padding: 0 84px 0 18px;
+    font-size: 15px;
+}
+
+.text-area {
+    @include glass-input;
+    display: block;
+    height: 120px;
+    padding: 14px 18px 30px;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: none;
+}
+
+.counter {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    font-family: $warm-font-mono;
+    font-size: 12px;
+    color: $warm-ink-3;
+    pointer-events: none;
+
+    &.bottom {
+        top: auto;
+        bottom: 12px;
+    }
+}
+
+/*——————按钮—————— */
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    &.split {
+        justify-content: space-between;
+    }
+}
+
+.plain-button {
+    display: flex;
+    align-items: center;
+    height: 46px;
+    padding: 0 24px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+
+    &:hover {
+        background: #FFFFFF;
+    }
+}
+
+.primary-button {
+    @include accent-button;
+}
+
+/*——————第二步：勾选视频—————— */
+
+.pick-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 13px;
+
+    .pick-hint {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: $warm-ink-3;
+
+        b {
+            font-weight: 600;
+            color: $warm-ink;
+        }
+    }
+
+    .pick-count {
+        flex-shrink: 0;
+        font-weight: 600;
+        color: $warm-accent;
+    }
+}
+
+.pick-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 420px;
+    max-height: calc(100vh - 320px);
+    margin: 0 -10px;
+    padding: 0 10px;
+    overflow: auto;
+}
+
+.pick-row {
+    display: grid;
+    flex-shrink: 0;
+    grid-template-columns: 24px 128px minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    padding: 8px 12px 8px 10px;
+    border-radius: 18px;
+    text-align: left;
+    transition: background-color 0.15s;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.7);
+    }
+
+    &.selected {
+        background: rgba(0, 0, 242, 0.08);
+    }
+}
+
+.check-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: #FFFFFF;
+    box-shadow: inset 0 0 0 1.5px rgba(11, 12, 18, 0.25);
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+
+    .selected & {
+        background: $warm-accent;
+        box-shadow: none;
+    }
+}
+
+.pick-cover {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: $glass-placeholder;
+
+    img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .pick-duration {
+        position: absolute;
+        right: 5px;
+        bottom: 5px;
+        display: flex;
+        align-items: center;
+        height: 18px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: rgba(11, 12, 18, 0.62);
+        color: #FFFFFF;
+        font-size: 10px;
+        font-weight: 500;
+    }
+}
+
+.pick-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+
+    .pick-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .pick-meta {
+        font-size: 12px;
+        color: $warm-ink-3;
+    }
+}
+
+.load-hint {
+    flex-shrink: 0;
+    padding: 14px 0 6px;
+    text-align: center;
+    font-size: 12px;
+    color: $warm-ink-3;
 }
 </style>
