@@ -10,6 +10,8 @@ export function useHotRanking() {
     pageNo: 1,
     loading: false,
     finished: false,
+    /** 第一页请求结束过（成功或失败），之前显示骨架屏 */
+    loadedOnce: false,
   });
 
   let scrollTicking = false;
@@ -34,6 +36,7 @@ export function useHotRanking() {
       hotRankingState.pageNo++;
     } finally {
       hotRankingState.loading = false;
+      hotRankingState.loadedOnce = true;
       requestAnimationFrame(checkShouldLoadMore);
     }
   }

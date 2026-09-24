@@ -28,6 +28,7 @@ const {
 
 /** 首页和分类页都算「主页」 */
 const isHomeRoute = computed(() => route.name === 'index' || route.name === 'category')
+const isHistoryRoute = computed(() => route.name === 'history')
 
 const messageLabel = computed(() =>
     uncheckedMessageCount.value > 0 ? `消息（${uncheckedMessageCountText.value} 条未读）` : '消息')
@@ -99,7 +100,8 @@ onBeforeUnmount(() =>
                     @click="requireLoginThen(() => `/user/${loginStateStore.userInfo!.userId}/collection`)">
                     收藏<span class="nav-dot"></span>
                 </button>
-                <button type="button" class="nav-item"
+                <button type="button" :class="['nav-item', { active: isHistoryRoute }]"
+                    :aria-current="isHistoryRoute ? 'page' : undefined"
                     @click="requireLoginThen(() => `/history/${loginStateStore.userInfo!.userId}`)">
                     历史<span class="nav-dot"></span>
                 </button>
