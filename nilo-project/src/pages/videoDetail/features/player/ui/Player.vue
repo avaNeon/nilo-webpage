@@ -76,8 +76,9 @@ onBeforeUnmount(() =>
                 :class="['danmaku', { 'danmaku-disabled': !danmakuStore.danmakuEnabled || !danmakuAvailable }]"
                 v-show="showDanmaku"></div>
         </div>
+        <!-- 中间的大播放键，交给 Artplayer 当 state 图标；样式在下方 .nilo-player -->
         <div id="play" class="play">
-            <img class="play-icon" src="@/assets/play.svg" alt="pause" />
+            <span class="play-circle"><span class="play-triangle"></span></span>
         </div>
     </div>
 </template>
@@ -97,8 +98,18 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
         width: 100%;
         aspect-ratio: 16 / 9;
         min-height: 0;
-        background: #000;
         clip-path: inset(0 round 28px 28px 0 0);
+
+        // 黑底往里收 1px（圆角同步缩小），不垫在视频边缘下面：视频是单独合成的一层，
+        // 播放器宽度又常带小数像素，边缘抗锯齿时会把下面的黑底透出来，
+        // 在浅色画面的两个上角和左右两边就是一圈黑细线；收进去之后边缘下面是页面白底
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border-radius: 27px 27px 0 0;
+            background: #000;
+        }
     }
 
     &.theater .video-area {
@@ -130,17 +141,76 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
         }
     }
 
-    .play {
-        .play-icon {
-            width: 80px;
-            height: 80px;
-        }
-    }
 }
 </style>
 
 <style lang="scss">
 $icon-height: 30px;
+
+// 普通模式下 Artplayer 自己不铺黑底，黑底交给上面的 .video-area::before；原生全屏时照旧
+.player-panel .video-area .art-video-player:not(.art-fullscreen) {
+    background-color: transparent;
+}
+
+// ==================== 播放器控件配色（A5「深色蒙层」） ====================
+// 电光蓝放在黑色蒙层上看不清：进度条、音量条改成白色，拖动圆点用蓝色加白圈，
+// 设置面板的选中项用浅一档的蓝（Artplayer 的 theme 选项，见 usePlayer）
+.nilo-player {
+    --art-progress-color: rgba(255, 255, 255, 0.32);
+    --art-loaded-color: rgba(255, 255, 255, 0.28);
+    --art-hover-color: rgba(255, 255, 255, 0.28);
+    --art-indicator-size: 14px;
+    --art-state-size: 64px;
+
+    // 已播放部分读的是主题色变量，只在进度条和音量条里换成白色
+    .art-progress,
+    .art-volume-panel {
+        --art-theme: #FFFFFF;
+    }
+
+    .nilo-progress-knob,
+    .art-volume-indicator {
+        box-shadow: 0 0 0 3px #FFFFFF, 0 2px 8px rgba(11, 12, 18, 0.35);
+    }
+
+    .nilo-progress-knob {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: $warm-accent;
+    }
+
+    .art-volume-indicator {
+        --art-theme: #{$warm-accent};
+    }
+
+    // 底部渐变换成墨色；控件收起只剩迷你进度条时保持 Artplayer 原样（不铺渐变）
+    &.art-video-player:not(.art-mini-progress-bar):not(.art-lock) .art-bottom {
+        background-image: linear-gradient(to top, rgba(11, 12, 18, 0.78), rgba(11, 12, 18, 0.34), transparent);
+    }
+
+    // 中间的大播放键：白色圆底 + 蓝色三角，亮暗画面上都显眼
+    .play-circle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        padding-left: 5px;
+        border-radius: 50%;
+        background: #FFFFFF;
+        box-shadow: 0 10px 30px -10px rgba(11, 12, 18, 0.5);
+    }
+
+    .play-triangle {
+        width: 0;
+        height: 0;
+        border-left: 16px solid $warm-accent;
+        border-top: 10px solid transparent;
+        border-bottom: 10px solid transparent;
+    }
+}
 
 // 弹幕发送栏（非全屏时挂在卡片底部的 #danmaku 上）
 .player-panel>.danmaku-panel>.danmaku>.artplayer-plugin-danmuku {

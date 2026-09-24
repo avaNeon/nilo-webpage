@@ -26,7 +26,6 @@ import artplayerPluginDanmuku, {
 // Assets
 // ============================================================
 import rollingLoadingSrc from "@/assets/player/rolling-loading.svg";
-import indicatorSrc from "@/assets/player/indicator.svg";
 import closeTheaterModeSrc from "@/assets/player/close-theater-mode.svg";
 import theaterModeSrc from "@/assets/player/theater-mode.svg";
 
@@ -737,8 +736,9 @@ export function usePlayer() {
       playsInline: true,
       autoPlayback: true,
       airplay: true,
-      // A5 主题的电光蓝（进度条、选中态）
-      theme: "#0000F2",
+      // 设置面板里的选中项等：电光蓝在黑底上看不清，用浅一档的蓝
+      // 进度条、音量条另在 Player.vue 里改成白色（见 .nilo-player）
+      theme: "#9DA1FF",
       lang: navigator.language.toLowerCase(),
       moreVideoAttr: {
         crossOrigin: "anonymous",
@@ -764,7 +764,8 @@ export function usePlayer() {
       icons: {
         loading: `<img src="${rollingLoadingSrc}">`,
         state: document.querySelector("#play") as HTMLDivElement,
-        indicator: `<img width="16" height="16" src="${indicatorSrc}">`,
+        // 进度条拖动圆点：蓝色实心 + 白圈，样式在 Player.vue
+        indicator: `<span class="nilo-progress-knob"></span>`,
       },
       controls: [
         {
@@ -850,6 +851,9 @@ export function usePlayer() {
 
     if (art.value) {
       applySubtitleSize(art.value, subtitleScale);
+      // 控件配色只作用于详情页播放器（创作中心的预览播放器不受影响）；
+      // 挂在 $player 上而不是外层容器，网页全屏把 $player 移到 body 后也还在
+      art.value.template.$player.classList.add("nilo-player");
     }
 
     // 链接带 ?t= 时（例如 AI 助手的片段在新标签页打开），这一 P 加载完后跳到对应秒数
