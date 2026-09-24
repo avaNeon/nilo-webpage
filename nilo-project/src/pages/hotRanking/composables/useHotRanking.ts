@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, reactive } from "vue";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
-import { HotRankingApi } from "../api/HotRankingApi";
+import { HotVideoApi } from "@/shared/api/HotVideoApi";
 
 export function useHotRanking() {
   /* ————————状态———————— */
@@ -21,7 +21,7 @@ export function useHotRanking() {
 
     hotRankingState.loading = true;
     try {
-      const loadedList = await HotRankingApi.loadHotVideo(
+      const loadedList = await HotVideoApi.loadHotVideo(
         hotRankingState.pageNo,
       );
 

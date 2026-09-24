@@ -40,6 +40,9 @@ const formattedIntroduction = computed(() =>
     return html
 })
 
+// 简介和标签都没有时整块不显示
+const hasContent = computed(() => !!props.introduction || props.tags.length > 0)
+
 // ── 高度测量（同步，无闪烁） ──
 function measureFullHeight(el: HTMLElement)
 {
@@ -54,7 +57,11 @@ async function checkOverflow()
 {
     await nextTick()
     const el = textRef.value
-    if (!el) return
+    if (!el)
+    {
+        isOverflowing.value = false
+        return
+    }
     isOverflowing.value = measureFullHeight(el) > COLLAPSED_HEIGHT
 }
 
@@ -102,64 +109,74 @@ watch(windowWidth, () =>
 </script>
 
 <template>
-    <div class="introduction-bar">
-
-        <div class="introduction-text-wrapper">
+    <div v-if="hasContent" class="introduction-bar">
+        <div v-if="props.introduction" class="introduction-text-wrapper">
             <p ref="textRef" class="introduction-text" :style="{ maxHeight: dynamicMaxHeight }"
                 v-html="formattedIntroduction" />
-            <div class="fade-overlay" :class="{ 'is-visible': isOverflowing && !isExpanded }" @click="expand">
-                <span class="expand-hint">{{ isOverflowing && !isExpanded ? '展开' : '' }}</span>
-            </div>
+            <div class="fade-overlay" :class="{ 'is-visible': isOverflowing && !isExpanded }" @click="expand"></div>
         </div>
-        <div v-if="isExpanded" class="collapse-hint" @click="collapse">
+        <button v-if="isOverflowing && !isExpanded" type="button" class="toggle-button" @click="expand">
+            展开全部
+        </button>
+        <button v-else-if="isExpanded" type="button" class="toggle-button" @click="collapse">
             收起
-        </div>
-        <div class="category-items">
-            <!-- jump to search panel -->
-            <div v-for="tag in props.tags" :key="tag" class="category-item">
-                {{ tag }}
-            </div>
+        </button>
+        <div v-if="props.tags.length" class="tag-items">
+            <!-- 点标签去搜索页 -->
+            <RouterLink v-for="tag in props.tags" :key="tag" class="tag-item"
+                :to="{ name: 'video-search', params: { keyword: tag } }" target="_blank">
+                #{{ tag }}
+            </RouterLink>
         </div>
     </div>
 </template>
 
 <style lang="scss" scoped>
 .introduction-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
 
     .introduction-text-wrapper {
         position: relative;
-
+        width: 100%;
+        max-width: 760px;
     }
 
     .introduction-text {
         display: block;
-        margin: 10px 5px;
+        margin: 0;
         overflow: hidden;
-        font-size: 18px;
-        line-height: 20px;
-        color: $color-text-primary;
+        font-size: 15px;
+        line-height: 1.9;
+        color: $warm-ink-2;
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+        text-wrap: pretty;
         transition: max-height 0.4s ease;
 
-        :deep(a) {
-            color: $color-link;
+        :deep(a.inline-link) {
+            color: $warm-accent-text;
             text-decoration: none;
+            transition: color 0.2s;
 
             &:hover {
-                color: $color-link-strong;
+                color: $warm-accent-hover;
+                text-decoration: underline;
+                text-underline-offset: 3px;
             }
         }
     }
 
+    // 折叠时底部渐隐到页面底色
     .fade-overlay {
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
         height: 80px;
-        background: linear-gradient(to bottom, transparent, white);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        background: linear-gradient(to bottom, rgba(247, 246, 243, 0), $warm-paper);
         cursor: pointer;
         opacity: 0;
         pointer-events: none;
@@ -169,58 +186,46 @@ watch(windowWidth, () =>
             opacity: 1;
             pointer-events: auto;
         }
-
-        .expand-hint {
-            font-size: 14px;
-            font-weight: 500;
-            color: $color-bilibili-blue;
-            user-select: none;
-        }
     }
 
-    .collapse-hint {
-        text-align: center;
-        font-size: 14px;
+    .toggle-button {
+        margin-top: -6px;
+        padding: 0;
+        border: none;
+        background: none;
+        font-size: 13px;
         font-weight: 500;
-        color: $color-bilibili-blue;
+        color: $warm-ink-3;
         cursor: pointer;
         user-select: none;
-        padding: 4px 0 8px;
-    }
+        transition: color 0.2s;
 
-    .category-items {
-        display: flex;
-        column-gap: 10px;
+        &:hover {
+            color: $warm-ink;
+        }
 
-        .category-item {
-            padding: 10px;
-            background-color: $color-neutral-1;
-            border-radius: 15px;
-            font-size: 14px;
-            line-height: 14px;
-            font-weight: 500;
-            color: $color-text-secondary;
-            transition: all 0.3s ease;
-
-            &:hover {
-                cursor: pointer;
-                font-size: 16px;
-                background-color: $color-neutral-2;
-            }
+        &:focus-visible {
+            outline: 2px solid rgba(26, 25, 22, 0.2);
+            outline-offset: 2px;
+            border-radius: 4px;
         }
     }
-}
-</style>
 
-<style lang="scss">
-.inline-link {
-    display: inline-block;
-    color: $color-bilibili-blue;
-    transition: all 0.3s ease;
+    .tag-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
 
-    &:hover {
-        font-weight: bold;
-        font-size: 19px;
+        .tag-item {
+            font-size: 13px;
+            font-weight: 500;
+            color: $warm-ink-3;
+            transition: color 0.2s;
+
+            &:hover {
+                color: $warm-accent-hover;
+            }
+        }
     }
 }
 </style>

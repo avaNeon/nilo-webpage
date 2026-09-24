@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { usePlayer } from '../model/usePlayer';
 import { useDanmakuStore } from '../store/DanmakuStore';
 
-const { playerHeight, style, videoStateStore, watcherCount, initArt, startTimer, cleanup } = usePlayer()
+const { art, style, videoStateStore, watcherCount, initArt, startTimer, cleanup } = usePlayer()
 const danmakuStore = useDanmakuStore()
 
 const showDanmaku = ref(true)
@@ -13,10 +13,38 @@ const props = withDefaults(defineProps<{
 }>(), {
 })
 
+// 播放区域尺寸变化（剧场模式切换、窗口缩放）时通知 Artplayer 重新布局
+const videoAreaEl = useTemplateRef<HTMLDivElement>('videoArea')
+let resizeObserver: ResizeObserver | null = null
+let resizeFrame = 0
+
+function observeVideoArea()
+{
+    const el = videoAreaEl.value
+    if (!el || typeof ResizeObserver === 'undefined') return
+    // observe 后会立即回调一次初始尺寸，跳过
+    let initial = true
+    resizeObserver = new ResizeObserver(() =>
+    {
+        if (initial)
+        {
+            initial = false
+            return
+        }
+        cancelAnimationFrame(resizeFrame)
+        resizeFrame = requestAnimationFrame(() =>
+        {
+            art.value?.emit('resize')
+        })
+    })
+    resizeObserver.observe(el)
+}
+
 onMounted(() =>
 {
     initArt()
     startTimer()
+    observeVideoArea()
     // 在 html 元素上设置 data 属性，为网页全屏场景提供 CSS 锚点
     // 放到 onMounted 而非 watch，避免全屏切换期间 DOM 突变导致 Fullscreen API 取消
     if (!props.danmakuAvailable)
@@ -27,6 +55,9 @@ onMounted(() =>
 
 onBeforeUnmount(() =>
 {
+    resizeObserver?.disconnect()
+    resizeObserver = null
+    cancelAnimationFrame(resizeFrame)
     cleanup()
     document.documentElement.removeAttribute('data-danmaku-unavailable')
 })
@@ -34,54 +65,72 @@ onBeforeUnmount(() =>
 
 <template>
     <div :class="['player-panel', videoStateStore.displayMode, { 'danmaku-unavailable': !danmakuAvailable }]">
-        <div class="content" :style="{
-            height: playerHeight + 'px',
-            width: style.width
-        }">
+        <div ref="videoArea" class="video-area">
             <div ref="$container" :style="style" />
-            <div class="danmaku-panel">
-                <div class="watching-danmaku-info">
-                    {{ watcherCount }}人在看，已装填{{ danmakuStore.danmakuList.length }}条弹幕
-                </div>
-                <div id="danmaku"
-                    :class="['danmaku', { 'danmaku-disabled': !danmakuStore.danmakuEnabled || !danmakuAvailable }]"
-                    v-show="showDanmaku"></div>
+        </div>
+        <div class="danmaku-panel">
+            <div class="watching-danmaku-info">
+                {{ watcherCount }} 人在看 · 已装填 {{ danmakuStore.danmakuList.length }} 条弹幕
             </div>
-            <div id="play" class="play">
-                <img class="play-icon" src="@/assets/play.svg" alt="pause" />
-            </div>
+            <div id="danmaku"
+                :class="['danmaku', { 'danmaku-disabled': !danmakuStore.danmakuEnabled || !danmakuAvailable }]"
+                v-show="showDanmaku"></div>
+        </div>
+        <div id="play" class="play">
+            <img class="play-icon" src="@/assets/play.svg" alt="pause" />
         </div>
     </div>
 </template>
 
 <style lang="scss" scoped>
+// 顶栏 + 弹幕栏 + 上下留白，剧场模式下视频区域不超出一屏
+$theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
+
 .player-panel {
-    .content {
-        border-radius: 10px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    // 视频区域 + 弹幕栏合成一张卡片；弹幕设置面板向上弹出，仍在卡片内部，不会被裁掉
+    border-radius: 22px;
+    overflow: hidden;
+    background: $warm-card;
+    box-shadow: 0 30px 60px -36px rgba(26, 25, 22, 0.35);
 
-        .danmaku-panel {
-            padding: 10px 15px;
+    .video-area {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 0;
+        background: #000;
+    }
 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+    &.theater .video-area {
+        // 保持 16:9，超出一屏时限制高度，左右留黑边
+        max-height: $theater-max-height;
+    }
 
-            .watching-danmaku-info {
-                font-size: 14px;
-            }
+    .danmaku-panel {
+        height: 56px;
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        border-top: 1px solid $warm-line;
 
-            .danmaku {
-                margin-left: 20px;
-                flex: 1;
-            }
+        .watching-danmaku-info {
+            flex-shrink: 0;
+            font-size: 13px;
+            color: $warm-ink-4;
+            white-space: nowrap;
         }
 
-        .play {
-            .play-icon {
-                width: 80px;
-                height: 80px;
-            }
+        .danmaku {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    .play {
+        .play-icon {
+            width: 80px;
+            height: 80px;
         }
     }
 }
@@ -90,7 +139,15 @@ onBeforeUnmount(() =>
 <style lang="scss">
 $icon-height: 30px;
 
-.player-panel>.content>.danmaku-panel>.danmaku>.artplayer-plugin-danmuku {
+// 弹幕发送栏（非全屏时挂在卡片底部的 #danmaku 上）
+.player-panel>.danmaku-panel>.danmaku>.artplayer-plugin-danmuku {
+    height: 36px;
+    gap: 14px;
+
+    .apd-icon {
+        fill: $warm-ink-3;
+    }
+
     .apd-toggle.hint--rounded.hint--top {
         .apd-icon.apd-toggle-on {
             height: $icon-height;
@@ -98,11 +155,45 @@ $icon-height: 30px;
     }
 
     .apd-emitter {
-        height: 40px;
+        height: 36px;
+        padding: 0 4px 0 6px;
+        background-color: #FFFFFF;
+        border: 1px solid $warm-border;
+        border-radius: 10px;
+        transition: border-color 0.2s;
+
+        &:focus-within {
+            border-color: rgba(26, 25, 22, 0.2);
+        }
+
+        .apd-input {
+            padding-left: 6px;
+            font-size: 13px;
+            color: $warm-ink;
+
+            &::placeholder {
+                color: $warm-ink-4;
+            }
+        }
 
         .apd-send {
-            font-size: 14px;
-            font-weight: 400;
+            height: 28px;
+            width: 64px;
+            border-radius: 8px;
+            background-color: $warm-ink;
+            color: #FFFFFF;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+
+            &:hover {
+                background-color: #000;
+            }
+
+            &.apd-lock {
+                background-color: $warm-sunken;
+                color: $warm-ink-4;
+            }
         }
 
         .apd-style {
@@ -111,23 +202,42 @@ $icon-height: 30px;
             }
         }
     }
+
+    // 弹出面板：墨色底 + 陶土色选中态
+    .apd-config-panel-inner,
+    .apd-style-panel-inner {
+        border-radius: 12px;
+        background-color: rgba(26, 25, 22, 0.92);
+        color: #FFFFFF;
+    }
+
+    .apd-modes .apd-mode:hover,
+    .apd-config-other .apd-other:hover {
+        color: $warm-logo-dot;
+    }
+
+    .apd-slider .apd-slider-progress,
+    .apd-slider .apd-slider-dot {
+        background-color: $warm-accent;
+    }
 }
 
 // 当弹幕被关闭时，禁用发送框（非全屏场景）
-.danmaku.danmaku-disabled .artplayer-plugin-danmuku .apd-emitter {
+// 选择器要比上面的暖色发送栏样式更具体，才能盖住它的背景色
+.player-panel>.danmaku-panel>.danmaku.danmaku-disabled>.artplayer-plugin-danmuku .apd-emitter {
     pointer-events: none;
     opacity: 0.5;
 
     .apd-input {
-        background-color: #f5f5f5;
-        color: #999;
+        background-color: $warm-sunken;
+        color: $warm-ink-4;
         padding-left: 8px !important;
         text-indent: 0 !important;
     }
 
     .apd-send {
-        background-color: #e0e0e0;
-        color: #999;
+        background-color: $warm-sunken;
+        color: $warm-ink-4;
     }
 }
 

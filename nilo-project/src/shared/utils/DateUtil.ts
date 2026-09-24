@@ -147,3 +147,55 @@ export function calculateDuration(duration: number | null): string {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 }
+
+/**
+ * 时长（秒）→ 播放器式时钟：不足 1 小时 "MM:SS"（如 01:05），否则 "H:MM:SS"
+ */
+export function formatDurationClock(sec: number | null | undefined): string {
+    if (sec == null || !Number.isFinite(sec) || sec < 0) {
+        return '00:00';
+    }
+    const total = Math.floor(sec);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = (total % 60).toString().padStart(2, '0');
+
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds}`;
+}
+
+/**
+ * 是否为访问者本地时区的今天
+ */
+export function isToday(value: BackendDateInput): boolean {
+    const date = parseBackendDateTime(value);
+    return date != null && date.isSame(dayjs(), 'day');
+}
+
+/**
+ * 按自然日计算的相对日期：今天 / N 天前 / N 周前 / N 个月前 / N 年前；无效日期返回空串
+ */
+export function formatRelativeDay(value: BackendDateInput): string {
+    const date = parseBackendDateTime(value);
+    if (!date) {
+        return '';
+    }
+
+    const days = dayjs().startOf('day').diff(date.startOf('day'), 'day');
+    // 同一天或服务器时间略超前时都视为今天
+    if (days <= 0) {
+        return '今天';
+    }
+    if (days < 7) {
+        return `${days} 天前`;
+    }
+    if (days < 30) {
+        return `${Math.floor(days / 7)} 周前`;
+    }
+    if (days < 365) {
+        return `${Math.floor(days / 30)} 个月前`;
+    }
+    return `${Math.floor(days / 365)} 年前`;
+}

@@ -4,7 +4,6 @@ import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import { useSystemConfigStore } from '@/shared/store/SystemConfigStore';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import imageIconSrc from '@/assets/icon/img/image.svg';
 import Cover from '@/shared/ui/Cover.vue';
 import { Delete } from '@element-plus/icons-vue';
 import { useFileUpload } from '@/shared/composables/useFileUpload';
@@ -31,9 +30,11 @@ const emit = defineEmits<{
 }>()
 
 const loginStateStore = useLoginStateStore();
-const AVATAR_WIDTH = 64
+/** 顶层评论框 / 楼中楼回复框的头像尺寸 */
+const AVATAR_WIDTH = 38
+const REPLY_AVATAR_WIDTH = 32
 const MAX_COMMENT_LENGTH = 1000
-const PREVIEW_IMAGE_WIDTH = 200
+const PREVIEW_IMAGE_WIDTH = 120
 /**
  * per video comment
  */
@@ -42,6 +43,10 @@ const MAX_IMAGE_UPLOAD_COUNT = 3
 const userCommentText = ref('')
 
 const route = useRoute()
+
+/** 回复框（parentCommentId 不为 '0'）使用更小的头像 */
+const isReply = computed(() => String(props.parentCommentId) !== '0')
+const avatarWidth = computed(() => isReply.value ? REPLY_AVATAR_WIDTH : AVATAR_WIDTH)
 
 
 // ========== 图片上传 ==========
@@ -131,6 +136,21 @@ function insertEmoji(emoji: string)
         userCommentText.value += emoji
     }
 }
+
+// ========== 输入框展开 ==========
+const inputBoxRef = ref<HTMLElement | null>(null)
+const isFocused = ref(false)
+
+function onInputBoxFocusOut(e: FocusEvent)
+{
+    // 焦点仍留在输入框内部（图片 / 表情按钮）时保持展开
+    if (inputBoxRef.value && inputBoxRef.value.contains(e.relatedTarget as Node | null)) return
+    isFocused.value = false
+}
+
+/** 聚焦、已有内容、已选图片或打开表情面板时，输入框展开为多行 */
+const isExpanded = computed(() =>
+    isFocused.value || userCommentText.value.length > 0 || uploadItems.value.length > 0 || emojiPanelVisible.value)
 
 function selectImage()
 {
@@ -226,30 +246,48 @@ async function postComment()
 </script>
 
 <template>
-    <div class="comment-post-bar" ref="commentPostBarRef">
-        <Avatar class="user-avatar" :user-id="loginStateStore.userInfo?.userId ?? null"
-            :src="imgRequestUrl(loginStateStore.userInfo?.avatar ?? '', true)" :width="AVATAR_WIDTH" :lazy="true"
-            :user-panel="false" :mobile="false" />
-        <div class="comment-section">
-            <el-input class="textarea" v-model="userCommentText" :maxlength="MAX_COMMENT_LENGTH"
-                :placeholder="available ? props.placeholder : '评论区已关闭'" show-word-limit type="textarea" :rows="3"
-                :disabled="!available" />
-            <div class="tool-bar">
-                <div class="tool" v-if="available">
+    <div class="comment-post-bar" ref="commentPostBarRef" :style="{ '--avatar-size': avatarWidth + 'px' }"
+        :class="{ reply: isReply, expanded: isExpanded, disabled: !available }">
+        <div class="avatar-wrap">
+            <Avatar class="user-avatar" :user-id="loginStateStore.userInfo?.userId ?? null"
+                :src="imgRequestUrl(loginStateStore.userInfo?.avatar ?? '', true)" :width="avatarWidth" :lazy="true"
+                :user-panel="false" :mobile="false" />
+        </div>
+
+        <div class="composer">
+            <div class="input-box" ref="inputBoxRef" @focusin="isFocused = true" @focusout="onInputBoxFocusOut">
+                <el-input class="textarea" v-model="userCommentText" :maxlength="MAX_COMMENT_LENGTH"
+                    :placeholder="available ? props.placeholder : '评论区已关闭'" type="textarea"
+                    :autosize="{ minRows: 1, maxRows: 8 }" :disabled="!available" />
+                <div class="tool-bar" v-if="available">
+                    <span v-if="isExpanded" class="word-count">{{ userCommentText.length }}/{{ MAX_COMMENT_LENGTH
+                        }}</span>
                     <!-- 点击图片图标 → 打开文件选择器 -->
-                    <div class="image" @click="selectImage">
-                        <img class="image-icon" :src="imageIconSrc" alt="选择图片">
-                    </div>
+                    <button type="button" class="tool-btn" title="添加图片" aria-label="添加图片" @click="selectImage">
+                        <svg class="tool-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2.5" />
+                            <circle cx="7.25" cy="8.25" r="1.5" />
+                            <path d="M3.25 14.25 7.5 10.5l3 2.5 2.75-2.25 3.75 3.25" />
+                        </svg>
+                    </button>
                     <!-- 表情选择 -->
                     <div class="emoji-wrapper" ref="emojiContainerRef">
-                        <div class="emoji-btn" @click.stop="toggleEmojiPanel">
-                            <span class="iconfont icon-emoji"></span>
-                        </div>
+                        <button type="button" class="tool-btn" :class="{ active: emojiPanelVisible }" title="表情"
+                            aria-label="表情" @click.stop="toggleEmojiPanel">
+                            <svg class="tool-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="10" cy="10" r="7.25" />
+                                <path d="M7.25 11.75c.7.9 1.65 1.35 2.75 1.35s2.05-.45 2.75-1.35" />
+                                <circle cx="7.6" cy="8.1" r="0.6" fill="currentColor" />
+                                <circle cx="12.4" cy="8.1" r="0.6" fill="currentColor" />
+                            </svg>
+                        </button>
                         <Transition name="emoji-fade">
                             <div v-if="emojiPanelVisible" class="emoji-panel" @click.stop>
                                 <!-- 分类选项栏 -->
                                 <div class="category-bar">
-                                    <button class="category-scroll-btn category-scroll-left"
+                                    <button type="button" class="category-scroll-btn category-scroll-left"
                                         @click="scrollCategories('left')">
                                         <span>‹</span>
                                     </button>
@@ -260,7 +298,7 @@ async function postComment()
                                             {{ cat.label }}
                                         </span>
                                     </div>
-                                    <button class="category-scroll-btn category-scroll-right"
+                                    <button type="button" class="category-scroll-btn category-scroll-right"
                                         @click="scrollCategories('right')">
                                         <span>›</span>
                                     </button>
@@ -276,21 +314,27 @@ async function postComment()
                         </Transition>
                     </div>
                 </div>
-                <div class="submit">
-                    <el-button type="primary" round @click="postComment" :disabled="!available || isPosting"
-                        :loading="isPosting">发布</el-button>
-                </div>
             </div>
 
             <!-- 图片预览区 -->
             <div v-if="uploadItems.length > 0" class="preview-images">
                 <div class="preview-image" v-for="item in uploadItems" :key="item.id">
-                    <!-- 上传成功后显示服务器路径，否则显示本地预览 -->
-                    <Cover :src="item.relativePath ? imgRequestUrl(item.relativePath) : item.localUrl"
-                        :width="PREVIEW_IMAGE_WIDTH" fit="scale-down" :preview="!!item.relativePath" :auto-height="true"
-                        :thumbnail="true" />
+                    <div class="preview-thumb">
+                        <!-- 上传成功后显示服务器路径，否则显示本地预览 -->
+                        <Cover :src="item.relativePath ? imgRequestUrl(item.relativePath) : item.localUrl"
+                            :width="PREVIEW_IMAGE_WIDTH" fit="scale-down" :preview="!!item.relativePath"
+                            :auto-height="true" :thumbnail="true" :border-radius="10" />
+                        <!-- 删除按钮 -->
+                        <button type="button" class="remove-btn" title="移除图片" aria-label="移除图片"
+                            :disabled="item.status === 'uploading'" @click="removeItem(item.id)">
+                            <el-icon :size="12">
+                                <Delete />
+                            </el-icon>
+                        </button>
+                    </div>
                     <!-- 上传中显示进度条 -->
-                    <el-progress v-if="item.status === 'uploading'" :percentage="item.progress" :stroke-width="6" />
+                    <el-progress v-if="item.status === 'uploading'" class="upload-progress" :percentage="item.progress"
+                        :stroke-width="4" :show-text="false" />
                     <span v-else-if="item.status === 'selected'" class="pending-text">
                         待发布
                     </span>
@@ -298,277 +342,457 @@ async function postComment()
                     <span v-else-if="item.status === 'error'" class="error-text">
                         {{ item.errorMsg }}
                     </span>
-                    <!-- 删除按钮 -->
-                    <el-button type="danger" :icon="Delete" circle size="small" :disabled="item.status === 'uploading'"
-                        @click="removeItem(item.id)" />
                 </div>
             </div>
-
         </div>
+
+        <button type="button" class="submit-btn" :disabled="!available || isPosting" @click="postComment">
+            <span v-if="isPosting" class="spinner" aria-hidden="true"></span>
+            发布
+        </button>
     </div>
 </template>
 
 <style lang="scss" scoped>
-$icon-size: 24px;
+$bar-height: 44px;
 
 .comment-post-bar {
     display: flex;
-    gap: 20px;
-    margin: 20px;
+    align-items: flex-start;
+    gap: 14px;
 
-    .comment-section {
+    // 按钮统一去掉默认样式
+    button {
+        padding: 0;
+        border: none;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+    }
+
+    // 头像与单行输入框垂直居中；输入框展开为多行时仍停在第一行
+    .avatar-wrap {
+        position: relative;
+        flex-shrink: 0;
+        width: var(--avatar-size);
+        height: var(--avatar-size);
+        margin-top: calc((#{$bar-height} - var(--avatar-size)) / 2);
+        border-radius: 50%;
+        background: $warm-sunken;
+
+        // 细描边压在图片上方
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(26, 25, 22, 0.06);
+            pointer-events: none;
+        }
+
+        // Avatar 自带 z-index: 500（给用户面板用），这里不需要，去掉以免盖住表情面板等浮层
+        .user-avatar {
+            z-index: auto;
+        }
+
+        .user-avatar :deep(.avatar) {
+            display: block;
+            z-index: auto;
+        }
+
+        :deep(.image-container) {
+            border: none !important;
+            background: $warm-sunken;
+        }
+    }
+
+    .composer {
+        flex: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column;
-        justify-content: space-around;
-        row-gap: 10px;
-        flex: 1;
+        gap: 10px;
+    }
+
+    // ===== 输入框 =====
+    .input-box {
+        display: flex;
+        align-items: flex-end;
+        min-height: $bar-height;
+        border-radius: 12px;
+        background: $warm-card;
+        box-shadow: 0 0 0 1px $warm-border;
+        transition: box-shadow 0.2s ease;
+
+        &:focus-within {
+            box-shadow: 0 0 0 1.5px $warm-ink;
+        }
 
         .textarea {
             flex: 1;
-            font-size: 16px;
+            min-width: 0;
+
+            :deep(.el-textarea__inner) {
+                min-height: $bar-height;
+                padding: 12px 16px;
+                border-radius: 12px;
+                font-size: 13px;
+                line-height: 20px;
+                color: $warm-ink;
+                background: transparent;
+                resize: none;
+                transition: min-height 0.2s ease;
+
+                &,
+                &:hover,
+                &:focus {
+                    box-shadow: none;
+                }
+
+                &::placeholder {
+                    color: $warm-ink-4;
+                }
+            }
+
+            // 禁用态（评论区关闭）
+            &.is-disabled :deep(.el-textarea__inner) {
+                color: $warm-ink-4;
+                background: transparent;
+                cursor: not-allowed;
+            }
+        }
+    }
+
+    // 展开态：至少三行高度
+    &.expanded .input-box .textarea :deep(.el-textarea__inner) {
+        min-height: 84px !important;
+    }
+
+    &.disabled .input-box {
+        background: $warm-sunken;
+        box-shadow: none;
+    }
+
+    // ===== 工具栏（输入框右下角） =====
+    .tool-bar {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        height: $bar-height;
+        padding: 0 8px 0 4px;
+
+        .word-count {
+            margin-right: 6px;
+            font-family: $warm-font-mono;
+            font-size: 11px;
+            color: $warm-ink-4;
         }
 
-        .tool-bar {
+        .tool-btn {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            color: $warm-ink-3;
+            transition: color 0.15s ease, background-color 0.15s ease;
 
-            .tool {
-                display: flex;
-                column-gap: 10px;
+            .tool-icon {
+                width: 18px;
+                height: 18px;
+            }
 
-                .image {
-                    width: calc($icon-size + 4px);
-                    height: calc($icon-size + 4px);
-                    transition: all 0.4s ease;
+            &:hover,
+            &:focus-visible,
+            &.active {
+                color: $warm-ink;
+                background-color: $warm-paper;
+                outline: none;
+            }
+        }
+    }
 
-                    .image-icon {
-                        width: $icon-size;
-                        margin: 2px;
-                    }
+    // ===== 发布按钮 =====
+    .submit-btn {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: $bar-height;
+        padding: 0 20px;
+        border-radius: 12px;
+        background: $warm-ink;
+        color: #FFFFFF;
+        font-size: 13px;
+        font-weight: 500;
+        transition: background-color 0.2s ease, opacity 0.2s ease;
 
-                    &:hover {
-                        cursor: pointer;
-                        background-color: $color-neutral-2;
-                        border-radius: 5px;
-                    }
-                }
+        &:hover:not(:disabled),
+        &:focus-visible {
+            background: #000000;
+            outline: none;
+        }
 
-                .emoji-btn {
-                    width: calc($icon-size + 4px);
-                    height: calc($icon-size + 4px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.4s ease;
-                    font-size: $icon-size;
-                    color: #8a8a8a;
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
 
-                    .icon-emoji {
-                        font-size: 22px;
-                    }
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: post-bar-spin 0.8s linear infinite;
+        }
+    }
 
-                    &:hover {
-                        cursor: pointer;
-                        background-color: $color-neutral-2;
-                        border-radius: 5px;
-                    }
-                }
+    // ===== Emoji 选择面板 =====
+    .emoji-wrapper {
+        position: relative;
+
+        .emoji-panel {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: -8px;
+            z-index: 550;
+            width: 380px;
+            padding: 12px;
+            border-radius: 14px;
+            background: $warm-card;
+            box-shadow: $warm-shadow-card, 0 18px 40px -20px rgba(26, 25, 22, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .emoji-fade-enter-active,
+        .emoji-fade-leave-active {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .emoji-fade-enter-from,
+        .emoji-fade-leave-to {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        // ===== 分类选项栏 =====
+        .category-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .category-scroll-btn {
+            flex-shrink: 0;
+            width: 24px;
+            height: 28px;
+            border-radius: 8px;
+            background: $warm-paper;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: $warm-ink-3;
+            font-size: 18px;
+            line-height: 1;
+            transition: background-color 0.2s ease, color 0.2s ease;
+
+            &:hover {
+                background: $warm-sunken;
+                color: $warm-ink;
+            }
+
+            span {
+                pointer-events: none;
             }
         }
 
-        // ===== Emoji 选择面板 =====
-        .emoji-wrapper {
-            position: relative;
+        .category-tabs {
+            flex: 1;
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none; // Firefox
+            -ms-overflow-style: none; // IE/Edge
+            white-space: nowrap;
+            padding: 2px 0;
 
-            .emoji-panel {
-                position: absolute;
-                top: calc(100% + 8px);
-                left: 0;
-                z-index: 500;
-                width: 380px;
-                background: #fff;
-                border-radius: 8px;
-                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-                padding: 12px;
-                box-sizing: border-box;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
+            &::-webkit-scrollbar {
+                display: none; // Chrome/Safari
+            }
+        }
+
+        .category-tab {
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+            height: 26px;
+            padding: 0 10px;
+            font-size: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            background: $warm-paper;
+            color: $warm-ink-3;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            white-space: nowrap;
+
+            &:hover {
+                background: $warm-sunken;
+                color: $warm-ink;
             }
 
-            .emoji-fade-enter-active,
-            .emoji-fade-leave-active {
-                transition: opacity 0.2s ease;
+            &.active {
+                background: $warm-ink;
+                color: #FFFFFF;
+                font-weight: 500;
+            }
+        }
+
+        // ===== 表情网格 =====
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            gap: 4px;
+            max-height: 240px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transform: translateZ(0); // GPU 合成层，消除 hover 卡顿
+            // 滚动条整体右移 5px，左边留空白
+            padding-right: 5px;
+            margin-right: -5px;
+
+            // 自定义滚动条样式，实现右移效果
+            &::-webkit-scrollbar {
+                width: 6px;
             }
 
-            .emoji-fade-enter-from,
-            .emoji-fade-leave-to {
-                opacity: 0;
+            &::-webkit-scrollbar-track {
+                background: transparent;
+                margin-left: 5px; // 左边留 5px 空白
             }
 
-            // ===== 分类选项栏 =====
-            .category-bar {
-                display: flex;
-                align-items: center;
-                flex-shrink: 0;
-                margin-bottom: 8px;
-                position: relative;
+            &::-webkit-scrollbar-thumb {
+                background: rgba(26, 25, 22, 0.16);
+                border-radius: 3px;
+
+                &:hover {
+                    background: rgba(26, 25, 22, 0.28);
+                }
             }
 
-            .category-scroll-btn {
-                flex-shrink: 0;
-                width: 24px;
-                height: 32px;
-                border: none;
-                background: #f5f5f5;
-                border-radius: 4px;
-                cursor: pointer;
+            // Firefox 滚动条样式
+            scrollbar-width: thin;
+            scrollbar-color: rgba(26, 25, 22, 0.16) transparent;
+
+            .emoji-item {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: #666;
-                font-size: 18px;
-                line-height: 1;
-                padding: 0;
-                transition: background 0.2s ease;
-                z-index: 200;
-
-                &:hover {
-                    background: #e0e0e0;
-                    color: #333;
-                }
-
-                span {
-                    pointer-events: none;
-                }
-            }
-
-            .category-tabs {
-                flex: 1;
-                display: flex;
-                gap: 4px;
-                overflow-x: auto;
-                overflow-y: hidden;
-                scrollbar-width: none; // Firefox
-                -ms-overflow-style: none; // IE/Edge
-                white-space: nowrap;
-                padding: 2px 4px;
-
-                &::-webkit-scrollbar {
-                    display: none; // Chrome/Safari
-                }
-            }
-
-            .category-tab {
-                display: inline-flex;
-                align-items: center;
-                flex-shrink: 0;
-                padding: 4px 10px;
-                font-size: 13px;
-                border-radius: 14px;
+                aspect-ratio: 1;
+                min-width: 0;
+                font-size: 24px;
+                border-radius: 8px;
                 cursor: pointer;
                 user-select: none;
-                background: #f5f5f5;
-                color: #666;
-                transition: background 0.2s ease, color 0.2s ease;
-                white-space: nowrap;
+                background-color: transparent;
+                transition: transform 0.1s ease;
 
                 &:hover {
-                    background: #e8e8e8;
-                    color: #333;
+                    background-color: #F7F6F3; // 硬编码颜色，避免 CSS 变量过渡开销
                 }
 
-                &.active {
-                    background: #e6f0ff;
-                    color: #1a73e8;
-                    font-weight: 500;
-                }
-            }
-
-            // ===== 表情网格 =====
-            .emoji-grid {
-                display: grid;
-                grid-template-columns: repeat(8, minmax(0, 1fr));
-                gap: 4px;
-                max-height: 240px;
-                overflow-y: auto;
-                overflow-x: hidden;
-                transform: translateZ(0); // GPU 合成层，消除 hover 卡顿
-                // 滚动条整体右移 5px，左边留空白
-                padding-right: 5px;
-                margin-right: -5px;
-
-                // 自定义滚动条样式，实现右移效果
-                &::-webkit-scrollbar {
-                    width: 6px;
-                }
-
-                &::-webkit-scrollbar-track {
-                    background: transparent;
-                    margin-left: 5px; // 左边留 5px 空白
-                }
-
-                &::-webkit-scrollbar-thumb {
-                    background: #c1c1c1;
-                    border-radius: 3px;
-
-                    &:hover {
-                        background: #a0a0a0;
-                    }
-                }
-
-                // Firefox 滚动条样式
-                scrollbar-width: thin;
-                scrollbar-color: #c1c1c1 transparent;
-
-                .emoji-item {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    aspect-ratio: 1;
-                    min-width: 0;
-                    font-size: 24px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    user-select: none;
-                    background-color: transparent;
-                    transition: transform 0.1s ease;
-
-                    &:hover {
-                        background-color: #f0f0f0; // 硬编码颜色，避免 CSS 变量过渡开销
-                    }
-
-                    &:active {
-                        transform: scale(0.85);
-                    }
+                &:active {
+                    transform: scale(0.85);
                 }
             }
         }
+    }
 
-        .preview-images {
+    // ===== 图片预览 =====
+    .preview-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+
+        .preview-image {
             display: flex;
-            column-gap: 10px;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 120px;
+        }
 
-            .preview-image {
-                display: flex;
-                flex-direction: column;
-                row-gap: 10px;
-                align-items: center;
+        .preview-thumb {
+            position: relative;
+            border-radius: 10px;
+            background: $warm-sunken;
+
+            :deep(.image-container) {
+                background: $warm-sunken;
             }
         }
 
-        .error-text {
-            font-size: 12px;
-            color: #f56c6c;
-            max-width: 200px;
-            text-align: center;
+        .remove-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(26, 25, 22, 0.62);
+            color: #FFFFFF;
+            backdrop-filter: blur(8px);
+            transition: background-color 0.2s ease;
+
+            &:hover:not(:disabled) {
+                background: rgba(26, 25, 22, 0.85);
+            }
+
+            &:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
         }
 
-        .pending-text {
-            font-size: 12px;
-            color: #909399;
+        .upload-progress {
+            width: 100%;
         }
+    }
+
+    .error-text {
+        max-width: 120px;
+        font-size: 12px;
+        color: $warm-accent-text;
+        text-align: center;
+    }
+
+    .pending-text {
+        font-size: 12px;
+        color: $warm-ink-4;
+    }
+
+    // 回复框：头像更小，其余一致
+    &.reply {
+        gap: 12px;
+    }
+}
+
+@keyframes post-bar-spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 </style>

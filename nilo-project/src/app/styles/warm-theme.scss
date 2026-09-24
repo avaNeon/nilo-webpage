@@ -1,0 +1,65 @@
+// 暖白主题：只作用于根节点带 .warm-theme 的页面（首页、视频详情页）
+
+.warm-theme {
+    background: $warm-paper;
+    color: $warm-ink;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'tnum';
+
+    // Element Plus 主色改为墨色，浅色/深色梯度为 #1A1916 与白/黑混合后的字面量
+    --el-color-primary: #1A1916;
+    --el-color-primary-light-3: #5F5E5C;
+    --el-color-primary-light-5: #8D8C8B;
+    --el-color-primary-light-7: #BABAB9;
+    --el-color-primary-light-8: #D1D1D0;
+    --el-color-primary-light-9: #E8E8E8;
+    --el-color-primary-dark-2: #151412;
+}
+
+// base.scss 用了通配选择器设置字体，这里同样用通配覆盖（iconfont 自带 !important 不受影响）
+.warm-theme,
+.warm-theme * {
+    font-family: $warm-font-sans;
+}
+
+.warm-theme a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.warm-theme .el-switch {
+    --el-switch-on-color: #{$warm-ink};
+}
+
+.warm-theme .el-pagination {
+    --el-pagination-border-radius: 8px;
+    --el-pagination-button-bg-color: #{$warm-card};
+    --el-pagination-button-color: #{$warm-ink-3};
+    --el-pagination-hover-color: #{$warm-ink};
+
+    &.is-background {
+
+        .btn-prev,
+        .btn-next,
+        .el-pager li {
+            background-color: $warm-card;
+            border-radius: 8px;
+            box-shadow: $warm-shadow-ring;
+        }
+
+        .el-pager li.is-active {
+            background-color: $warm-ink;
+            color: #FFFFFF;
+            box-shadow: none;
+        }
+
+        .btn-prev:disabled,
+        .btn-next:disabled,
+        .btn-prev.is-disabled,
+        .btn-next.is-disabled {
+            background-color: $warm-sunken;
+            color: $warm-ink-5;
+            box-shadow: none;
+        }
+    }
+}

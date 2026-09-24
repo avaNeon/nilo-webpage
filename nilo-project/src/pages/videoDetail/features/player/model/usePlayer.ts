@@ -131,7 +131,6 @@ export function usePlayer() {
   // ──────────────────────────────────────────────────────────
   const $container = useTemplateRef<HTMLDivElement>("$container");
   const art = shallowRef<Artplayer | null>();
-  const playerHeight = ref(500);
   const style = reactive({
     width: "100%",
     height: "100%",
@@ -236,7 +235,6 @@ export function usePlayer() {
   // ──────────────────────────────────────────────────────────
   function enableTheaterMode() {
     videoStateStore.setDisplayMode("theater");
-    playerHeight.value = 560;
     const theaterMode = art.value?.controls?.["theater-mode"];
     const closeTheaterMode = art.value?.controls?.["close-theater-mode"];
 
@@ -250,7 +248,6 @@ export function usePlayer() {
 
   function disableTheaterMode() {
     videoStateStore.setDisplayMode("normal");
-    playerHeight.value = 500;
     const theaterMode = art.value?.controls?.["theater-mode"];
     const closeTheaterMode = art.value?.controls?.["close-theater-mode"];
 
@@ -740,7 +737,8 @@ export function usePlayer() {
       playsInline: true,
       autoPlayback: true,
       airplay: true,
-      theme: "#23ade5",
+      // 暖白主题的陶土色（进度条、选中态）
+      theme: "oklch(0.63 0.14 45)",
       lang: navigator.language.toLowerCase(),
       moreVideoAttr: {
         crossOrigin: "anonymous",
@@ -1162,7 +1160,6 @@ export function usePlayer() {
   // ──────────────────────────────────────────────────────────
   return {
     art,
-    playerHeight,
     style,
     $container,
     videoStateStore,

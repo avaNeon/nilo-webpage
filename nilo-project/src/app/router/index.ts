@@ -3,8 +3,6 @@ import { getAutoLoginPromise } from "@/app/composables/useAutoLogin";
 import { isPublicRoute } from "@/app/router/publicRoutes";
 import { setPageTitle } from "@/shared/utils/PageTitle";
 import Index from "@/pages/index/ui/Index.vue";
-import RecommendVideo from "@/pages/index/widgets/recommendVideo/ui/RecommendVideo.vue";
-import SubCategoryBanner from "@/pages/index/widgets/subCategoryBanner/ui/SubCategoryBanner.vue";
 import VideoDetail from "@/pages/videoDetail/ui/VideoDetail.vue";
 import CreativeCenter from "@/pages/creativeCenter/ui/CreativeCenter.vue";
 import CreativeCenterHome from "@/pages/creativeCenter/widgets/creativeCenterHome/ui/CreativeCenterHome.vue";
@@ -29,24 +27,17 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     /** Index Page */
+    // 首页与分类页共用同一个组件，切换分类时复用实例而不是重新挂载
     {
       path: "/",
       name: "index",
       component: Index,
-      children: [
-        // default
-        {
-          path: "",
-          component: RecommendVideo,
-        },
-        // 分类页
-        {
-          path: "c/:categoryNumber?/:subCategoryNumber?",
-          name: "category",
-          component: SubCategoryBanner,
-          meta: { title: "分类" },
-        },
-      ],
+    },
+    {
+      path: "/c/:categoryNumber?/:subCategoryNumber?",
+      name: "category",
+      component: Index,
+      meta: { title: "分类" },
     },
     /** Video Detail Page */
     {
@@ -188,7 +179,11 @@ router.beforeEach(async (to, _from, next) => {
 });
 
 // 根据路由 meta 设置默认标题；动态页会在数据就绪后覆盖
-router.afterEach(to => {
+router.afterEach((to, _from, failure) => {
+  // 导航失败（如重复点击当前分类）时页面没变，保留页面自己设置的标题
+  if (failure) {
+    return;
+  }
   const titleRecord = [...to.matched]
     .reverse()
     .find(record => record.meta.title !== undefined);

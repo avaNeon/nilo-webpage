@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 import { publicSummaryUrl } from '@/shared/config/Minio'
-import { calculateDuration } from '@/shared/utils/DateUtil'
+import { formatDurationClock } from '@/shared/utils/DateUtil'
 import type { VideoSummary } from '../model/VideoSummary'
 
 const props = defineProps<{
@@ -61,10 +61,16 @@ function jump(startSec: number)
 </script>
 
 <template>
-    <div class="video-summary">
-        <button class="toggle" :class="{ active: expanded }" @click="toggle">
-            <span class="label">AI 总结</span>
-            <span class="arrow">{{ expanded ? '收起' : '展开' }}</span>
+    <section :class="['video-summary', { expanded }]">
+        <button type="button" class="summary-header" :aria-expanded="expanded" @click="toggle">
+            <span class="heading">
+                <span class="eyebrow">AI SUMMARY</span>
+                <span class="title">AI 总结</span>
+            </span>
+            <span class="toggle-text">
+                {{ expanded ? '收起' : '展开' }}
+                <span class="chevron" aria-hidden="true"></span>
+            </span>
         </button>
 
         <div v-if="expanded" class="panel">
@@ -73,89 +79,152 @@ function jump(startSec: number)
             <template v-else>
                 <p class="text">{{ summary.summary }}</p>
                 <div v-if="summary.chapters?.length" class="chapters">
-                    <button v-for="chapter in summary.chapters" :key="chapter.startSec" class="chapter"
+                    <button v-for="chapter in summary.chapters" :key="chapter.startSec" type="button" class="chapter"
                         @click="jump(chapter.startSec)">
-                        <span class="time">{{ calculateDuration(Math.floor(chapter.startSec)) }}</span>
-                        <span class="title">{{ chapter.title }}</span>
+                        <span class="time">{{ formatDurationClock(chapter.startSec) }}</span>
+                        <span class="chapter-title">{{ chapter.title }}</span>
                     </button>
                 </div>
             </template>
         </div>
-    </div>
+    </section>
 </template>
 
 <style lang="scss" scoped>
 .video-summary {
-    margin: 10px 0;
+    padding: 20px 22px;
+    border-radius: 18px;
+    background: $warm-card;
+    box-shadow: $warm-shadow-ring;
 
-    .toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
+    button {
         border: none;
-        border-radius: 16px;
-        background-color: #f5f5f5;
-        color: #333;
-        font-size: 14px;
+        background: none;
+        font: inherit;
+        text-align: left;
         cursor: pointer;
+    }
 
-        &:hover,
-        &.active {
-            background-color: #e6f2ff;
-            color: #00a1d6;
+    .summary-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        width: 100%;
+        padding: 0;
+        color: $warm-ink;
+
+        &:focus-visible {
+            outline: 2px solid rgba(26, 25, 22, 0.2);
+            outline-offset: 6px;
+            border-radius: 10px;
         }
 
-        .arrow {
-            font-size: 12px;
-            color: #999;
+        &:hover .toggle-text {
+            color: $warm-ink;
         }
     }
 
+    .heading {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .eyebrow {
+        font-family: $warm-font-mono;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: $warm-ink-4;
+    }
+
+    .title {
+        font-size: 16px;
+        font-weight: 700;
+        color: $warm-ink;
+    }
+
+    .toggle-text {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        font-size: 13px;
+        font-weight: 500;
+        color: $warm-ink-3;
+        transition: color 0.2s;
+
+        .chevron {
+            width: 6px;
+            height: 6px;
+            margin-top: -3px;
+            border-right: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            transform: rotate(45deg);
+            transition: transform 0.2s, margin 0.2s;
+        }
+    }
+
+    &.expanded .toggle-text .chevron {
+        margin-top: 3px;
+        transform: rotate(-135deg);
+    }
+
     .panel {
-        margin-top: 8px;
-        padding: 12px 14px;
-        border-radius: 10px;
-        background-color: #f5f5f5;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid $warm-line;
 
         .tip {
             font-size: 13px;
-            color: #999;
+            color: $warm-ink-4;
         }
 
         .text {
             margin: 0;
             font-size: 14px;
-            line-height: 1.7;
-            color: #333;
+            line-height: 1.8;
+            color: $warm-ink-2;
             white-space: pre-wrap;
+            text-wrap: pretty;
         }
 
         .chapters {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
+            flex-direction: column;
+            gap: 2px;
+            margin: 14px -10px 0;
 
             .chapter {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 4px 10px;
-                border: none;
-                border-radius: 12px;
-                background-color: #fff;
-                font-size: 13px;
-                color: #333;
-                cursor: pointer;
+                display: flex;
+                align-items: baseline;
+                gap: 14px;
+                padding: 8px 10px;
+                border-radius: 10px;
+                transition: background-color 0.2s;
 
                 &:hover {
-                    color: #00a1d6;
+                    background: $warm-paper;
+                }
+
+                &:focus-visible {
+                    outline: 2px solid rgba(26, 25, 22, 0.2);
+                    outline-offset: -2px;
                 }
 
                 .time {
-                    color: #00a1d6;
-                    font-variant-numeric: tabular-nums;
+                    flex-shrink: 0;
+                    min-width: 44px;
+                    font-family: $warm-font-mono;
+                    font-size: 12px;
+                    color: $warm-accent-text;
+                }
+
+                .chapter-title {
+                    min-width: 0;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: $warm-ink;
                 }
             }
         }

@@ -3,13 +3,13 @@ import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import type { VideoComment } from '@/shared/model/VideoComment';
 import Cover from '@/shared/ui/Cover.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import unfoldSvg from '@/assets/icon/img/unfold.svg';
 import { computed, ref } from 'vue';
-import { useVideoCommentItem, calcDefaultFoldReason } from '../model/useVideoCommentItem';
+import { useVideoCommentItem, calcDefaultFoldReason, COMMENT_AVATAR_METRICS } from '../model/useVideoCommentItem';
 import { DefaultFoldReason } from '@/shared/model/VideoComment';
 import { useRoute } from 'vue-router';
 import CommentPostBar from '@/pages/videoDetail/features/commentPostBar/ui/CommentPostBar.vue';
 import { formatPostTime } from '@/shared/utils/DateUtil';
+import { formatCount } from '@/shared/utils/NumberUtil';
 import { useLoginStateStore } from '@/shared/store/LoginStateStore';
 import useVideoStateStore from '@/pages/videoDetail/store/VideoStateStore';
 
@@ -26,7 +26,7 @@ const emit = defineEmits<{
     (e: 'addCommentCount'): void
 }>()
 
-const { COMMENT_IMG_WIDTH, AVATAR_WIDTH, checkLogin, upvote, downvote, deleteComment, calcVoteResult, isConfirming, cooldownActive, borderProgress, deleteButtonText, topComment, cancelTopComment } = useVideoCommentItem()
+const { COMMENT_IMG_WIDTH, checkLogin, upvote, downvote, deleteComment, calcVoteResult, isConfirming, cooldownActive, borderProgress, deleteButtonText, topComment, cancelTopComment } = useVideoCommentItem()
 const route = useRoute()
 
 const loginStateStore = useLoginStateStore()
@@ -40,6 +40,24 @@ const isVideoPublisher = computed(() =>
     if (currentUserId == null || publisherUserId == null) return false
     return String(currentUserId) === String(publisherUserId)
 })
+
+/** 评论者是否为视频发布者（显示 UP 徽章） */
+const isAuthorComment = computed(() =>
+{
+    const publisherUserId = videoStateStore.videoInfo?.userInfo?.userId
+    if (props.videoComment.userId == null || publisherUserId == null) return false
+    return String(props.videoComment.userId) === String(publisherUserId)
+})
+
+/** 楼中楼回复（顶层评论的 parentCommentId 为 '0'），头像更小 */
+const isReply = computed(() => String(props.videoComment.parentCommentId) !== '0')
+
+const avatarMetrics = computed(() => isReply.value ? COMMENT_AVATAR_METRICS.reply : COMMENT_AVATAR_METRICS.root)
+
+const itemStyle = computed(() => ({
+    '--avatar-size': `${avatarMetrics.value.size}px`,
+    '--avatar-gap': `${avatarMetrics.value.gap}px`,
+}))
 
 const voteResult = computed(() =>
 {
@@ -83,6 +101,19 @@ const deletedBy = computed(() =>
 
 const isDeleted = computed(() => props.videoComment.deleted !== 0)
 
+const imgList = computed(() =>
+{
+    const imgPaths = props.videoComment.imgPaths
+    return imgPaths ? imgPaths.split(',').filter(path => path != null && path != '') : []
+})
+
+/** 评论作者本人或视频发布者可删除 */
+const canDelete = computed(() =>
+    (props.videoComment.userId == loginStateStore.userInfo?.userId || isVideoPublisher.value) && props.videoComment.deleted === 0)
+
+/** 仅视频发布者可置顶顶层评论 */
+const canPin = computed(() => isVideoPublisher.value && !isDeleted.value && props.videoComment.parentCommentId === '0')
+
 // ----- 默认折叠原因 -----
 const defaultFoldReason = computed(() =>
 {
@@ -113,541 +144,364 @@ const foldBadgeLabel = computed(() =>
 </script>
 
 <template>
-    <div class="comment-item" :class="{ folded: folded }">
-        <!-- 折叠态：显示 unfold 加号图标 -->
-        <div v-if="folded" class="unfold-btn" @click="onClickUnfold">
-            <img :src="unfoldSvg" alt="展开" class="unfold-icon" />
-        </div>
+    <div class="comment-item" :class="{ folded: folded, reply: isReply }" :style="itemStyle">
+        <!-- 折叠态：头像位置换成展开按钮 -->
+        <button v-if="folded" type="button" class="unfold-btn" aria-label="展开评论" title="展开评论"
+            @click="onClickUnfold"></button>
         <!-- 正常态：显示用户头像 -->
-        <Avatar v-else class="avatar" :user-id="videoComment.userId" :src="imgRequestUrl(videoComment.avatar, true)"
-            :width="AVATAR_WIDTH" :lazy="true" :user-panel="false" :mobile="false" :require-login="false" />
-        <div class="info">
-            <div class="top-info" @click="switchFold">
-                <span class="user-name-text">{{ videoComment.nickName }}</span>
-                <span class="separator"> · </span>
-                <span class="reply-time">{{ postTime }}</span>
-                <span class="top-type" v-if="videoComment.topType === 1">置顶</span>
+        <div v-else class="avatar-wrap">
+            <Avatar class="comment-avatar" :user-id="videoComment.userId" :src="imgRequestUrl(videoComment.avatar, true)"
+                :width="avatarMetrics.size" :lazy="true" :user-panel="false" :mobile="false" :require-login="false" />
+        </div>
+
+        <div class="body">
+            <div class="name-row" @click="switchFold">
+                <span class="nick-name">{{ videoComment.nickName }}</span>
+                <span v-if="isAuthorComment" class="badge up">UP</span>
+                <span class="post-time">{{ postTime }}</span>
+                <span v-if="videoComment.topType === 1" class="badge muted">置顶</span>
                 <!-- 默认折叠原因徽章 -->
-                <span v-if="folded && defaultFoldReason === DefaultFoldReason.INAPPROPRIATE"
-                    class="fold-badge inappropriate" :title="foldBadgeLabel">E</span>
-                <span v-if="folded && defaultFoldReason === DefaultFoldReason.LOW_VOTES" class="fold-badge low-votes"
+                <span v-if="folded && defaultFoldReason === DefaultFoldReason.INAPPROPRIATE" class="badge muted"
+                    :title="foldBadgeLabel">E</span>
+                <span v-if="folded && defaultFoldReason === DefaultFoldReason.LOW_VOTES" class="badge muted"
                     :title="foldBadgeLabel">{{ voteResult }}</span>
-                <span v-if="folded && defaultFoldReason === DefaultFoldReason.DELETED_LOW_VOTES"
-                    class="fold-badge deleted" :title="foldBadgeLabel">已删除</span>
+                <span v-if="folded && defaultFoldReason === DefaultFoldReason.DELETED_LOW_VOTES" class="badge muted"
+                    :title="foldBadgeLabel">已删除</span>
             </div>
+
             <template v-if="!folded">
-                <div v-if="videoComment.deleted === 0" class="content-info">
-                    <span class="comment-content">{{ videoComment.content }}</span>
-                    <div class="images">
-                        <div class="image" v-show="videoComment.imgPaths != null && videoComment.imgPaths.length > 0"
-                            v-for="imgPath in videoComment.imgPaths ? videoComment.imgPaths.split(',') : []">
-                            <Cover v-if="imgPath != null && imgPath != ''" :src="imgRequestUrl(imgPath)"
-                                :width="COMMENT_IMG_WIDTH" :preview="true" fit="scale-down" :autoHeight="true"
-                                :thumbnail="true" />
-                        </div>
+                <template v-if="videoComment.deleted === 0">
+                    <p v-if="videoComment.content" class="content">{{ videoComment.content }}</p>
+                    <div v-if="imgList.length > 0" class="images">
+                        <Cover v-for="(imgPath, index) in imgList" :key="index" class="comment-image"
+                            :src="imgRequestUrl(imgPath)" :width="COMMENT_IMG_WIDTH" :preview="true" fit="scale-down"
+                            :autoHeight="true" :thumbnail="true" :border-radius="10" />
                     </div>
-                </div>
-                <div v-else class="content-info">
-                    <span> [评论已被{{ deletedBy }}删除] </span>
-                </div>
-                <div class="bottom-items">
+                </template>
+                <p v-else class="content deleted">[评论已被{{ deletedBy }}删除]</p>
+
+                <div class="actions">
                     <!-- upvote -->
-                    <div :class="{ 'bottom-item': true, upvote: true, isClicked: videoComment.isUpvoted, disabled: isDeleted }"
-                        @click="!isDeleted && upvote(route.params.videoId as string, props.videoComment)">
-                        <div class="iconfont icon-upvote">
-                            <span class="detail-text">{{ videoComment.upvoteCount }}</span>
-                        </div>
-                    </div>
-                    <!-- vote-result -->
-                    <div class="vote-result">
-                        {{ voteResult }}
-                    </div>
+                    <button type="button" class="action upvote" :class="{ active: videoComment.isUpvoted }"
+                        :disabled="isDeleted" @click="upvote(route.params.videoId as string, props.videoComment)">
+                        {{ videoComment.upvoteCount > 0 ? `赞 ${formatCount(videoComment.upvoteCount)}` : '赞' }}
+                    </button>
                     <!-- downvote -->
-                    <div :class="{ 'bottom-item': true, downvote: true, isClicked: videoComment.isDownvoted, disabled: isDeleted }"
-                        @click="!isDeleted && downvote(route.params.videoId as string, props.videoComment)">
-                        <div class="iconfont icon-downvote">
-                            <span class="detail-text">{{ videoComment.downvoteCount }}</span>
-                        </div>
-                    </div>
+                    <button type="button" class="action downvote" :class="{ active: videoComment.isDownvoted }"
+                        :disabled="isDeleted" @click="downvote(route.params.videoId as string, props.videoComment)">
+                        踩
+                    </button>
                     <!-- reply -->
-                    <div :class="{ 'bottom-item': true, reply: true, disabled: isDeleted }"
-                        @click="!isDeleted && toggleReplyFoldState()">
-                        <div class="iconfont icon-reply">
-                            <span class="description-text">{{ isDeleted ? '无法回复' : '回复' }}</span>
-                            <span class="detail-text">{{ videoComment.replyCount }}</span>
-                        </div>
-                    </div>
-                    <!-- delete -->
-                    <div v-if="(videoComment.userId == loginStateStore.userInfo?.userId || isVideoPublisher) && videoComment.deleted === 0"
-                        :class="{ 'bottom-item': true, 'delete': true, 'confirming': isConfirming, 'cooldown': cooldownActive }"
-                        @click="deleteComment(props.videoComment, isVideoPublisher && videoComment.userId != loginStateStore.userInfo?.userId)">
-                        <div class="iconfont icon-delete">
-                            <span class="description-text">{{ deleteButtonText }}</span>
-                        </div>
-                        <div v-if="cooldownActive" class="delete-border-overlay"
-                            :style="{ background: `conic-gradient(from -90deg, rgba(255, 68, 68, 0.6) ${borderProgress * 360}deg, transparent 0deg)` }">
-                        </div>
-                    </div>
-                    <!-- pin/un-pin -->
-                    <div v-if="isVideoPublisher && !isDeleted && videoComment.parentCommentId === '0'"
-                        :class="{ 'bottom-item': true, 'top-comment': true }"
-                        @click="videoComment.topType === 1 ? cancelTopComment(props.videoComment) : topComment(props.videoComment)">
-                        <div :class="['iconfont', videoComment.topType === 1 ? 'icon-unpin-fill' : 'icon-pin-fill']">
-                            <span class="description-text">{{ videoComment.topType === 1 ? '取消置顶' : '置顶' }}</span>
-                        </div>
+                    <button type="button" class="action reply" :class="{ active: !isReplyFolded }" :disabled="isDeleted"
+                        @click="toggleReplyFoldState()">
+                        {{ isDeleted ? '无法回复' : '回复' }}
+                    </button>
+
+                    <!-- 管理操作：悬停评论时显示 -->
+                    <div v-if="canPin || canDelete" class="manage" :class="{ confirming: isConfirming }">
+                        <!-- pin/un-pin -->
+                        <button v-if="canPin" type="button" class="action"
+                            @click="videoComment.topType === 1 ? cancelTopComment(props.videoComment) : topComment(props.videoComment)">
+                            {{ videoComment.topType === 1 ? '取消置顶' : '置顶' }}
+                        </button>
+                        <!-- delete：第一次点击进入确认，3 秒冷却后才能确认删除 -->
+                        <button v-if="canDelete" type="button" class="action delete"
+                            :class="{ confirming: isConfirming, cooldown: cooldownActive }" :disabled="cooldownActive"
+                            @click="deleteComment(props.videoComment, isVideoPublisher && videoComment.userId != loginStateStore.userInfo?.userId)">
+                            {{ deleteButtonText }}
+                            <span v-if="cooldownActive" class="delete-progress"
+                                :style="{ transform: `scaleX(${borderProgress})` }"></span>
+                        </button>
                     </div>
                 </div>
             </template>
+
+            <div class="reply-bar" v-show="!isReplyFolded && !folded">
+                <CommentPostBar :parent-comment-id="videoComment.commentId" :placeholder="`回复${videoComment.nickName}`"
+                    @comment-posted="(comment) =>
+                    {
+                        if (videoComment.childCommentList)
+                        {
+                            videoComment.childCommentList.unshift(comment)
+                        }
+                        else
+                        {
+                            videoComment.childCommentList = [comment]
+                        }
+                        videoComment.replyCount++
+                        emit('addCommentCount')
+                    }" />
+            </div>
         </div>
-    </div>
-    <div class="reply-bar" v-show="!isReplyFolded">
-        <CommentPostBar :parent-comment-id="videoComment.commentId" :placeholder="`回复${videoComment.nickName}`"
-            @comment-posted="(comment) =>
-            {
-                if (videoComment.childCommentList)
-                {
-                    videoComment.childCommentList.unshift(comment)
-                }
-                else
-                {
-                    videoComment.childCommentList = [comment]
-                }
-                videoComment.replyCount++
-                emit('addCommentCount')
-            }" />
     </div>
 </template>
 
 <style lang="scss" scoped>
-$unfold-btn-size: 20px;
-
+// 头像尺寸 / 间距来自 COMMENT_AVATAR_METRICS（通过 --avatar-size / --avatar-gap 传入）
+// 上内边距需与 COMMENT_AVATAR_METRICS.top 保持一致：CommentThread 依此计算连线位置
 .comment-item {
     display: flex;
-    column-gap: 10px;
-    border-top: 1px solid $color-neutral-3;
-    padding: 20px 0 10px;
-    border-radius: 20px;
+    align-items: flex-start;
+    gap: var(--avatar-gap);
 
-    // 折叠态：avatar区域替换为unfold按钮
+    // 顶层评论：1px 分隔线 + 18px 上内边距
+    padding-top: 18px;
+    border-top: 1px solid $warm-line-soft;
+
+    // 楼中楼回复：无分隔线，14px 上内边距
+    &.reply {
+        padding-top: 14px;
+        border-top: none;
+    }
+
+    // 折叠态只剩一行昵称，与展开按钮垂直居中
     &.folded {
-        .unfold-btn {
-            margin: 22px 20px 22px 0;
-
-            flex-shrink: 0;
-            width: $unfold-btn-size;
-            height: $unfold-btn-size;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: background-color 0.15s ease;
-
-            &:hover {
-                background-color: $color-neutral-3;
-
-                .unfold-icon {
-                    filter: brightness(0);
-                }
-            }
-
-            .unfold-icon {
-                width: 20px;
-                height: 20px;
-                opacity: 0.55;
-                transition: opacity 0.15s ease, filter 0.15s ease;
-            }
-        }
-
-        .info {
-            // 折叠态隐藏 row-gap，仅保留 top-info
-            row-gap: 0;
-
-            .top-info {
-                padding: 0 10px;
-                margin: 15px;
-            }
-        }
+        align-items: center;
     }
-
-    .unfold-btn {
-        flex-shrink: 0;
-    }
-
-    .avatar {
-        height: 64px;
-    }
-
-    .info {
-        display: flex;
-        flex-direction: column;
-        row-gap: 10px;
-
-        .top-info {
-            display: flex;
-            align-items: center;
-
-            flex: 1;
-            align-self: flex-start;
-
-            font-size: 14px;
-
-            padding: 5px 10px;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-
-            &:hover {
-                background-color: $color-neutral-1;
-            }
-
-            .user-name-text {
-                font-size: 16px;
-                font-weight: 500;
-            }
-
-            .separator {
-                margin: 0 5px;
-                color: $color-carousel-bg-1;
-            }
-
-            .reply-time {
-                color: $color-carousel-bg-1;
-            }
-
-            .top-type {
-                margin-left: 10px;
-                padding: 3px 8px;
-
-                font-size: 12px;
-                font-weight: 500;
-
-                color: $color-text-secondary;
-
-                border-radius: 10px;
-                background-color: $color-neutral-3;
-            }
-
-            .fold-badge {
-                margin-left: 10px;
-                padding: 3px 8px;
-
-                font-size: 12px;
-                font-weight: 500;
-
-                color: $color-text-secondary;
-                border-radius: 10px;
-                background-color: $color-neutral-3;
-                cursor: default;
-            }
-        }
-
-        .content-info {
-            font-size: 16px;
-
-            padding-left: 10px;
-
-            display: flex;
-            flex-direction: column;
-            row-gap: 10px;
-
-            .images {
-                display: flex;
-                column-gap: 10px;
-            }
-        }
-
-        .bottom-items {
-            display: flex;
-            column-gap: 10px;
-            align-items: center;
-
-            font-size: 16px;
-            color: $color-text-secondary;
-
-            padding-left: 10px;
-
-            .vote-result {
-                font-size: 16px;
-                padding: 5px 0;
-            }
-
-            .bottom-item {
-                border-radius: 20px;
-                padding: 5px;
-                transition: all 0.25s ease;
-
-                &:hover {
-                    cursor: pointer;
-                }
-            }
-
-            .upvote,
-            .downvote {
-
-                &:hover {
-
-                    .detail-text {
-                        max-width: 50px;
-                        padding-right: 10px;
-                        transform: translateX(5px);
-                    }
-                }
-
-                .detail-text {
-                    display: inline-block;
-                    max-width: 0;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    vertical-align: bottom;
-                    transition: all 0.25s ease;
-
-                    font-size: 16px;
-                    line-height: 16px;
-                }
-
-            }
-
-            .upvote {
-
-                &.isClicked {
-                    color: $color-upvote-red;
-                }
-
-                &:hover {
-                    color: $color-upvote-red;
-                    background-color: $color-upvote-red-background;
-                }
-
-                &.disabled {
-                    cursor: default;
-
-                    &:hover {
-                        color: rgba(217, 57, 0, 0.5);
-                        background-color: rgba(217, 58, 0, 0.06);
-
-                        .detail-text {
-                            max-width: 50px;
-                            padding-right: 10px;
-                            transform: translateX(5px);
-                        }
-                    }
-                }
-            }
-
-            .downvote {
-
-                &.isClicked {
-                    color: $color-downvote-purple;
-                }
-
-                &:hover {
-                    color: $color-downvote-purple;
-                    background-color: $color-downvote-purple-background;
-                }
-
-                &.disabled {
-                    cursor: default;
-
-                    &:hover {
-                        color: rgba(106, 92, 255, 0.5);
-                        background-color: rgba(106, 92, 255, 0.06);
-
-                        .detail-text {
-                            max-width: 50px;
-                            padding-right: 10px;
-                            transform: translateX(5px);
-                        }
-                    }
-                }
-            }
-
-
-            .reply {
-                display: flex;
-                align-items: center;
-
-                &:hover {
-                    background-color: $color-reply-green-background;
-                    color: $color-reply-green;
-
-                    .description-text {
-                        max-width: 50px;
-                        padding-right: 10px;
-                        transform: translateX(5px);
-                    }
-                }
-
-                &.disabled {
-                    cursor: default;
-
-                    &:hover {
-                        color: rgba(68, 160, 2, 0.5);
-                        background-color: rgba(68, 160, 2, 0.06);
-
-                        .description-text {
-                            max-width: 80px;
-                            padding-right: 10px;
-                            transform: translateX(5px);
-                        }
-                    }
-                }
-
-                .icon-reply {
-                    font-size: 18px;
-                }
-
-                .icon-reply::first-letter {
-                    margin-right: 3px;
-                }
-
-                .description-text {
-                    display: inline-block;
-                    max-width: 0;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    vertical-align: bottom;
-                    transition: all 0.25s ease;
-                }
-
-                .detail-text {
-                    margin-right: 4px;
-                }
-
-                .description-text,
-                .detail-text {
-                    font-size: 15px;
-                    line-height: 18px;
-                }
-
-            }
-
-            .delete {
-                display: flex;
-                align-items: center;
-                position: relative;
-                overflow: visible;
-
-                .icon-delete {
-                    display: flex;
-                    align-items: center;
-                    column-gap: 6px;
-                    font-size: 19px;
-                    margin-top: 1px;
-                }
-
-                .description-text {
-                    display: inline-block;
-                    font-size: 15px;
-                    line-height: 15px;
-                    vertical-align: middle;
-                    max-width: 0;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    transition: max-width 0.35s ease, margin-right 0.35s ease;
-                }
-
-                // 确认状态：文字常驻展开
-                &.confirming {
-                    .description-text {
-                        max-width: 80px;
-                    }
-                }
-
-                // 冷却/禁用状态
-                &.cooldown {
-                    pointer-events: none;
-                    cursor: not-allowed;
-
-                    .icon-delete {
-                        color: rgba(255, 0, 0, 0.35);
-                    }
-
-                    .description-text {
-                        color: rgba(255, 0, 0, 0.35);
-                    }
-                }
-
-                &:hover:not(.cooldown):not(.confirming) {
-                    background-color: rgba(255, 0, 0, 0.3);
-
-                    .description-text {
-                        max-width: 50px;
-                        margin-right: 5px;
-                    }
-                }
-
-                &.confirming:hover {
-                    background-color: rgba(255, 0, 0, 0.3);
-                }
-
-                // 边框动画叠加层
-                .delete-border-overlay {
-                    position: absolute;
-                    inset: -2px;
-                    border-radius: 22px;
-                    padding: 2px;
-                    pointer-events: none;
-                    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-                    -webkit-mask-composite: xor;
-                    mask-composite: exclude;
-                }
-            }
-
-            .top-comment {
-                display: flex;
-                align-items: center;
-                position: relative;
-                overflow: visible;
-
-                padding-left: 10px;
-                padding-right: 5px;
-
-                .iconfont {
-                    display: flex;
-                    align-items: center;
-                    column-gap: 5px;
-
-                    &.icon-pin-fill {
-                        font-size: 14px;
-                    }
-
-                    &.icon-unpin-fill {
-                        font-size: 18px;
-
-                        &::before {
-                            line-height: 17px;
-                        }
-                    }
-                }
-
-                .description-text {
-                    display: inline-block;
-                    font-size: 15px;
-                    line-height: 15px;
-                    vertical-align: middle;
-                    max-width: 0;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    transition: max-width 0.35s ease, margin-right 0.35s ease;
-                }
-
-                &:hover {
-                    color: $color-bilibili-blue;
-                    background-color: rgba(0, 174, 236, 0.1);
-
-                    .description-text {
-                        max-width: 80px;
-                        margin-right: 5px;
-                    }
-                }
-            }
-        }
-    }
-
 }
 
+// ==================== 头像 ====================
+.avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: 50%;
+    background: $warm-sunken;
+
+    // 细描边压在图片上方
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1px rgba(26, 25, 22, 0.06);
+        pointer-events: none;
+    }
+
+    // Avatar 自带 z-index: 500（给用户面板用），评论头像不需要，去掉以免盖住表情面板等浮层
+    .comment-avatar {
+        z-index: auto;
+    }
+
+    .comment-avatar :deep(.avatar) {
+        display: block;
+        z-index: auto;
+    }
+
+    :deep(.image-container) {
+        border: none !important;
+        background: $warm-sunken;
+    }
+}
+
+// 折叠态的展开按钮：与头像同尺寸的圆，中间一个加号
+.unfold-btn {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: $warm-card;
+    box-shadow: inset 0 0 0 1px $warm-border-strong;
+    color: $warm-ink-3;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, color 0.2s ease;
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 10px;
+        height: 1.5px;
+        margin: -0.75px 0 0 -5px;
+        border-radius: 1px;
+        background: currentColor;
+    }
+
+    &::after {
+        transform: rotate(90deg);
+    }
+
+    &:hover,
+    &:focus-visible {
+        color: $warm-ink;
+        box-shadow: inset 0 0 0 1px $warm-ink-3;
+        outline: none;
+    }
+}
+
+// ==================== 正文 ====================
+.body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+// 昵称行：点击折叠 / 展开
+.name-row {
+    align-self: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: -2px -6px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: rgba(26, 25, 22, 0.04);
+    }
+
+    .nick-name {
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 20px;
+        color: $warm-ink;
+    }
+
+    .post-time {
+        font-size: 12px;
+        color: $warm-ink-4;
+    }
+
+    .badge {
+        padding: 1px 6px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 16px;
+
+        &.up {
+            color: $warm-accent-text;
+            background: color-mix(in oklch, oklch(0.63 0.14 45) 12%, white);
+        }
+
+        &.muted {
+            color: $warm-ink-3;
+            background: $warm-sunken;
+        }
+    }
+}
+
+.content {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.8;
+    color: $warm-ink-2;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &.deleted {
+        color: $warm-ink-4;
+    }
+}
+
+.images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 2px;
+
+    .comment-image {
+        background: $warm-sunken;
+    }
+}
+
+// ==================== 操作行 ====================
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 12px;
+    color: $warm-ink-4;
+
+    .action {
+        position: relative;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font: inherit;
+        line-height: 20px;
+        color: inherit;
+        cursor: pointer;
+        transition: color 0.15s ease;
+
+        &:hover:not(:disabled),
+        &:focus-visible {
+            color: $warm-ink;
+            outline: none;
+        }
+
+        &:disabled {
+            color: $warm-ink-5;
+            cursor: default;
+        }
+
+        &.upvote.active {
+            color: $warm-accent-text;
+            font-weight: 500;
+        }
+
+        &.downvote.active,
+        &.reply.active {
+            color: $warm-ink;
+            font-weight: 500;
+        }
+
+        // 确认删除：陶土色提示
+        &.delete.confirming {
+            color: $warm-accent-text;
+            font-weight: 500;
+        }
+
+        // 冷却中：文字变弱，下方进度条走满后才可确认
+        &.delete.cooldown {
+            color: $warm-ink-4;
+        }
+    }
+
+    .manage {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-left: auto;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+
+        &.confirming {
+            opacity: 1;
+        }
+    }
+
+    .delete-progress {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 1.5px;
+        border-radius: 1px;
+        background: $warm-accent;
+        transform-origin: left center;
+    }
+}
+
+// 悬停 / 键盘聚焦评论时显示管理操作
+.comment-item:hover .actions .manage,
+.comment-item:focus-within .actions .manage {
+    opacity: 1;
+}
+
+// 回复输入框：与正文左对齐
 .reply-bar {
-    margin-left: 50px;
+    padding-top: 6px;
 }
 </style>

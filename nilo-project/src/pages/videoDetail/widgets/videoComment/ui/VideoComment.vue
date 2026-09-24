@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import CommentThread from './CommentThread.vue';
 import type { VideoComment } from '@/shared/model/VideoComment';
 import CommentPostBar from '@/pages/videoDetail/features/commentPostBar/ui/CommentPostBar.vue';
+import { formatCount } from '@/shared/utils/NumberUtil';
 
 const props = withDefaults(defineProps<{
     videoComments: VideoComment[],
@@ -18,9 +19,9 @@ const emit = defineEmits<{
 }>()
 
 const sorttype = ref([
-    { key: 1, label: '热度', value: 'popular' },
-    { key: 2, label: '最早', value: 'earliest' },
-    { key: 3, label: '最新', value: 'latest' }
+    { key: 1, label: '最热', value: 'popular' },
+    { key: 3, label: '最新', value: 'latest' },
+    { key: 2, label: '最早', value: 'earliest' }
 ])
 
 const selectedSortType = ref('popular')
@@ -30,73 +31,116 @@ const commentNumberRef = computed(() =>
     return props.commentNumber + addedCount.value
 })
 
+function selectSortType(sortType: string)
+{
+    selectedSortType.value = sortType
+    emit('loadBySortType', sortType)
+}
+
 </script>
 
 <template>
-    <div id="video-comment-section" class="comment-section">
-        <div class="title">
-            <span class="title-text">评论</span>
-            <span class="comment-number">{{ commentNumberRef }}</span>
-            <div class="sort-type">
-                <el-select v-model="selectedSortType" :disabled="!available" placeholder="排序方式" style="width: 75px">
-                    <el-option v-for="sortItem in sorttype" :key="sortItem.key" :label="sortItem.label"
-                        :value="sortItem.value" @click="emit('loadBySortType', sortItem.value)">
-                    </el-option>
-                </el-select>
+    <section id="video-comment-section" class="video-comment-section">
+        <div class="comment-header">
+            <h2 class="comment-title">
+                评论 <span class="comment-number">{{ formatCount(commentNumberRef) }}</span>
+            </h2>
+            <div class="sort-type" role="tablist" aria-label="评论排序">
+                <button v-for="sortItem in sorttype" :key="sortItem.key" type="button" role="tab" class="sort-tab"
+                    :class="{ active: selectedSortType === sortItem.value }"
+                    :aria-selected="selectedSortType === sortItem.value" :disabled="!available"
+                    @click="selectSortType(sortItem.value)">
+                    {{ sortItem.label }}
+                </button>
             </div>
         </div>
-        <CommentPostBar parent-comment-id="0" :available="available" @comment-posted="(comment: VideoComment) =>
+        <CommentPostBar parent-comment-id="0" :available="available" placeholder="友善发言，说说你的想法" @comment-posted="(comment: VideoComment) =>
         {
             addedCount++
             videoComments.unshift(comment)
         }" />
-        <CommentThread class="root-thread" v-if="available" v-for="(comment, index) in videoComments"
-            :key="comment.commentId" :comment="comment" :depth="0" :is-last-child="index === videoComments.length - 1"
-            @load-more="(id) => emit('loadMore', id)" @add-comment-count="addedCount++" />
-        <div class="no-comment" v-else>
-            <span class="description-text"> 视频发布者已关闭评论区 </span>
+        <template v-if="available">
+            <CommentThread class="root-thread" v-for="(comment, index) in videoComments" :key="comment.commentId"
+                :comment="comment" :depth="0" :is-last-child="index === videoComments.length - 1"
+                @load-more="(id) => emit('loadMore', id)" @add-comment-count="addedCount++" />
+            <div v-if="videoComments.length === 0 && commentNumberRef === 0" class="comment-state">
+                还没有评论，来说两句吧
+            </div>
+        </template>
+        <div class="comment-state" v-else>
+            视频发布者已关闭评论区
         </div>
-    </div>
+    </section>
 </template>
 
 <style lang="scss" scoped>
-.comment-section {
+.video-comment-section {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    color: $warm-ink;
 
-    .title {
+    .comment-header {
         display: flex;
-        align-items: center;
+        align-items: baseline;
+        gap: 20px;
 
-        .title-text {
-            font-size: 24px;
-            font-weight: bold;
+        .comment-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: $warm-ink;
+
+            .comment-number {
+                font-size: 15px;
+                font-weight: 500;
+                color: $warm-ink-4;
+            }
         }
 
-        .comment-number {
-            margin-left: 15px;
-            margin-right: 30px;
-            font-size: 20px;
+        .sort-type {
+            display: flex;
+            align-items: baseline;
+            gap: 20px;
+        }
+
+        .sort-tab {
+            padding: 0;
+            border: none;
+            background: transparent;
+            font: inherit;
+            font-size: 13px;
+            color: $warm-ink-4;
+            cursor: pointer;
+            transition: color 0.15s ease;
+
+            &:hover:not(:disabled),
+            &:focus-visible {
+                color: $warm-ink;
+                outline: none;
+            }
+
+            &.active {
+                font-weight: 600;
+                color: $warm-ink;
+            }
+
+            &:disabled {
+                cursor: not-allowed;
+                color: $warm-ink-5;
+            }
         }
     }
 
-    .no-comment {
-        padding: 200px 0;
-        border-top: 1px solid $color-neutral-2;
-        border-bottom: 1px solid $color-neutral-2;
+    // 评论区关闭 / 暂无评论
+    .comment-state {
+        padding: 32px;
+        border-radius: 16px;
+        background: $warm-card;
+        box-shadow: $warm-shadow-ring;
+        font-size: 14px;
+        color: $warm-ink-4;
         text-align: center;
-
-        .description-text {
-            color: $color-text-secondary;
-            font-size: 20px;
-        }
     }
-}
-</style>
-
-<style lang="scss">
-.el-select__wrapper {
-    border-radius: 15px;
-    font-weight: bold;
-    border: 1px solid $color-neutral-2;
-    box-shadow: none !important;
 }
 </style>

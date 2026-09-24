@@ -1,141 +1,62 @@
 <script setup lang="ts">
-import { inject, onMounted, onUnmounted, provide } from 'vue'
-import { RouterView } from 'vue-router'
-import IndexHeader from '@/shared/widgets/indexHeader/ui/IndexHeader.vue'
-import Category from '@/pages/index/entities/category/ui/Category.vue'
-import defaultBg from '@/assets/banner-background-beach.jpg'
-import { BODY_PADDING } from '@/shared/config/Config'
-import { useBackgroundImg } from '../composables/useBackgroundImg'
-import { useCategory } from '../composables/useCategory'
-import { useScroll } from '../composables/useScroll'
-import VideoList from '@/pages/index/widgets/videoList/ui/VideoList.vue'
+import { inject, onMounted } from 'vue'
+import SiteHeader from '@/shared/widgets/siteHeader/ui/SiteHeader.vue'
 import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue'
-import { useVideo } from '../composables/useVideo'
-
-const { bgImgUrl } = useBackgroundImg()
-const { startRouteWatching } = useCategory()
-const { videoList, isLoading, loadVideoList, } = useVideo()
-const { headerFixed, categoryFolded, subCategoryFolded, headerOpacity, scrollChecker } = useScroll(videoList, isLoading, loadVideoList)
+import HomeHero from '@/pages/index/widgets/homeHero/ui/HomeHero.vue'
+import ForYouSection from '@/pages/index/widgets/forYou/ui/ForYouSection.vue'
+import LatestSection from '@/pages/index/widgets/latestVideos/ui/LatestSection.vue'
+import HomeDiscover from '@/pages/index/widgets/homeDiscover/ui/HomeDiscover.vue'
+import HomeFooter from '@/pages/index/widgets/homeFooter/ui/HomeFooter.vue'
+import { useCategory } from '../composables/useCategory'
+import { useRecommendVideos } from '../composables/useRecommendVideos'
 
 // 获取内容部分最大最小宽度
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
 const mainContentMinWidth: number = inject('mainContentMinWidth', 0)
 
-provide('videoList', videoList)
-provide('isLoading', isLoading)
-provide('subCategoryFolded', subCategoryFolded)
+// 分类状态跟随路由；先于各区块启动，保证它们首次读取到的就是当前路由的分类
+const { startRouteWatching } = useCategory()
+startRouteWatching()
+
+// 推荐视频只请求一次：前几个给轮播，其余给「为你推荐」
+const { heroSlides, forYouVideos, isLoading: isRecommendLoading, loadRecommendVideos } = useRecommendVideos()
 
 onMounted(() =>
 {
-    startRouteWatching()
-    window.addEventListener('scroll', scrollChecker)
-})
-
-onUnmounted(() =>
-{
-    window.removeEventListener('scroll', scrollChecker)
+    loadRecommendVideos()
 })
 </script>
 
 <template>
-    <div class="page-content" :style="{
-        'max-width': mainContentMaxWidth + 'px',
-        'min-width': mainContentMinWidth + 'px',
-    }">
-        <!-- 顶部锚点 -->
-        <div class="fixed-header-anchor" :style="{
+    <div class="home-page warm-theme">
+        <SiteHeader />
+        <main class="home-main" :style="{
             'max-width': mainContentMaxWidth + 'px',
             'min-width': mainContentMinWidth + 'px',
         }">
-            <div class="fixed-header" v-if="headerFixed" :style="{
-                opacity: headerOpacity,
-                'max-width': mainContentMaxWidth + 'px',
-                'min-width': mainContentMinWidth + 'px',
-            }">
-                <IndexHeader theme="dark" />
-            </div>
-            <Category v-if="categoryFolded" :folded="true" :max-width="mainContentMaxWidth"
-                :min-width="mainContentMinWidth">
-            </Category>
-        </div>
-
-        <header>
-            <div class="header" :style="{
-                'background-image': bgImgUrl ? `url(${bgImgUrl})` : `url(${defaultBg})`
-            }">
-                <IndexHeader />
-            </div>
-        </header>
-        <div class="category" :style="{
-            'max-width': mainContentMaxWidth + 'px',
-            'min-width': mainContentMinWidth + 'px',
-        }">
-            <Category :folded="false" :max-width="mainContentMaxWidth" :min-width="mainContentMinWidth">
-            </Category>
-        </div>
-        <div class="router-view" :style="{
-            'margin-left': BODY_PADDING,
-            'margin-right': BODY_PADDING,
-        }">
-            <RouterView></RouterView>
-        </div>
-        <div class="video-list" :style="{
-            'margin-left': BODY_PADDING,
-            'margin-right': BODY_PADDING
-        }">
-            <VideoList></VideoList>
-        </div>
+            <HomeHero :slides="heroSlides" :loading="isRecommendLoading" />
+            <ForYouSection :videos="forYouVideos" :loading="isRecommendLoading" />
+            <LatestSection :scroll-ready="!isRecommendLoading" />
+            <HomeDiscover />
+        </main>
+        <HomeFooter />
         <!-- AI 助手：右下角常驻按钮，fixed 定位，放哪里都不影响布局 -->
         <AiAssistant />
     </div>
 </template>
 
-<style>
-body {
-    background-color: rgb(197, 197, 197) !important;
-}
-</style>
 <style lang="scss" scoped>
-.page-content {
-    position: relative;
-    min-height: 150vh;
-    background-color: rgb(255, 255, 255);
+.home-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.home-main {
+    flex: 1 0 auto;
+    width: 100%;
     margin: 0 auto;
-
-    header {
-        width: 100%;
-        position: relative;
-
-        .header {
-            height: 200px;
-            background: no-repeat center;
-            background-size: cover;
-
-        }
-
-    }
-
-    .fixed-header-anchor {
-        position: sticky;
-        top: 0;
-        height: 0;
-        z-index: 400;
-        overflow: visible;
-    }
-
-    .fixed-header {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-    }
-
-    .category {
-        width: 100%;
-    }
-
-    .router-view {
-        margin-bottom: 10px;
-    }
+    padding: 32px 48px 0;
 }
 </style>

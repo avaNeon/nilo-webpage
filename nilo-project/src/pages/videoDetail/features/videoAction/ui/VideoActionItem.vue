@@ -3,6 +3,8 @@ import { onMounted, ref, watch } from 'vue';
 import { useVideoAction } from '../model/useVideoAction';
 import { UserVideoAction } from '@/shared/constant/UserVideoActionEnum';
 import { useVideoActionUiStore } from '../store/VideoActionUiStore';
+import { formatCount } from '@/shared/utils/NumberUtil';
+import message from '@/shared/lib/message';
 
 const { videoActionState, videoState, getVideoAction, doVideoAction, checkLogin, openCoinDialog } = useVideoAction()
 const videoActionUiStore = useVideoActionUiStore()
@@ -68,6 +70,23 @@ function handleCoinClick()
     openCoinDialog()
 }
 
+/** 分享：复制当前视频链接（去掉 ?t= 跳转参数） */
+async function handleShare()
+{
+    const url = new URL(window.location.href)
+    url.searchParams.delete('t')
+    url.hash = ''
+    try
+    {
+        await navigator.clipboard.writeText(url.toString())
+        message.success('链接已复制')
+    }
+    catch
+    {
+        message.warning('复制失败，请手动复制地址栏链接')
+    }
+}
+
 onMounted(() =>
 {
     getVideoAction()
@@ -77,71 +96,104 @@ onMounted(() =>
 <template>
     <div class="video-action-items">
         <!-- 点赞 -->
-        <div :class="['video-action-item', { 'animating-like': isAnimating(UserVideoAction.like) }]"
+        <button type="button"
+            :class="['video-action-item', { active: videoActionState.liked, 'animating-like': isAnimating(UserVideoAction.like) }]"
             @click="handleAction(UserVideoAction.like)">
-            <div
-                :class="['iconfont', 'icon-like-solid', { toggled: videoActionState.liked, untoggled: !videoActionState.liked }]">
-            </div>
-            <p class="label">{{ videoState.videoInfo.likeCount }}</p>
-        </div>
+            <span v-if="videoActionState.liked" class="dot"></span>
+            <span class="label">{{ videoActionState.liked ? '已赞' : '点赞' }}</span>
+            <span class="count">{{ formatCount(videoState.videoInfo.likeCount) }}</span>
+        </button>
+        <span class="divider"></span>
 
         <!-- 投币 -->
-        <div :class="['video-action-item', { 'animating-coin': isAnimating(UserVideoAction.coin) }]"
+        <button type="button"
+            :class="['video-action-item', { active: videoActionState.coin > 0, 'animating-coin': isAnimating(UserVideoAction.coin) }]"
             @click="handleCoinClick()">
-            <div :class="['iconfont', 'icon-toubi', {
-                toggled: videoActionState.coin > 0, untoggled:
-                    videoActionState.coin === 0
-            }]">
-            </div>
-            <p class="label">{{ videoState.videoInfo.coinCount }}</p>
-        </div>
+            <span v-if="videoActionState.coin > 0" class="dot"></span>
+            <span class="label">{{ videoActionState.coin > 0 ? '已投币' : '投币' }}</span>
+            <span class="count">{{ formatCount(videoState.videoInfo.coinCount) }}</span>
+        </button>
+        <span class="divider"></span>
 
         <!-- 收藏 -->
-        <div :class="['video-action-item', { 'animating-collect': isAnimating(UserVideoAction.collect) }]"
+        <button type="button"
+            :class="['video-action-item', { active: videoActionState.collected, 'animating-collect': isAnimating(UserVideoAction.collect) }]"
             @click="handleAction(UserVideoAction.collect)">
-            <div
-                :class="['iconfont', 'icon-collection-solid', { toggled: videoActionState.collected, untoggled: !videoActionState.collected }]">
-            </div>
-            <p class="label">{{ videoState.videoInfo.collectCount }}</p>
-        </div>
+            <span v-if="videoActionState.collected" class="dot"></span>
+            <span class="label">{{ videoActionState.collected ? '已收藏' : '收藏' }}</span>
+            <span class="count">{{ formatCount(videoState.videoInfo.collectCount) }}</span>
+        </button>
+        <span class="divider"></span>
+
+        <!-- 分享 -->
+        <button type="button" class="video-action-item" @click="handleShare">
+            <span class="label">分享</span>
+        </button>
     </div>
 </template>
 
 <style lang="scss" scoped>
 .video-action-items {
-    padding: 10px 0;
-    border-top: 1px solid $color-border;
-    border-bottom: 1px solid $color-border;
-
     display: flex;
-    column-gap: 40px;
-    flex-direction: row;
-    vertical-align: middle;
+    align-items: center;
+    flex-shrink: 0;
+    height: 42px;
+    border-radius: 12px;
+    background: $warm-card;
+    box-shadow: $warm-shadow-ring;
+    overflow: hidden;
+
+    .divider {
+        width: 1px;
+        height: 18px;
+        flex-shrink: 0;
+        background: rgba(26, 25, 22, 0.08);
+    }
 
     .video-action-item {
+        height: 100%;
+        padding: 0 18px;
         display: flex;
-        flex-direction: row;
-        column-gap: 10px;
+        align-items: center;
+        gap: 8px;
+        border: none;
+        background: transparent;
+        color: $warm-ink;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
         // 为投币的 3D Y轴旋转提供透视（perspective 需设在父元素上）
         perspective: 400px;
 
-        .iconfont {
-            font-size: 40px;
-            cursor: pointer;
-
-            &.toggled {
-                color: $color-bilibili-blue;
-            }
-
-            &.untoggled {
-                color: $color-text-secondary;
-            }
+        &:hover {
+            background: rgba(26, 25, 22, 0.03);
         }
 
-        .label {
-            color: $color-text-secondary;
-            font-size: 16px;
-            line-height: 16px;
+        &:focus-visible {
+            outline: 2px solid rgba(26, 25, 22, 0.2);
+            outline-offset: -2px;
+        }
+
+        .count {
+            color: $warm-ink-4;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: $warm-accent;
+        }
+
+        &.active {
+            color: $warm-accent-text;
+
+            .count {
+                color: inherit;
+            }
         }
 
         // ==================== 动画中禁用点击 ====================
@@ -149,80 +201,86 @@ onMounted(() =>
         &.animating-coin,
         &.animating-collect {
             pointer-events: none;
+            cursor: default;
+        }
 
-            .iconfont {
-                cursor: default;
+        // ==================== 点赞动画：圆点弹出并扩散一圈 ====================
+        &.animating-like {
+            .dot {
+                animation: like-dot-animation 1s ease-out;
+            }
+
+            .label {
+                animation: label-pop-animation 0.5s ease-out;
             }
         }
 
-        // ==================== 点赞动画：逆时针旋转 + 向右上角移动并放大 → 回到原位 ====================
-        &.animating-like .iconfont {
-            animation: like-animation 1s ease-in-out;
+        // ==================== 投币动画：圆点沿 Y 轴旋转 3 圈 ====================
+        &.animating-coin {
+            .dot {
+                animation: coin-animation 1s ease-in-out;
+                transform-style: preserve-3d;
+            }
+
+            .label {
+                animation: label-pop-animation 0.5s ease-out;
+            }
         }
 
-        // ==================== 投币动画：沿 Y 轴旋转 3 圈 ====================
-        &.animating-coin .iconfont {
-            animation: coin-animation 1s ease-in-out;
-            transform-style: preserve-3d;
-        }
+        // ==================== 收藏动画：圆点向上弹跳 3 下 ====================
+        &.animating-collect {
+            .dot {
+                animation: collect-animation 1s ease-in-out;
+            }
 
-        // ==================== 收藏动画：向上弹跳 3 下 ====================
-        &.animating-collect .iconfont {
-            animation: collect-animation 1s ease-in-out;
+            .label {
+                animation: label-pop-animation 0.5s ease-out;
+            }
         }
     }
 }
 
 // ==================== 关键帧定义 ====================
 
-@keyframes like-animation {
+@keyframes like-dot-animation {
     0% {
-        transform: rotate(0deg) translate(0, 0) scale(1);
+        transform: scale(0.2);
+        box-shadow: 0 0 0 0 rgba(205, 106, 57, 0.45);
     }
 
-    10% {
-        // 开始逆时针旋转并向右上角移动、放大
-        transform: rotate(-15deg) translate(3px, -5px) scale(1.2);
-    }
-
-    20% {
-        // 达到最大幅度：逆时针 -45°，最大位移和放大
-        transform: rotate(-45deg) translate(10px, -14px) scale(1.5);
-    }
-
-    35% {
-        // 开始回弹，略微过冲
-        transform: rotate(-25deg) translate(5px, -8px) scale(1.3);
+    25% {
+        transform: scale(1.8);
     }
 
     50% {
-        // 反向微摆，制造弹性效果
-        transform: rotate(5deg) translate(-2px, 2px) scale(0.95);
-    }
-
-    65% {
-        // 再次小幅逆时针
-        transform: rotate(-8deg) translate(2px, -3px) scale(1.05);
-    }
-
-    80% {
-        // 趋于稳定
-        transform: rotate(-2deg) translate(0px, -1px) scale(1.01);
+        transform: scale(0.9);
     }
 
     100% {
-        transform: rotate(0deg) translate(0, 0) scale(1);
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(205, 106, 57, 0);
+    }
+}
+
+@keyframes label-pop-animation {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    40% {
+        transform: scale(1.08);
     }
 }
 
 @keyframes coin-animation {
     0% {
-        transform: rotateY(0deg);
+        transform: rotateY(0deg) scale(1.6);
     }
 
     100% {
         // 沿 Y 轴旋转 3 圈 = 1080°
-        transform: rotateY(1080deg);
+        transform: rotateY(1080deg) scale(1);
     }
 }
 
@@ -235,7 +293,7 @@ onMounted(() =>
 
     // 第 1 跳（最高）
     12% {
-        transform: translateY(-14px);
+        transform: translateY(-8px);
     }
 
     24% {
@@ -244,7 +302,7 @@ onMounted(() =>
 
     // 第 2 跳（稍低）
     36% {
-        transform: translateY(-10px);
+        transform: translateY(-5px);
     }
 
     48% {
@@ -253,7 +311,7 @@ onMounted(() =>
 
     // 第 3 跳（最低）
     60% {
-        transform: translateY(-5px);
+        transform: translateY(-3px);
     }
 
     72% {

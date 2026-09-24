@@ -94,9 +94,20 @@ export function calcDefaultFoldReason(videoComment: VideoComment): number {
     return DefaultFoldReason.NONE
 }
 
+/**
+ * 评论头像几何参数（顶层评论 / 楼中楼回复）
+ * - size：头像直径
+ * - top：头像顶部距评论项顶部的距离（顶层 = 1px 分隔线 + 18px 上内边距；回复无分隔线）
+ * - gap：头像与正文的间距
+ * VideoCommentItem 用它排版，CommentThread 用它计算连线位置
+ */
+export const COMMENT_AVATAR_METRICS = {
+    root: { size: 38, top: 19, gap: 14 },
+    reply: { size: 30, top: 14, gap: 12 },
+} as const
+
 export function useVideoCommentItem() {
     const COMMENT_IMG_WIDTH = 200
-    const AVATAR_WIDTH = 64
 
     const loginStateStore = useLoginStateStore()
 
@@ -238,7 +249,6 @@ export function useVideoCommentItem() {
 
     return {
         COMMENT_IMG_WIDTH,
-        AVATAR_WIDTH,
         checkLogin,
         upvote,
         downvote,

@@ -2,15 +2,11 @@
 import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import { useCategory } from '../model/useCategory';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
-import { useLoginStateStore } from '@/shared/store/LoginStateStore';
-import { routerToNewPage } from '@/shared/utils/RouteUtil';
 import SearchBar from '@/shared/features/searchBar/ui/SearchBar.vue';
-import { MessageApi } from '@/shared/api/MessageApi';
 import Dialog from '@/shared/ui/Dialog.vue';
 import { Connection } from '@element-plus/icons-vue';
-import { computed, ref, watch } from 'vue';
-
-const CONTACT_EMAIL = 'unitneon@outlook.com';
+import { CONTACT_EMAIL } from '@/shared/config/Config';
+import { useHeaderNav } from '@/shared/widgets/siteHeader/model/useHeaderNav';
 
 const props = withDefaults(defineProps<{
     theme?: string,
@@ -21,50 +17,13 @@ const props = withDefaults(defineProps<{
 }) // theme属性，可以是light或dark，默认为light
 
 const { categoryStore, getIcon } = useCategory();
-const loginStateStore = useLoginStateStore();
-const showContactDialog = ref(false);
-const uncheckedMessageCount = ref(0);
-const uncheckedMessageCountText = computed(() =>
-    uncheckedMessageCount.value > 99 ? '99+' : String(uncheckedMessageCount.value),
-)
-
-function requireLoginThen(pathOrFactory: string | (() => string))
-{
-    if (!loginStateStore.loginState || !loginStateStore.userInfo?.userId)
-    {
-        loginStateStore.showPanel = true;
-        return;
-    }
-    const path = typeof pathOrFactory === 'function' ? pathOrFactory() : pathOrFactory;
-    routerToNewPage(path);
-}
-
-async function loadUncheckedMessageCount()
-{
-    const messageCount = await MessageApi.getUncheckedMessageCount();
-    uncheckedMessageCount.value =
-        (messageCount?.systemMessageCount ?? 0) +
-        (messageCount?.likeMessageCount ?? 0) +
-        (messageCount?.collectMessageCount ?? 0) +
-        (messageCount?.commentMessageCount ?? 0);
-}
-
-// 等 loginState 就绪后再拉未读数，避免未登录/autoLogin 未完成时误请求
-watch(
-    () => loginStateStore.loginState,
-    loggedIn =>
-    {
-        if (loggedIn)
-        {
-            loadUncheckedMessageCount();
-        }
-        else
-        {
-            uncheckedMessageCount.value = 0;
-        }
-    },
-    { immediate: true },
-)
+const {
+    loginStateStore,
+    showContactDialog,
+    uncheckedMessageCount,
+    uncheckedMessageCountText,
+    requireLoginThen,
+} = useHeaderNav();
 
 </script>
 

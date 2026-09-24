@@ -66,12 +66,15 @@ async function handleAction(actionType: number, coinAmount: number)
         margin: 20px 0;
 
         font-size: 20px;
-        font-weight: 400;
+        font-weight: 500;
         text-align: center;
+        color: $warm-ink;
 
         .number {
+            margin: 0 6px;
             font-size: 32px;
-            color: $color-bilibili-blue;
+            font-weight: 700;
+            color: $warm-accent-text;
         }
     }
 
@@ -85,14 +88,18 @@ async function handleAction(actionType: number, coinAmount: number)
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding-bottom: 12px;
+            cursor: pointer;
 
-            border: 2px solid $color-neutral-2;
-            border-radius: 8px;
+            border: 2px solid $warm-border;
+            border-radius: 14px;
+            background: $warm-card;
+            transition: border-color 0.2s, background-color 0.2s;
 
             &.active,
             &:hover {
-                border: 2px solid $color-bilibili-blue;
-                border-radius: 8px;
+                border-color: $warm-accent;
+                background: $warm-paper;
             }
 
             .image {
@@ -101,8 +108,9 @@ async function handleAction(actionType: number, coinAmount: number)
 
             .label {
                 margin-top: 10px;
-                font-size: 16px;
-                color: $color-text-secondary;
+                font-size: 15px;
+                font-weight: 500;
+                color: $warm-ink-3;
             }
         }
 

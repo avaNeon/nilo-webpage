@@ -1,8 +1,13 @@
 import { computed, ref, watch } from "vue";
+import { Api } from "@/shared/config/Api";
+import request from "@/shared/lib/request";
 import { VideoSearchApi } from "@/shared/api/VideoSearchApi";
 import type { VideoInfo } from "@/shared/model/VideoInfo";
 import type { VideoInfoDoc } from "@/shared/model/VideoInfoDoc";
 import useVideoStateStore from "../store/VideoStateStore";
+
+/** 相关视频为空时，用首页推荐兜底，最多展示的条数 */
+const FALLBACK_VIDEO_COUNT = 10;
 
 export function useRecommendVideo() {
   const videoStateStore = useVideoStateStore();
@@ -39,6 +44,19 @@ export function useRecommendVideo() {
     };
   }
 
+  /** 兜底：首页推荐视频（去掉当前视频） */
+  async function loadFallbackVideo(videoId: string): Promise<VideoInfo[]> {
+    const result = await request({
+      method: "get",
+      url: Api.loadRecommendVideo,
+      showError: false,
+    });
+    const list: VideoInfo[] = Array.isArray(result?.data) ? result.data : [];
+    return list
+      .filter(videoInfo => videoInfo?.videoId && videoInfo.videoId !== videoId)
+      .slice(0, FALLBACK_VIDEO_COUNT);
+  }
+
   async function loadRecommendVideo() {
     const videoId = currentVideoId.value;
     const videoName = currentVideoName.value?.trim();
@@ -57,8 +75,19 @@ export function useRecommendVideo() {
       videoId,
       videoName,
     );
-    recommendVideoList.value =
-      loadedVideoList?.map(videoInfoDoc => toVideoInfo(videoInfoDoc)) ?? [];
+    let videoList =
+      loadedVideoList
+        ?.map(videoInfoDoc => toVideoInfo(videoInfoDoc))
+        .filter(videoInfo => videoInfo.videoId && videoInfo.videoId !== videoId) ?? [];
+    // 相关视频经常为空，退回到首页推荐
+    if (videoList.length === 0) {
+      videoList = await loadFallbackVideo(videoId);
+    }
+    // 等待期间已经换了视频，丢弃旧结果
+    if (requestKey !== lastRequestKey) {
+      return;
+    }
+    recommendVideoList.value = videoList;
   }
 
   watch(
