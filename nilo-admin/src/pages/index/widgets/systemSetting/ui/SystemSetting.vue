@@ -97,10 +97,6 @@ void formRef;
         <section class="form-section">
           <h3 class="section-title">硬币奖励与消耗</h3>
           <div class="form-grid">
-            <el-form-item label="注册用户初始赠送硬币数" prop="registerCoin">
-              <el-input-number v-model="formData.registerCoin" :min="0" :step="1" controls-position="right" />
-            </el-form-item>
-
             <el-form-item label="每个上传的视频奖励硬币数" prop="rewardsPreUpload">
               <el-input-number v-model="formData.rewardsPreUpload" :min="0" :step="1" controls-position="right" />
             </el-form-item>

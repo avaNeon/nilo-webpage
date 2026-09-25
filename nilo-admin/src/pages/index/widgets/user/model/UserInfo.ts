@@ -42,9 +42,6 @@ export interface UserInfo {
   /** 空间公告 */
   noticeInfo: string;
 
-  /** 硬币总数 */
-  totalCoin: number;
-
   /** 当前硬币数 */
   currentCoin: number;
 

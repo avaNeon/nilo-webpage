@@ -81,9 +81,6 @@ export interface UserInfoQuery {
   /** 空间公告模糊查询 */
   noticeInfoFuzzy?: string;
 
-  /** 硬币总数 */
-  totalCoin?: number;
-
   /** 当前硬币数 */
   currentCoin?: number;
 

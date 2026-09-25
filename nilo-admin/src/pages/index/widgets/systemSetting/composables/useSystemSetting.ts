@@ -24,7 +24,6 @@ export function useSystemSetting() {
     videoMaxEpisodes: [{ required: true, type: "number", min: 1, message: "不能小于 1", trigger: "blur" }],
     maxSerieVideosNumber: [{ required: true, type: "number", min: 1, message: "不能小于 1", trigger: "blur" }],
     maxSeriesNumber: [{ required: true, type: "number", min: 1, message: "不能小于 1", trigger: "blur" }],
-    registerCoin: [{ required: true, type: "number", min: 0, message: "不能小于 0", trigger: "blur" }],
     rewardsPreUpload: [{ required: true, type: "number", min: 0, message: "不能小于 0", trigger: "blur" }],
     modifyNickNameCost: [{ required: true, type: "number", min: 1, message: "不能小于 1", trigger: "blur" }],
   };

@@ -27,9 +27,6 @@ export interface SystemConfig {
   /** 最大系列数量 */
   maxSeriesNumber: number;
 
-  /** 注册用户初始赠送硬币数 */
-  registerCoin: number;
-
   /** 每个上传的视频奖励硬币数 */
   rewardsPreUpload: number;
 
@@ -49,7 +46,6 @@ export function createDefaultSystemConfig(): SystemConfig {
     videoMaxEpisodes: 100,
     maxSerieVideosNumber: 100,
     maxSeriesNumber: 100,
-    registerCoin: 10,
     rewardsPreUpload: 10,
     modifyNickNameCost: 1,
   };

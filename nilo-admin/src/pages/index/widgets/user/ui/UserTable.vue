@@ -139,21 +139,8 @@ async function handleToggleStatusClick(row: UserInfo)
           </template>
         </el-table-column>
 
-        <!-- 硬币总数 / 当前硬币数 -->
-        <el-table-column label="硬币" min-width="140" align="center">
-          <template #default="{ row }">
-            <div class="coin-cell">
-              <div class="coin-row">
-                <span class="coin-label">总量</span>
-                <span class="coin-value">{{ row.totalCoin ?? "-" }}</span>
-              </div>
-              <div class="coin-row">
-                <span class="coin-label">现有</span>
-                <span class="coin-value">{{ row.currentCoin ?? "-" }}</span>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
+        <!-- 当前硬币数 -->
+        <el-table-column label="当前硬币" prop="currentCoin" min-width="100" align="center" />
 
         <el-table-column label="状态" min-width="110" align="center">
           <template #default="{ row }">
@@ -238,32 +225,28 @@ async function handleToggleStatusClick(row: UserInfo)
   font-size: 16px;
 }
 
-.time-cell,
-.coin-cell {
+.time-cell {
   display: flex;
   flex-direction: column;
   row-gap: 4px;
   padding: 0 8px;
 }
 
-.time-row,
-.coin-row {
+.time-row {
   display: flex;
   align-items: center;
   column-gap: 8px;
   font-size: 12px;
 }
 
-.time-label,
-.coin-label {
+.time-label {
   flex-shrink: 0;
   width: 28px;
   color: $color-text-muted;
   text-align: right;
 }
 
-.time-value,
-.coin-value {
+.time-value {
   color: $color-text-primary;
   word-break: break-all;
 }
