@@ -45,11 +45,19 @@ const {
 
 /** 首页和分类页都算「主页」 */
 const isHomeRoute = computed(() => route.name === 'index' || route.name === 'category')
+const isHotRoute = computed(() => route.name === 'hot-ranking')
 const isHistoryRoute = computed(() => route.name === 'history')
 const isMessageRoute = computed(() => route.name === 'messageCenter')
+/** 只有看自己的收藏时才算，看别人的收藏不点亮 */
+const isMyCollectionRoute = computed(() =>
+    route.name === 'userCollection' && !!loginStateStore.userInfo
+    && route.params.userId === loginStateStore.userInfo.userId)
 
 const messageLabel = computed(() =>
     uncheckedMessageCount.value > 0 ? `消息（${uncheckedMessageCountText.value} 条未读）` : '消息')
+
+const avatarSrc = computed(() => loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar, true) : '')
+const avatarUserId = computed(() => loginStateStore.userInfo ? loginStateStore.userInfo.userId : null)
 
 /*——————滚动后才显示底部分隔线—————— */
 
@@ -111,15 +119,10 @@ onBeforeUnmount(() =>
                     :aria-current="isHomeRoute ? 'page' : undefined">
                     主页<span class="nav-dot"></span>
                 </RouterLink>
-                <button type="button" class="nav-item"
-                    @click="requireLoginThen(() => `/user/${loginStateStore.userInfo!.userId}/collection`)">
-                    收藏<span class="nav-dot"></span>
-                </button>
-                <button type="button" :class="['nav-item', { active: isHistoryRoute }]"
-                    :aria-current="isHistoryRoute ? 'page' : undefined"
-                    @click="requireLoginThen(() => `/history/${loginStateStore.userInfo!.userId}`)">
-                    历史<span class="nav-dot"></span>
-                </button>
+                <RouterLink to="/popular" :class="['nav-item', { active: isHotRoute }]"
+                    :aria-current="isHotRoute ? 'page' : undefined">
+                    热门<span class="nav-dot"></span>
+                </RouterLink>
                 <button type="button" class="nav-item" @click="requireLoginThen('/cc')">
                     创作中心<span class="nav-dot"></span>
                 </button>
@@ -144,14 +147,12 @@ onBeforeUnmount(() =>
 
             <div class="spacer"></div>
 
+            <!-- 普通顶栏头像在最左；玻璃顶栏按设计稿放在投稿按钮前面 -->
             <div class="actions">
-                <div class="avatar-slot">
-                    <Avatar :src="loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar, true) : ''"
-                        :user-id="loginStateStore.userInfo ? loginStateStore.userInfo.userId : null" :lazy="false"
-                        :width="42">
-                    </Avatar>
+                <div v-if="!glass" class="avatar-slot">
+                    <Avatar :src="avatarSrc" :user-id="avatarUserId" :lazy="false" :width="42"></Avatar>
                 </div>
-                <button type="button" :class="['message-button', { active: isMessageRoute }]"
+                <button type="button" :class="['icon-button', 'message-button', { active: isMessageRoute }]"
                     :aria-label="messageLabel" :title="messageLabel"
                     :aria-current="isMessageRoute ? 'page' : undefined" @click="requireLoginThen('/message/1')">
                     <span class="bell" aria-hidden="true"></span>
@@ -161,6 +162,26 @@ onBeforeUnmount(() =>
                         </span>
                     </Transition>
                 </button>
+                <button type="button" :class="['icon-button', { active: isMyCollectionRoute }]" aria-label="收藏"
+                    title="收藏" :aria-current="isMyCollectionRoute ? 'page' : undefined"
+                    @click="requireLoginThen(() => `/user/${loginStateStore.userInfo!.userId}/collection`)">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z" />
+                    </svg>
+                </button>
+                <button type="button" :class="['icon-button', { active: isHistoryRoute }]" aria-label="历史记录"
+                    title="历史" :aria-current="isHistoryRoute ? 'page' : undefined"
+                    @click="requireLoginThen(() => `/history/${loginStateStore.userInfo!.userId}`)">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" aria-hidden="true">
+                        <circle cx="8" cy="8" r="6.2" />
+                        <path d="M8 4.8V8l2.2 1.5" />
+                    </svg>
+                </button>
+                <div v-if="glass" class="avatar-slot">
+                    <Avatar :src="avatarSrc" :user-id="avatarUserId" :lazy="false" :width="44"></Avatar>
+                </div>
                 <button type="button" class="upload-button" @click="requireLoginThen('/cc/upload')">
                     <span class="upload-plus">+</span>投稿
                 </button>
@@ -407,8 +428,8 @@ onBeforeUnmount(() =>
         }
     }
 
-    // 消息：浅灰圆底 + 线条铃铛，有未读时右上角一个蓝色数字角标
-    .message-button {
+    // 消息 / 收藏 / 历史：浅灰圆底 + 线条图标；正在对应页面时浅蓝底 + 蓝色图标
+    .icon-button {
         position: relative;
         display: flex;
         align-items: center;
@@ -420,8 +441,10 @@ onBeforeUnmount(() =>
         color: $warm-ink-3;
         transition: background-color 0.2s, color 0.2s;
 
-        // 悬停，或者正在消息中心：浅蓝底 + 蓝色铃铛
-        &:hover,
+        &:hover {
+            background: $warm-sunken-hover;
+        }
+
         &.active {
             background: $warm-accent-soft;
             color: $warm-accent;
@@ -431,7 +454,10 @@ onBeforeUnmount(() =>
             outline: 2px solid $warm-accent;
             outline-offset: 2px;
         }
+    }
 
+    // 有未读时右上角一个蓝色数字角标
+    .message-button {
         .bell {
             width: 14px;
             height: 14px;
@@ -532,6 +558,34 @@ onBeforeUnmount(() =>
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 20px 50px -28px rgba(11, 12, 18, 0.4);
     }
 
+    .brand-tag {
+        color: $warm-ink-3;
+    }
+
+    // 玻璃胶囊里导航是一行纯文字，不带下面的小圆点
+    .nav {
+        gap: 28px;
+        height: auto;
+    }
+
+    .nav-item {
+        padding-top: 0;
+        color: $warm-ink-3;
+
+        &:hover,
+        &:focus-visible {
+            color: $warm-ink;
+        }
+
+        &.active {
+            color: $warm-accent;
+        }
+    }
+
+    .nav-dot {
+        display: none;
+    }
+
     :deep(.site-search) {
         width: 340px;
     }
@@ -556,16 +610,29 @@ onBeforeUnmount(() =>
         gap: 12px;
     }
 
-    .message-button {
+    .icon-button {
         width: 44px;
         height: 44px;
         background: rgba(255, 255, 255, 0.5);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 
-        &:hover,
+        &:hover {
+            background: rgba(255, 255, 255, 0.75);
+        }
+
         &.active {
             background: rgba(255, 255, 255, 0.85);
             color: $warm-accent;
+        }
+    }
+
+    // 头像外面一圈白边，不用普通顶栏的灰描边
+    .avatar-slot {
+        height: 44px;
+
+        :deep(.onLogin .image-container) {
+            border: none !important;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
         }
     }
 
