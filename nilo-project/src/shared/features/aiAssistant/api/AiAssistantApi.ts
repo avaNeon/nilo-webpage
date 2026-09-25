@@ -1,6 +1,13 @@
 import Cookies from "js-cookie";
 import { Api, resolveServicePrefix } from "@/shared/config/Api";
+import request from "@/shared/lib/request";
 import type { AiCitedSegment, AiCitedVideo } from "../model/AiAnswer";
+
+/** 今天的提问额度 */
+export interface AskQuota {
+  used: number;
+  limit: number;
+}
 
 /** 和后端这条连接的 90 秒超时对齐 */
 export const ASK_TIMEOUT = 90 * 1000;
@@ -37,6 +44,16 @@ export const AiAssistantApi = {
       return;
     }
     await readSse(response.body, handlers);
+  },
+
+  /** 今天已经问了几次。未登录时请求层会吞掉 1005，这里得到 null */
+  async quota(): Promise<AskQuota | null> {
+    const response = await request({
+      method: "get",
+      url: Api.aiAskQuota,
+      showError: false,
+    });
+    return response?.data ?? null;
   },
 };
 

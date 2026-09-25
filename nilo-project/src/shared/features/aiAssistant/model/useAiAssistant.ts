@@ -1,5 +1,5 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from "vue";
-import { AiAssistantApi, ASK_TIMEOUT } from "../api/AiAssistantApi";
+import { AiAssistantApi, ASK_TIMEOUT, type AskQuota } from "../api/AiAssistantApi";
 import type { AiChatMessage } from "./AiChatMessage";
 
 /** 与后端 @Size(max = 100) 保持一致 */
@@ -30,6 +30,9 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
   /** 是否正在等待回答 */
   const sending = ref(false);
 
+  /** 今天的提问额度。未登录时是 null，标题栏不显示 */
+  const quota = ref<AskQuota | null>(null);
+
   /** 会话 id，后端靠它把多轮对话串起来；开始新对话时重新生成 */
   let conversationId = createConversationId();
 
@@ -53,13 +56,29 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
     input.value = "";
   }
 
+  /** 拉一次今天的额度。未登录或接口失败时清空，避免标题栏留着旧数字 */
+  async function refreshQuota() {
+    quota.value = await AiAssistantApi.quota();
+  }
+
+  void refreshQuota();
+
   /** 发送输入框里的问题 */
   async function send() {
     const question = input.value.trim();
     if (!question || sending.value) {
       return;
     }
-    messages.value.push({ role: "user", content: question });
+    await ask(question);
+  }
+
+  /** 发送指定问题。点预设问题时走这里，不必先写进输入框 */
+  async function ask(question: string) {
+    const text = question.trim();
+    if (!text || sending.value) {
+      return;
+    }
+    messages.value.push({ role: "user", content: text });
     input.value = "";
     sending.value = true;
 
@@ -79,7 +98,7 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
 
     try {
       await AiAssistantApi.ask(
-        question,
+        text,
         askedId,
         toValue(videoId),
         {
@@ -130,6 +149,7 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
       if (askedId === conversationId) {
         sending.value = false;
       }
+      void refreshQuota();
     }
   }
 
@@ -146,9 +166,11 @@ export function useAiAssistant(videoId?: MaybeRefOrGetter<string | undefined>) {
     messages,
     input,
     sending,
+    quota,
     toggle,
     reset,
     send,
+    ask,
   };
 }
 

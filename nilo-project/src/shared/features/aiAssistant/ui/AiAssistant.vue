@@ -21,12 +21,15 @@ const props = withDefaults(defineProps<{
     closable?: boolean,
     /** 嵌入形态下点标题栏折叠 / 展开对话，默认收起 */
     collapsible?: boolean,
+    /** 还没提问时展示的示例问题，点一下就发出去。首页搜索用，视频页不传 */
+    suggestions?: string[],
 }>(), {
     embedded: false,
     title: 'Nilo 视频助手',
     subtitle: '',
     closable: false,
     collapsible: false,
+    suggestions: () => [],
 })
 
 const emit = defineEmits<{
@@ -36,7 +39,11 @@ const emit = defineEmits<{
     close: []
 }>()
 
-const { visible, messages, input, sending, toggle, reset, send } = useAiAssistant(() => props.videoId)
+const { visible, messages, input, sending, quota, toggle, reset, send, ask } = useAiAssistant(() => props.videoId)
+
+/** 只有开场白时才提示可以怎么问，发出去之后就收起来 */
+const showSuggestions = computed(() =>
+    props.suggestions.length > 0 && messages.value.length === 1 && !sending.value)
 
 /** 嵌入形态一直显示面板 */
 const panelVisible = computed(() => props.embedded || visible.value)
@@ -139,6 +146,7 @@ function onSegmentClick(segment: AiCitedSegment)
                     <span class="title">{{ title }}</span>
                     <span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
                     <span class="spacer"></span>
+                    <span v-if="quota" class="quota" :title="`今天还能问 ${quota.limit - quota.used} 次`">今日 {{ quota.used }}/{{ quota.limit }}</span>
                     <button v-show="bodyVisible" type="button" class="icon-button" title="新对话" aria-label="新对话"
                         @click.stop="reset">
                         <el-icon :size="15">
@@ -191,6 +199,14 @@ function onSegmentClick(segment: AiCitedSegment)
                                 </RouterLink>
                             </div>
                         </div>
+                    </div>
+
+                    <div v-if="showSuggestions" class="suggestions">
+                        <span class="suggestions-label">可以这样问</span>
+                        <button v-for="item in suggestions" :key="item" type="button" class="suggestion"
+                            @click="ask(item)">
+                            {{ item }}
+                        </button>
                     </div>
 
                     <div class="input-bar">
@@ -314,6 +330,12 @@ function onSegmentClick(segment: AiCitedSegment)
         color: $warm-ink-4;
     }
 
+    .quota {
+        flex-shrink: 0;
+        font-size: 12px;
+        color: $warm-ink-4;
+    }
+
     .spacer {
         flex: 1;
     }
@@ -373,6 +395,41 @@ function onSegmentClick(segment: AiCitedSegment)
         flex-direction: column;
         gap: 12px;
         overflow-y: auto;
+    }
+
+    .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .suggestions-label {
+        flex-shrink: 0;
+        font-size: 12px;
+        color: $warm-ink-4;
+    }
+
+    .suggestion {
+        max-width: 100%;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: $warm-accent-soft;
+        font-size: 12px;
+        font-weight: 500;
+        color: $warm-accent;
+        white-space: nowrap;
+        transition: background-color 0.2s;
+
+        &:hover {
+            background: rgba(0, 0, 242, 0.12);
+        }
+
+        &:focus-visible {
+            outline: 2px solid $warm-accent;
+            outline-offset: 2px;
+        }
     }
 
     .message {

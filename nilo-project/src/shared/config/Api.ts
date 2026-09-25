@@ -124,6 +124,7 @@ const Api = {
   videoSearch: "/video-search",
   // ——————AI 助手（走 nilo-ai）——————
   aiAsk: "/ai/ask",
+  aiAskQuota: "/ai/ask/quota",
 };
 
 /** Web 服务路径前缀 */
