@@ -146,6 +146,8 @@ $theater-max-height: calc(100vh - #{$warm-header-height} - 56px - 56px);
 
 <style lang="scss">
 $icon-height: 30px;
+// 电光蓝 #0000F2 铺在弹幕设置的黑底上几乎看不见，和播放器设置面板用同一档浅紫蓝
+$player-accent: #9DA1FF;
 
 // 普通模式下 Artplayer 自己不铺黑底，黑底交给上面的 .video-area::before；原生全屏时照旧
 .player-panel .video-area .art-video-player:not(.art-fullscreen) {
@@ -161,6 +163,15 @@ $icon-height: 30px;
     --art-hover-color: rgba(255, 255, 255, 0.28);
     --art-indicator-size: 14px;
     --art-state-size: 64px;
+
+    // 网页全屏会把播放器挪到 body 上，脱离页面的字体覆盖。
+    // 选择器要比 Artplayer 自己的 font-family 更具体，控件、设置面板和悬停提示才是同一套字
+    &.art-video-player,
+    &.art-video-player *,
+    &.art-video-player [class*='hint--']::before,
+    &.art-video-player [class*='hint--'][aria-label]::after {
+        font-family: $warm-font-sans;
+    }
 
     // 已播放部分读的是主题色变量，只在进度条和音量条里换成白色
     .art-progress,
@@ -212,19 +223,18 @@ $icon-height: 30px;
     }
 }
 
-// 弹幕发送栏（非全屏时挂在卡片底部的 #danmaku 上）
-.player-panel>.danmaku-panel>.danmaku>.artplayer-plugin-danmuku {
+// 弹幕栏：普通 / 剧场模式挂在卡片底部；网页全屏 / 全屏时插件把它挪进播放器控件里。
+// 两处都要盖住插件默认的青色和细字，否则全屏会掉回另一套样式。
+.player-panel .artplayer-plugin-danmuku,
+.nilo-player .artplayer-plugin-danmuku {
     height: 40px;
     gap: 14px;
+    font-size: 13px;
+    font-weight: 400;
 
-    .apd-icon {
-        fill: $warm-ink-3;
-    }
-
-    .apd-toggle.hint--rounded.hint--top {
-        .apd-icon.apd-toggle-on {
-            height: $icon-height;
-        }
+    &,
+    & * {
+        font-family: $warm-font-sans;
     }
 
     // 浅灰胶囊输入框，聚焦时换白底 + 蓝色描边
@@ -238,12 +248,13 @@ $icon-height: 30px;
 
         &:focus-within {
             background-color: #FFFFFF;
-            box-shadow: inset 0 0 0 1.5px $warm-accent;
+            box-shadow: inset 0 0 0 1.5px $player-accent;
         }
 
         .apd-input {
             padding-left: 6px;
             font-size: 13px;
+            font-weight: 400;
             color: $warm-ink;
 
             &::placeholder {
@@ -259,6 +270,7 @@ $icon-height: 30px;
             color: #FFFFFF;
             font-size: 12px;
             font-weight: 600;
+            text-shadow: none;
             transition: background-color 0.2s;
 
             &:hover {
@@ -271,29 +283,80 @@ $icon-height: 30px;
             }
         }
 
-        .apd-style {
-            .apd-icon.apd-style-icon {
-                height: $icon-height;
-            }
+        .apd-style .apd-icon.apd-style-icon {
+            height: $icon-height;
+            fill: $warm-ink-3;
         }
     }
 
-    // 弹出面板：墨色底 + 蓝色选中态
-    .apd-config-panel-inner,
-    .apd-style-panel-inner {
+    // 弹出面板：墨色底，选中和滑块用浅紫蓝（电光蓝在这块底上太深）
+    // 选择器要比插件的 .apd-style .apd-style-panel .apd-style-panel-inner 更具体
+    .apd-config .apd-config-panel .apd-config-panel-inner,
+    .apd-style .apd-style-panel .apd-style-panel-inner {
         border-radius: 12px;
         background-color: rgba(11, 12, 18, 0.92);
         color: #FFFFFF;
+        font-weight: 400;
     }
 
     .apd-modes .apd-mode:hover,
     .apd-config-other .apd-other:hover {
-        color: $warm-accent-on-dark;
+        color: $player-accent;
     }
 
     .apd-slider .apd-slider-progress,
     .apd-slider .apd-slider-dot {
-        background-color: $warm-accent;
+        background-color: $player-accent;
+    }
+
+    .apd-slider .apd-slider-steps {
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .apd-check-on path,
+    .apd-mode-0-off path,
+    .apd-mode-1-off path,
+    .apd-mode-2-off path {
+        fill: $player-accent;
+    }
+}
+
+// 模式选中色：普通模式写在 #danmaku 上，全屏后写在播放器上
+.danmaku[data-danmuku-mode='0'] .apd-style-mode [data-mode='0'],
+.danmaku[data-danmuku-mode='1'] .apd-style-mode [data-mode='1'],
+.danmaku[data-danmuku-mode='2'] .apd-style-mode [data-mode='2'],
+.nilo-player[data-danmuku-mode='0'] .apd-style-mode [data-mode='0'],
+.nilo-player[data-danmuku-mode='1'] .apd-style-mode [data-mode='1'],
+.nilo-player[data-danmuku-mode='2'] .apd-style-mode [data-mode='2'] {
+    color: $player-accent;
+}
+
+// 卡片底部是白底，开关和图标用深色
+.player-panel>.danmaku-panel>.danmaku>.artplayer-plugin-danmuku {
+    .apd-icon {
+        fill: $warm-ink-3;
+    }
+
+    .apd-toggle .apd-icon.apd-toggle-on {
+        height: $icon-height;
+    }
+}
+
+// 全屏控件压在画面上，开关保持浅色；输入框宽度沿用插件的一截，不拉满整条控制栏
+.nilo-player.art-fullscreen .artplayer-plugin-danmuku,
+.nilo-player.art-fullscreen-web .artplayer-plugin-danmuku {
+    >.apd-toggle .apd-icon,
+    >.apd-config>.apd-icon {
+        fill: #FFFFFF;
+    }
+
+    >.apd-toggle .apd-toggle-on path {
+        fill: $player-accent;
+    }
+
+    .apd-emitter {
+        width: 400px;
+        flex: none;
     }
 }
 
