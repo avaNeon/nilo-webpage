@@ -21,6 +21,7 @@ import VideoHistory from "@/pages/videoHistory/ui/VideoHistory.vue";
 import MessageCenter from "@/pages/messageCenter/ui/MessageCenter.vue";
 import HotRanking from "@/pages/hotRanking/ui/HotRanking.vue";
 import VideoSearch from "@/pages/videoSearch/ui/VideoSearch.vue";
+import About from "@/pages/about/ui/About.vue";
 import Unlogged from "@/pages/unlogged/ui/Unlogged.vue";
 
 const router = createRouter({
@@ -158,6 +159,12 @@ const router = createRouter({
       name: "video-search",
       component: VideoSearch,
       meta: { title: "搜索" },
+    },
+    {
+      path: "/about",
+      name: "about",
+      component: About,
+      meta: { title: "关于光点" },
     },
     {
       path: "/unlogged",

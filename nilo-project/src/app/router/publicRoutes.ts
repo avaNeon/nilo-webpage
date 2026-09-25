@@ -7,6 +7,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/video\//,
   /^\/popular$/,
   /^\/search(?:\/|$)/,
+  /^\/about$/,
   /^\/unlogged$/,
   // /user/:userId 及其子路由（投稿、系列、收藏、粉丝/关注列表等）
   /^\/user\/[^/]+(?:\/|$)/,

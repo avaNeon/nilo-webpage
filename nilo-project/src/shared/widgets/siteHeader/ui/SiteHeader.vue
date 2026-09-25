@@ -3,7 +3,7 @@ import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useHeaderNav } from '../model/useHeaderNav';
 import SiteSearchBar from './SiteSearchBar.vue';
 
@@ -35,6 +35,7 @@ const innerStyle = computed(() =>
 })
 
 const route = useRoute()
+const aboutHref = useRouter().resolve({ name: 'about' }).href
 
 const {
     loginStateStore,
@@ -108,11 +109,11 @@ onBeforeUnmount(() =>
 <template>
     <header :class="['site-header', { scrolled, glass }]">
         <div class="site-header-inner" :style="innerStyle">
-            <RouterLink to="/" class="brand">
+            <a class="brand" :href="aboutHref" target="_blank" rel="noopener noreferrer" aria-label="关于光点">
                 <span class="brand-mark"></span>
                 <span class="brand-name">nilo</span>
                 <span class="brand-tag">VIDEO</span>
-            </RouterLink>
+            </a>
 
             <nav class="nav">
                 <RouterLink to="/" :class="['nav-item', { active: isHomeRoute }]"
