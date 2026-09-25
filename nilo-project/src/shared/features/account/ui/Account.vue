@@ -1,330 +1,567 @@
 <script lang="ts" setup>
-import Dialog from '@/shared/ui/Dialog.vue';
-import { useAuthForm } from '../model/useAuthForm';
+import { useTemplateRef } from 'vue';
+import { STRENGTH_LABELS } from '../model/passwordStrength';
+import { NICK_NAME_MAX, useAuthForm } from '../model/useAuthForm';
+import AuthBrandPanel from './AuthBrandPanel.vue';
+import AuthField from './AuthField.vue';
 
 const {
-    captchaInfo, getCaptcha,
-    inLogin, inForgot,
-    showRegisterFields, showResetFields, showEmailCode,
-    countdown, canSendEmailCode,
-    formData, rules,
-    changeLogin, openForgot, backToLogin,
-    sendEmailCode, submit, closePanel,
-    loginStateStore,
+    loginStateStore, captchaInfo, refreshCaptcha,
+    inLogin, inRegister, inForgot,
+    formData, errors,
+    brandCopy, doneCopy, pupil, done,
+    showPassword, togglePassword,
+    showEmailCode, showNickName, showNewPassword,
+    codeSent, countdown, sendingCode, sendCodeText, maskedEmail,
+    nickNameLength, strength, passwordMatched,
+    passwordPlaceholder, confirmPlaceholder,
+    submitText, submitDisabled,
+    setMode, sendEmailCode, submit, closePanel, finishDone,
+    onFieldFocus, onFieldBlur,
 } = useAuthForm()
+
+const emailField = useTemplateRef('emailField')
 </script>
 
 <template>
-    <Dialog :show="loginStateStore.showPanel" width="900" :top="80" title="" :showCancel="false"
-        :handle-close="closePanel">
-        <div class="dialog">
-            <el-form class="form" :model="formData" :rules="rules" ref="formDataRef">
-                <!-- 登录/注册切换；忘记密码时显示返回 -->
-                <div class="login-items" v-if="!inForgot">
-                    <div :class="{ active: inLogin, 'login-item': true }" @click="changeLogin(true)">登录</div>
-                    <el-divider direction="vertical"></el-divider>
-                    <div :class="{ active: !inLogin, 'login-item': true }" @click="changeLogin(false)">注册</div>
+    <!-- 不用 align-center：窗口比弹窗矮的时候，居中会把上半截挤到屏幕外面滚不回来 -->
+    <el-dialog v-model="loginStateStore.showPanel" class="auth-dialog" width="880px"
+        top="max(24px, calc(50vh - 330px))" :show-close="false" :with-header="false" :close-on-click-modal="false"
+        aria-label="登录光点" @opened="emailField?.focus()">
+        <div class="auth-shell">
+            <AuthBrandPanel :label="brandCopy.label" :title="brandCopy.title" :sub="brandCopy.sub"
+                :pupil-transform="pupil.transform" :alert="pupil.alert" />
+
+            <button class="auth-close" type="button" aria-label="关闭" @click="closePanel">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" aria-hidden="true">
+                    <path d="M2 2l8 8M10 2l-8 8" />
+                </svg>
+            </button>
+
+            <div class="auth-main">
+                <!-- 登录 / 注册切换；忘记密码时换成标题 + 返回 -->
+                <div v-if="!inForgot && !done" class="tabs" role="tablist">
+                    <span :class="['tabs-thumb', { 'on-right': inRegister }]"></span>
+                    <button type="button" role="tab" :aria-selected="inLogin" :class="['tab', { active: inLogin }]"
+                        @click="setMode('login')">登录</button>
+                    <button type="button" role="tab" :aria-selected="inRegister"
+                        :class="['tab', { active: inRegister }]" @click="setMode('register')">注册</button>
                 </div>
-                <div class="login-items forgot-title" v-else>
-                    <div class="login-item active">忘记密码</div>
-                    <div class="back-login" @click="backToLogin">返回登录</div>
+                <div v-else-if="inForgot && !done" class="forgot-head">
+                    <h2>找回密码</h2>
+                    <button type="button" class="back" @click="setMode('login')">← 返回登录</button>
                 </div>
 
-                <!-- 邮箱 -->
-                <el-form-item class="form-email" prop="email">
-                    <el-input v-model.trim="formData.email" placeholder="请输入邮箱" clearable maxlength="64" size="large">
-                        <template #prefix>
-                            <img src="@/assets/icon/img/email.svg" alt="email" class="email" />
+                <form v-if="!done" class="form" novalidate @submit.prevent="submit">
+                    <AuthField ref="emailField" v-model="formData.email" icon="email" type="email" placeholder="邮箱"
+                        autocomplete="email" maxlength="64" :error="errors.email"
+                        @focus="onFieldFocus('email')" @blur="onFieldBlur('email')" />
+
+                    <!-- 登录：密码 + 图形验证码 + 忘记密码入口 -->
+                    <template v-if="inLogin">
+                        <AuthField v-model="formData.password" icon="lock" :type="showPassword ? 'text' : 'password'"
+                            placeholder="密码" autocomplete="current-password" maxlength="20" compact-end
+                            :error="errors.password" @focus="onFieldFocus('password')"
+                            @blur="onFieldBlur('password')">
+                            <template #suffix>
+                                <button type="button" class="pw-toggle" @mousedown.prevent
+                                    @click="togglePassword">{{ showPassword ? '隐藏' : '显示' }}</button>
+                            </template>
+                        </AuthField>
+
+                        <AuthField v-model="formData.captcha" icon="shield" placeholder="图形验证码" autocomplete="off"
+                            maxlength="10" :error="errors.captcha" @focus="onFieldFocus('captcha')"
+                            @blur="onFieldBlur('captcha')">
+                            <template #side>
+                                <button type="button" class="captcha" title="看不清？换一张" @click="refreshCaptcha">
+                                    <img v-if="captchaInfo?.captchaImg"
+                                        :src="'data:image/png;base64,' + captchaInfo.captchaImg"
+                                        alt="图形验证码，点击换一张" />
+                                    <span v-else>加载中…</span>
+                                </button>
+                            </template>
+                        </AuthField>
+
+                        <div class="forgot-link">
+                            <button type="button" @click="setMode('forgot')">忘记密码？</button>
+                        </div>
+                    </template>
+
+                    <!-- 注册 / 忘记密码发码后：邮箱验证码 -->
+                    <AuthField v-if="showEmailCode" v-model="formData.emailCode" icon="code" placeholder="邮箱验证码"
+                        autocomplete="one-time-code" maxlength="6" :error="errors.emailCode"
+                        @focus="onFieldFocus('emailCode')" @blur="onFieldBlur('emailCode')">
+                        <template #side>
+                            <button type="button" class="send-code" :disabled="countdown > 0 || sendingCode"
+                                @click="sendEmailCode">{{ sendCodeText }}</button>
                         </template>
-                    </el-input>
-                </el-form-item>
-
-                <!-- 忘记密码：尚未发码时，仅提供发送入口 -->
-                <el-form-item class="form-email-code" v-if="inForgot && !showEmailCode">
-                    <div class="form-email-code-content send-only">
-                        <el-button class="send-code-btn" type="primary" size="large" plain :disabled="!canSendEmailCode"
-                            @click="sendEmailCode">
-                            {{ countdown > 0 ? `${countdown}s 后可重发` : '发送邮箱验证码' }}
-                        </el-button>
-                    </div>
-                </el-form-item>
-
-                <div class="forgot-hint" v-if="inForgot && !showEmailCode">
-                    输入邮箱并发送验证码。若该邮箱尚未注册，将引导你完成注册。
-                </div>
-
-                <!-- 注册 / 忘记密码发码后：邮箱验证码 + 重发 -->
-                <el-form-item class="form-email-code" prop="emailCode" v-if="showEmailCode">
-                    <div class="form-email-code-content">
-                        <el-input v-model.trim="formData.emailCode" placeholder="请输入邮箱验证码" clearable maxlength="6"
-                            size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/captcha.svg" alt="emailCode" class="captcha" />
-                            </template>
-                        </el-input>
-                        <el-button class="send-code-btn" size="large" :disabled="!canSendEmailCode"
-                            @click="sendEmailCode">
-                            {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-                        </el-button>
-                    </div>
-                </el-form-item>
-
-                <!-- 登录：密码 -->
-                <el-form-item class="form-password" prop="password" v-if="inLogin">
-                    <el-input v-model.trim="formData.password" placeholder="请输入密码" show-password clearable
-                        maxlength="20" type="password" size="large">
-                        <template #prefix>
-                            <img src="@/assets/icon/img/password.svg" alt="password" class="password" />
+                        <template #hint>
+                            <span v-if="codeSent && !errors.emailCode" class="hint">
+                                验证码已发送至 <b>{{ maskedEmail }}</b>，5 分钟内有效
+                            </span>
                         </template>
-                    </el-input>
-                </el-form-item>
+                    </AuthField>
 
-                <!-- 注册 / 忘记密码→注册：昵称 + 密码 -->
-                <template v-if="showRegisterFields">
-                    <el-form-item class="form-nickName" prop="nickName">
-                        <el-input v-model.trim="formData.nickName" placeholder="请输入昵称" clearable maxlength="20"
-                            size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/nickname.svg" alt="nickName" class="nickName" />
-                            </template>
-                        </el-input>
-                    </el-form-item>
-                    <el-form-item class="form-register-password" prop="registerPassword">
-                        <el-input v-model.trim="formData.registerPassword" placeholder="请输入密码" show-password clearable
-                            maxlength="20" type="password" size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/password.svg" alt="password" class="registerPassword" />
-                            </template>
-                        </el-input>
-                    </el-form-item>
-                    <el-form-item class="form-re-register-password" prop="reRegisterPassword">
-                        <el-input v-model.trim="formData.reRegisterPassword" placeholder="请再次输入密码" show-password
-                            clearable maxlength="20" type="password" size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/re-password.svg" alt="password"
-                                    class="reRegisterPassword" />
-                            </template>
-                        </el-input>
-                    </el-form-item>
-                </template>
+                    <AuthField v-if="showNickName" v-model="formData.nickName" icon="user" placeholder="昵称"
+                        autocomplete="nickname" :maxlength="NICK_NAME_MAX" :error="errors.nickName"
+                        @focus="onFieldFocus('nickName')" @blur="onFieldBlur('nickName')">
+                        <template #suffix>
+                            <span class="nick-count">{{ nickNameLength }}/{{ NICK_NAME_MAX }}</span>
+                        </template>
+                    </AuthField>
 
-                <!-- 忘记密码→重置：新密码 -->
-                <template v-if="showResetFields">
-                    <el-form-item class="form-register-password" prop="newPassword">
-                        <el-input v-model.trim="formData.newPassword" placeholder="请输入新密码" show-password clearable
-                            maxlength="20" type="password" size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/password.svg" alt="password" class="registerPassword" />
+                    <!-- 注册 / 重置：新密码（带强度）+ 再次输入 -->
+                    <template v-if="showNewPassword">
+                        <AuthField v-model="formData.password" icon="lock" :type="showPassword ? 'text' : 'password'"
+                            :placeholder="passwordPlaceholder" autocomplete="new-password" maxlength="20" compact-end
+                            :error="errors.password" @focus="onFieldFocus('password')"
+                            @blur="onFieldBlur('password')">
+                            <template #suffix>
+                                <button type="button" class="pw-toggle" @mousedown.prevent
+                                    @click="togglePassword">{{ showPassword ? '隐藏' : '显示' }}</button>
                             </template>
-                        </el-input>
-                    </el-form-item>
-                    <el-form-item class="form-re-register-password" prop="reNewPassword">
-                        <el-input v-model.trim="formData.reNewPassword" placeholder="请再次输入新密码" show-password clearable
-                            maxlength="20" type="password" size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/re-password.svg" alt="password"
-                                    class="reRegisterPassword" />
+                            <template #hint>
+                                <div v-if="formData.password && !errors.password" class="strength">
+                                    <i v-for="n in 4" :key="n"
+                                        :class="{ on: n <= strength, weak: strength === 1 }"></i>
+                                    <b>{{ STRENGTH_LABELS[strength] }}</b>
+                                    <span v-if="strength < 3">· 混合大小写、数字和符号更安全</span>
+                                </div>
                             </template>
-                        </el-input>
-                    </el-form-item>
-                </template>
+                        </AuthField>
 
-                <!-- 登录：图形验证码 -->
-                <el-form-item class="form-captcha" prop="captcha" v-if="inLogin">
-                    <div class="form-captcha-content">
-                        <el-input v-model.trim="formData.captcha" placeholder="请输入验证码" clearable maxlength="10"
-                            size="large">
-                            <template #prefix>
-                                <img src="@/assets/icon/img/captcha.svg" alt="captcha" class="captcha" />
-                            </template>
-                        </el-input>
-                        <img v-if="captchaInfo && captchaInfo.captchaImg"
-                            :src="'data:image/png;base64,' + captchaInfo.captchaImg" alt="captcha" class="captcha-img"
-                            @click="getCaptcha" />
-                        <img v-else src="@/assets/loading-bar.gif" alt="captcha" class="captcha-img" />
-                    </div>
-                </el-form-item>
+                        <AuthField v-model="formData.confirmPassword" icon="check"
+                            :type="showPassword ? 'text' : 'password'" :placeholder="confirmPlaceholder"
+                            autocomplete="new-password" maxlength="20"
+                            :ok="passwordMatched && !errors.confirmPassword" :error="errors.confirmPassword"
+                            @focus="onFieldFocus('confirmPassword')" @blur="onFieldBlur('confirmPassword')" />
+                    </template>
 
-                <!-- 登录：忘记密码入口 -->
-                <div class="forgot-link" v-if="inLogin">
-                    <span @click="openForgot">忘记密码？</span>
+                    <button type="submit" class="submit" :disabled="submitDisabled">{{ submitText }}</button>
+
+                    <p v-if="inForgot" class="forgot-hint">输入邮箱并发送验证码。若该邮箱尚未注册，将引导你完成注册。</p>
+                </form>
+
+                <!-- 提交成功后的结果页 -->
+                <div v-else-if="doneCopy" class="done" role="status">
+                    <span class="done-label">{{ doneCopy.label }}</span>
+                    <h2>{{ doneCopy.title }}</h2>
+                    <p>{{ doneCopy.sub }}</p>
+                    <button type="button" class="done-action" @click="finishDone">{{ doneCopy.button }}</button>
                 </div>
-
-                <!-- 提交 -->
-                <el-form-item class="form-submit">
-                    <div class="form-submit-content">
-                        <el-button type="primary" size="large" @click="submit" style="width: 60%;border-radius: 7px;"
-                            :disabled="inForgot && !showEmailCode">
-                            <span v-if="inLogin">登录</span>
-                            <span v-else-if="showResetFields">重置密码</span>
-                            <span v-else>注册</span>
-                        </el-button>
-                    </div>
-                </el-form-item>
-            </el-form>
+            </div>
         </div>
-    </Dialog>
+    </el-dialog>
 </template>
 
-<style lang="scss" scoped>
-.dialog {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+<style lang="scss">
+// el-dialog 是挂到 body 上的，scoped 样式够不到外壳，所以外壳单独写在这里
+.el-dialog.auth-dialog {
+    --el-dialog-padding-primary: 10px;
+    padding: 10px;
+    border-radius: 32px;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 1px rgba(11, 12, 18, 0.06), 0 40px 80px -30px rgba(11, 12, 18, 0.5);
+    color: $warm-ink;
+    -webkit-font-smoothing: antialiased;
 
-    .background {
-        .background-img {
-            height: 300px;
+    .el-dialog__header {
+        display: none;
+    }
+
+    .el-dialog__body {
+        padding: 0;
+        color: inherit;
+        font-size: 14px;
+    }
+}
+
+// base.scss 里 `* { font-family }` 是直接命中每个元素的，光设在外壳上继承不下去
+.auth-dialog,
+.auth-dialog * {
+    font-family: $warm-font-sans;
+}
+</style>
+
+<style lang="scss" scoped>
+$danger: oklch(0.55 0.2 25);
+
+.auth-shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: 360px minmax(0, 1fr);
+    min-height: 620px;
+}
+
+.auth-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: $warm-sunken;
+    color: $warm-ink-3;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover {
+        background: $warm-sunken-hover;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $warm-accent;
+        outline-offset: 2px;
+    }
+}
+
+.auth-main {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    padding: 56px 56px 40px 48px;
+}
+
+/* —— 登录 / 注册切换 —— */
+.tabs {
+    position: relative;
+    align-self: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 220px;
+    height: 46px;
+    padding: 4px;
+    border-radius: 999px;
+    background: $warm-sunken;
+}
+
+.tabs-thumb {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    border-radius: 999px;
+    background: #FFFFFF;
+    box-shadow: 0 1px 2px rgba(11, 12, 18, 0.08), 0 6px 14px -6px rgba(11, 12, 18, 0.18);
+    transition: transform 0.35s cubic-bezier(0.3, 1.2, 0.5, 1);
+
+    &.on-right {
+        transform: translateX(100%);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+}
+
+.tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 700;
+    color: $warm-ink-4;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &.active {
+        color: $warm-accent;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $warm-accent;
+        outline-offset: -2px;
+    }
+}
+
+/* —— 忘记密码顶部 —— */
+.forgot-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 46px;
+
+    h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+    }
+
+    .back {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        font-size: 13px;
+        font-weight: 600;
+        color: $warm-accent;
+        cursor: pointer;
+
+        &:hover {
+            background: $warm-accent-soft;
+        }
+    }
+}
+
+/* —— 表单 —— */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.pw-toggle {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    color: $warm-ink-4;
+    cursor: pointer;
+
+    &:hover {
+        background: $warm-accent-soft;
+        color: $warm-accent;
+    }
+}
+
+.captcha {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    height: 50px;
+    // 后端验证码图（200×70）字一直排到边，两头留一点，不然会被胶囊的圆头切掉
+    padding: 0 8px;
+    border: 0;
+    border-radius: 999px;
+    background: repeating-linear-gradient(135deg, #F3F4F7 0 6px, #EBEDF2 6px 12px);
+    font-family: $warm-font-mono;
+    font-size: 12px;
+    color: #8A8E9A;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+
+    &:hover,
+    &:focus-visible {
+        outline: 0;
+        box-shadow: inset 0 0 0 1.5px $warm-accent;
+    }
+
+    img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        // 图片自带白底，叠上去让底纹透出来，看起来就是字直接写在胶囊上
+        mix-blend-mode: multiply;
+        user-select: none;
+    }
+}
+
+.send-code {
+    height: 50px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: $warm-ink;
+    font-size: 13px;
+    font-weight: 600;
+    font-feature-settings: 'tnum';
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:disabled {
+        background: $warm-sunken;
+        color: #8A8E9A;
+        cursor: default;
+    }
+}
+
+.hint {
+    padding-left: 20px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: $warm-ink-4;
+
+    b {
+        font-family: $warm-font-mono;
+        font-weight: 400;
+        color: $warm-ink;
+    }
+}
+
+.nick-count {
+    font-family: $warm-font-mono;
+    font-size: 11px;
+    color: #8A8E9A;
+}
+
+.strength {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 20px;
+    font-size: 12px;
+
+    i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #E3E5EB;
+        transition: background 0.2s;
+
+        &.on {
+            background: $warm-accent;
+        }
+
+        &.on.weak {
+            background: $danger;
         }
     }
 
-    .form {
-        width: 300px;
+    b {
+        margin-left: 6px;
+        font-weight: 600;
+        color: $warm-ink-3;
+    }
 
-        .login-items {
-            display: flex;
-            justify-content: space-evenly;
-            align-items: center;
-            margin: 20px 40px;
-            font-size: 18px;
-            font-weight: 500;
+    span {
+        color: #8A8E9A;
+    }
+}
 
-            .active {
-                color: #4fa5d9;
-            }
+.forgot-link {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -2px;
 
-            .login-item {
-                &:hover {
-                    cursor: pointer;
-                }
-            }
+    button {
+        height: 30px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        font-size: 13px;
+        font-weight: 600;
+        color: $warm-accent;
+        cursor: pointer;
 
-            &.forgot-title {
-                justify-content: space-between;
-                margin: 20px 10px;
-
-                .back-login {
-                    font-size: 14px;
-                    font-weight: 400;
-                    color: #4fa5d9;
-                    cursor: pointer;
-                }
-            }
+        &:hover {
+            background: $warm-accent-soft;
         }
+    }
+}
 
-        .form-email {
-            .email {
-                width: 20px;
-            }
-        }
+.submit {
+    height: 52px;
+    margin-top: 10px;
+    border: 0;
+    border-radius: 999px;
+    background: $warm-accent;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #FFFFFF;
+    box-shadow: 0 14px 28px -14px rgba(0, 0, 242, 0.8);
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.15s;
 
-        .form-password {
-            .password {
-                width: 20px;
-            }
-        }
+    &:hover:not(:disabled) {
+        background: #0000C8;
+    }
 
-        .form-nickName {
-            .nickName {
-                width: 20px;
-            }
-        }
+    &:disabled {
+        opacity: 0.7;
+        cursor: default;
+    }
 
-        .form-register-password {
-            .registerPassword {
-                width: 20px;
-            }
-        }
+    &:focus-visible {
+        outline: 2px solid $warm-accent;
+        outline-offset: 3px;
+    }
+}
 
-        .form-re-register-password {
-            margin-top: 28px;
+.forgot-hint {
+    margin: 0;
+    padding: 0 8px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: $warm-ink-4;
+    text-wrap: pretty;
+}
 
-            .reRegisterPassword {
-                width: 20px;
-            }
-        }
+/* —— 结果页 —— */
+.done {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding-bottom: 40px;
 
-        .form-captcha {
-            margin-top: 28px;
+    .done-label {
+        font-family: $warm-font-mono;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        color: $warm-accent;
+    }
 
-            .form-captcha-content {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+    h2 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
+    }
 
-                .captcha {
-                    width: 20px;
-                }
+    p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.75;
+        color: $warm-ink-3;
+        text-wrap: pretty;
+    }
 
-                .captcha-img {
-                    border: rgb(154, 154, 154) solid 1px;
-                    width: 100px;
-                    margin-left: 20px;
-                    cursor: pointer;
-                }
-            }
-        }
+    .done-action {
+        align-self: flex-start;
+        height: 48px;
+        margin-top: 14px;
+        padding: 0 28px;
+        border: 0;
+        border-radius: 999px;
+        background: $warm-ink;
+        font-size: 14px;
+        font-weight: 700;
+        color: #FFFFFF;
+        cursor: pointer;
+        transition: background 0.15s;
 
-        .form-email-code {
-            margin-top: 28px;
-
-            .form-email-code-content {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 10px;
-                width: 100%;
-
-                .captcha {
-                    width: 20px;
-                }
-
-                .send-code-btn {
-                    flex-shrink: 0;
-                    min-width: 100px;
-                    border-radius: 7px;
-                }
-
-                &.send-only {
-                    justify-content: center;
-
-                    .send-code-btn {
-                        width: 100%;
-                        min-width: 0;
-                    }
-                }
-            }
-        }
-
-        .forgot-link {
-            text-align: right;
-            margin: -8px 0 12px;
-            font-size: 13px;
-            color: #4fa5d9;
-
-            span {
-                cursor: pointer;
-
-                &:hover {
-                    text-decoration: underline;
-                }
-            }
-        }
-
-        .forgot-hint {
-            font-size: 12px;
-            color: #888;
-            line-height: 1.5;
-            margin-bottom: 12px;
-        }
-
-        .form-submit {
-            .form-submit-content {
-                width: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
+        &:hover {
+            background: #2A2C35;
         }
     }
 }
