@@ -68,7 +68,8 @@ function askDelete(row: CommentManagement)
     <div class="comment-table">
         <div class="table-head" aria-hidden="true">
             <span>评论信息</span>
-            <span>视频信息</span>
+            <span>视频标题</span>
+            <span>视频封面</span>
         </div>
 
         <ul class="comment-rows">
@@ -112,19 +113,22 @@ function askDelete(row: CommentManagement)
                     </div>
                 </div>
 
-                <!-- 视频信息：点击新标签页打开视频 -->
-                <RouterLink v-if="row.videoId" class="video-info"
-                    :to="{ name: 'video', params: { videoId: row.videoId } }" target="_blank">
-                    <span class="video-thumb">
+                <!-- 视频标题、封面并排放：点击新标签页打开视频（封面是同一个链接，不再占一个 Tab 停靠点） -->
+                <template v-if="row.videoId">
+                    <RouterLink class="video-title" :to="{ name: 'video', params: { videoId: row.videoId } }"
+                        target="_blank" :title="row.videoName ?? undefined">
+                        {{ row.videoName ?? '未知视频' }}
+                    </RouterLink>
+                    <RouterLink class="video-thumb" :to="{ name: 'video', params: { videoId: row.videoId } }"
+                        target="_blank" tabindex="-1" aria-hidden="true">
                         <img v-if="thumbSrc(row.videoCover)" :src="thumbSrc(row.videoCover)" alt="" loading="lazy"
                             @error="markFailed(row.videoCover)">
-                    </span>
-                    <span class="video-title" :title="row.videoName ?? undefined">{{ row.videoName ?? '未知视频' }}</span>
-                </RouterLink>
-                <div v-else class="video-info">
-                    <span class="video-thumb"></span>
+                    </RouterLink>
+                </template>
+                <template v-else>
                     <span class="video-title">{{ row.videoName ?? '未知视频' }}</span>
-                </div>
+                    <span class="video-thumb"></span>
+                </template>
             </li>
         </ul>
     </div>
@@ -135,7 +139,7 @@ function askDelete(row: CommentManagement)
 
 .table-head {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 200px;
+    grid-template-columns: minmax(0, 1fr) 180px 120px;
     gap: 16px;
     padding: 4px 4px 12px;
     font-size: 12px;
@@ -151,7 +155,7 @@ function askDelete(row: CommentManagement)
 
 .comment-row {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 200px;
+    grid-template-columns: 44px minmax(0, 1fr) 180px 120px;
     gap: 16px;
     align-items: start;
     padding: 18px 4px;
@@ -244,28 +248,11 @@ function askDelete(row: CommentManagement)
     }
 }
 
-.video-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-
-    &:focus-visible {
-        outline: 2px solid $warm-accent;
-        outline-offset: 3px;
-        border-radius: 12px;
-    }
-}
-
-a.video-info:hover .video-title {
-    color: $warm-accent;
-}
-
 .video-thumb {
     display: block;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 10px;
     background: linear-gradient(160deg, oklch(0.93 0.008 265), oklch(0.83 0.014 265));
 
     img {
@@ -279,12 +266,26 @@ a.video-info:hover .video-title {
 .video-title {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
     color: $warm-ink-2;
     word-break: break-word;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     transition: color 0.2s;
+}
+
+a.video-title {
+    text-decoration: none;
+
+    &:hover {
+        color: $warm-accent;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $warm-accent;
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
 }
 </style>
