@@ -19,8 +19,14 @@ export const UserHomeApi = {
       errorCallback: options?.errorCallback,
     });
 
-    if (!result) return null;
+    const detail = result?.data as UserDetail | null | undefined;
+    if (!detail) return null;
 
-    return result.data as UserDetail;
+    // likeCount、playCount 后端是 Long，JSON 里传的是字符串，这里转回数字
+    return {
+      ...detail,
+      likeCount: Number(detail.likeCount) || 0,
+      playCount: Number(detail.playCount) || 0,
+    };
   },
 };
