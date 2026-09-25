@@ -202,7 +202,6 @@ export function useCoverUpload() {
   return {
     editVisible,
     originalCoverUrl,
-    originalCoverBlob,
     currentCoverUrl,
     currentCoverBlob,
     currentCoverQuotaBytes,
