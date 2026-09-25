@@ -71,7 +71,7 @@ const router = createRouter({
           path: "video",
           name: "videoManagement",
           component: VideoManagement,
-          meta: { title: "视频管理" },
+          meta: { title: "稿件管理" },
         },
         {
           path: "danmaku/:videoId?/:fileIndex?",

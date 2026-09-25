@@ -1,94 +1,105 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import VideoUpload from './VideoUpload.vue'
-import draggable from 'vuedraggable'
-import { useVideoUpload } from '../model/useVideoUpload'
-import { useVideoUploadConfig } from '../model/useVideoUploadConfig'
-import { isTransferFailedFile } from '../model/PreuploadVideoFile'
-import videoIcon from '@/assets/icon/img/video.svg'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import CcPageHeader from '@/pages/creativeCenter/shared/ui/CcPageHeader.vue'
+import CcSegmented from '@/pages/creativeCenter/shared/ui/CcSegmented.vue'
+import CcCheckChip from '@/pages/creativeCenter/shared/ui/CcCheckChip.vue'
 import CoverUpload from '@/pages/creativeCenter/features/coverEdit/ui/CoverUpload.vue'
 import VideoTag from '@/pages/creativeCenter/entities/videoTag/ui/VideoTag.vue'
+import UploadQuotaPanel from './UploadQuotaPanel.vue'
+import VideoDropZone from './VideoDropZone.vue'
+import VideoPartList from './VideoPartList.vue'
+import CategoryDropdown from './CategoryDropdown.vue'
 import UploadSuccess from './UploadSuccess.vue'
-import { useSystemConfigStore } from '@/shared/store/SystemConfigStore'
+import { useVideoUpload } from '../model/useVideoUpload'
+import { useVideoUploadConfig } from '../model/useVideoUploadConfig'
+import { VIDEO_ACCEPT } from '../model/videoFileTypes'
 
 const router = useRouter()
-const route = useRoute()
-const systemConfigStore = useSystemConfigStore()
 
-const { MAX_INTRODUCTION_LENGTH } = useVideoUploadConfig()
+const { MAX_INTRODUCTION_LENGTH, MAX_TITLE_LENGTH } = useVideoUploadConfig()
 
 const {
-  hasFileSelected,
-  isEditMode,
-  preuploadList,
-  submitState,
-  formResetKey,
   form,
+  coverBlob,
+  tagList,
   closeDanmaku,
   closeComment,
+  introductionCharCount,
+  activePreuploadList,
+  failedTransferList,
+  addVideoFiles,
+  removeItem,
+  returnToUploadPanel,
+  continueUpload,
+  showForm,
+  submitState,
+  submitting,
+  formResetKey,
+  isEditMode,
   hasMissingExistingFileId,
   maxVideoEpisodes,
   hasExceededVideoEpisodes,
-  remainingVideoQuotaMiB,
-  remainingImageQuotaMiB,
-  videoQuotaPercent,
-  imageQuotaPercent,
-  tagList,
-  isFormValid,
-  submitting,
-  submitVideo,
-  onFileSelected,
-  formatMB,
-  uploadProgress,
-  removeItem,
-  returnToUploadPanel,
-  coverBlob,
+  missingFields,
+  canSubmit,
+  isUploadingFiles,
+  uploadPercent,
+  videoQuota,
+  imageQuota,
+  quotaLoading,
+  setCoverQuotaBytes,
   categoryOptions,
   selectedParentNumber,
   selectedChildNumber,
   childCategoryOptions,
-  onParentCategoryChange,
-  onChildCategoryChange,
-  introductionCharCount,
-  cleanupAll,
-  setCoverQuotaBytes,
-  formatMiB,
+  selectParentCategory,
+  selectChildCategory,
+  submitVideo,
 } = useVideoUpload()
 
-/** 正常可用的分P列表（排除转码失败文件，支持拖拽排序写回） */
-const activePreuploadList = computed({
-  get: () => preuploadList.value.filter(item => !isTransferFailedFile(item)),
-  set: (newActiveList) =>
-  {
-    const failedItems = preuploadList.value.filter(item => isTransferFailedFile(item))
-    preuploadList.value = [...newActiveList, ...failedItems]
-  },
+const POST_TYPE_OPTIONS = [
+  { label: '自制', value: 1 },
+  { label: '转载', value: 2 },
+]
+
+/* —————— 选择视频文件：拖拽区和「继续添加文件」共用一个文件框 —————— */
+
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef')
+
+function openFilePicker()
+{
+  if (submitting.value) return
+  fileInputRef.value?.click()
+}
+
+function onFileInputChange(event: Event)
+{
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  // 清空，允许再次选择同一个文件
+  input.value = ''
+  addVideoFiles(files)
+}
+
+/** 文件拖到拖拽区外面松手时，别让浏览器直接打开文件把表单冲掉 */
+function preventStrayFileDrop(event: DragEvent)
+{
+  if (event.dataTransfer?.types.includes('Files')) event.preventDefault()
+}
+
+onMounted(() =>
+{
+  window.addEventListener('dragover', preventStrayFileDrop)
+  window.addEventListener('drop', preventStrayFileDrop)
 })
 
-/** 转码失败的文件列表（仅展示，不参与编辑/提交） */
-const failedTransferList = computed(() =>
-  preuploadList.value.filter(item => isTransferFailedFile(item)),
-)
-
-function onContinueUpload()
+onBeforeUnmount(() =>
 {
-  if (submitting.value) return
+  window.removeEventListener('dragover', preventStrayFileDrop)
+  window.removeEventListener('drop', preventStrayFileDrop)
+})
 
-  submitState.value = false
-  cleanupAll()
-  router.replace({ query: { ...route.query, mode: undefined, videoId: undefined } })
-}
-
-function updateTags(tags: string[] | null | undefined)
-{
-  if (submitting.value) return
-
-  if (tags)
-  {
-    form.tags = tags.join(",")
-  }
-}
+/* —————— 封面 —————— */
 
 function updateCoverBlob(blob: Blob | null)
 {
@@ -97,691 +108,398 @@ function updateCoverBlob(blob: Blob | null)
   coverBlob.value = blob
 }
 
-function updateCoverQuotaBytes(bytes: number)
+/* —————— 分区：同一时间只展开一个下拉 —————— */
+
+type CategoryMenu = 'parent' | 'child'
+
+const openCategoryMenu = ref<CategoryMenu | null>(null)
+
+function toggleCategoryMenu(menu: CategoryMenu)
 {
-  setCoverQuotaBytes(bytes)
+  openCategoryMenu.value = openCategoryMenu.value === menu ? null : menu
 }
 
-/** 简介输入框实时截断：按等效字符数（\n 计 2）限制在 MAX_INTRODUCTION_LENGTH 内 */
-function onIntroductionInput()
+function onPickParentCategory(value: string)
+{
+  selectParentCategory(value)
+  // 有二级分区就直接展开，方便接着选
+  const parent = categoryOptions.value.find(option => option.value === value)
+  openCategoryMenu.value = parent && parent.children.length > 0 ? 'child' : null
+}
+
+function onPickChildCategory(value: string)
+{
+  selectChildCategory(value)
+  openCategoryMenu.value = null
+}
+
+watch(submitting, (locked) =>
+{
+  if (locked) openCategoryMenu.value = null
+})
+
+/* —————— 简介：\n 按 2 个字符计，超出部分实时截掉 —————— */
+
+function truncateIntroduction(text: string): string
+{
+  let count = 0
+  for (let i = 0; i < text.length; i++)
+  {
+    count += text[i] === '\n' ? 2 : 1
+    if (count > MAX_INTRODUCTION_LENGTH) return text.slice(0, i)
+  }
+  return text
+}
+
+function onIntroductionInput(event: Event)
 {
   if (submitting.value) return
 
-  let text = form.introduction ?? ''
-  let count = text.length + (text.match(/\n/g)?.length ?? 0)
-  while (count > MAX_INTRODUCTION_LENGTH && text.length > 0)
+  const textarea = event.target as HTMLTextAreaElement
+  const text = truncateIntroduction(textarea.value)
+  if (text !== textarea.value) textarea.value = text
+  form.introduction = text
+}
+
+/* —————— 提交 —————— */
+
+const submitLabel = computed(() =>
+{
+  if (submitting.value) return isUploadingFiles.value ? `上传中 ${uploadPercent.value}%` : '提交中…'
+  return isEditMode.value ? '提交修改' : '提交视频'
+})
+
+type HintTone = 'muted' | 'danger' | 'ready'
+
+/** 提交按钮旁的提示，同一时间只显示一条 */
+const submitHint = computed<{ text: string, tone: HintTone }>(() =>
+{
+  if (submitting.value)
   {
-    text = text.slice(0, -1)
-    count = text.length + ((text.match(/\n/g)?.length ?? 0))
+    return { text: isUploadingFiles.value ? '正在上传，请不要关闭页面' : '正在提交，请不要关闭页面', tone: 'muted' }
   }
-  if (text !== form.introduction)
+  if (hasExceededVideoEpisodes.value)
   {
-    form.introduction = text
+    return { text: `单个视频最多只能提交 ${maxVideoEpisodes.value} 个分P`, tone: 'danger' }
   }
+  if (videoQuota.value.over) return { text: '视频总大小超出今日剩余额度', tone: 'danger' }
+  if (imageQuota.value.over) return { text: '封面超出今日图片额度', tone: 'danger' }
+  if (hasMissingExistingFileId.value) return { text: '存在旧分P数据损坏，请尝试删除旧分P', tone: 'danger' }
+  if (activePreuploadList.value.length === 0)
+  {
+    const text = failedTransferList.value.length > 0 ? '请重新上传视频文件以替换转码失败的分P' : '请选择视频文件后再提交'
+    return { text, tone: 'muted' }
+  }
+  if (missingFields.value.length > 0) return { text: `还需完善：${missingFields.value.join('、')}`, tone: 'muted' }
+  if (introductionCharCount.value > MAX_INTRODUCTION_LENGTH)
+  {
+    return { text: `简介不能超过 ${MAX_INTRODUCTION_LENGTH} 个字符`, tone: 'danger' }
+  }
+  return { text: '信息已完善，可以提交', tone: 'ready' }
+})
+
+function onSubmit()
+{
+  openCategoryMenu.value = null
+  submitVideo()
+}
+
+/** 编辑模式：取消编辑回到稿件管理（离开页面前会确认） */
+function cancelEdit()
+{
+  router.push('/cc/video')
+}
+
+function goToWorks()
+{
+  router.push({ path: '/cc/video', query: { status: 'ing' } })
 }
 </script>
 
 <template>
-  <div class="content">
-    <!-- ========== 上传额度面板 ========== -->
-    <div class="quota-panel">
-      <!-- 视频额度 -->
-      <div class="quota-item">
-        <div class="quota-header">
-          <span class="quota-title">今日视频上传额度</span>
-          <span class="quota-value">
-            {{ formatMiB(remainingVideoQuotaMiB) }} / {{ formatMiB(systemConfigStore.dailyVideoUploadSize) }} MiB
+  <div class="cc-page">
+    <CcPageHeader :title="isEditMode ? '编辑稿件' : '投稿'" />
+
+    <UploadQuotaPanel :video="videoQuota" :image="imageQuota" :loading="quotaLoading" />
+
+    <input ref="fileInputRef" class="file-input" type="file" multiple :accept="VIDEO_ACCEPT" tabindex="-1"
+      aria-hidden="true" @change="onFileInputChange">
+
+    <!-- 提交成功 -->
+    <UploadSuccess v-if="submitState" :title="form.videoTitle" :edit="isEditMode" @view-works="goToWorks"
+      @continue-upload="continueUpload" />
+
+    <!-- 还没选文件：拖拽上传区 -->
+    <VideoDropZone v-else-if="!showForm" :disabled="submitting" @pick="openFilePicker"
+      @drop-files="addVideoFiles" />
+
+    <template v-else>
+      <!-- 视频分P -->
+      <VideoPartList v-model="activePreuploadList" :failed-list="failedTransferList" :locked="submitting"
+        @pick="openFilePicker" @remove="removeItem" />
+
+      <!-- 视频信息 -->
+      <section class="info-panel">
+        <h2 class="panel-title">视频信息</h2>
+
+        <div class="form-row">
+          <span class="form-label cover-label">封面 <span class="required" aria-hidden="true">*</span></span>
+          <CoverUpload :key="formResetKey" :initial-cover-path="form.coverPath" :disabled="submitting"
+            @update:cover-blob="updateCoverBlob" @update:cover-quota-bytes="setCoverQuotaBytes" />
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="cc-upload-title">标题 <span class="required" aria-hidden="true">*</span></label>
+          <span class="input-wrap">
+            <input id="cc-upload-title" v-model="form.videoTitle" class="soft-input title-input"
+              :maxlength="MAX_TITLE_LENGTH" placeholder="给视频起个标题" autocomplete="off" aria-required="true"
+              :disabled="submitting">
+            <span class="input-counter">{{ form.videoTitle.length }} / {{ MAX_TITLE_LENGTH }}</span>
           </span>
         </div>
-        <el-progress :percentage="videoQuotaPercent" :stroke-width="8" />
-      </div>
-      <!-- 图片额度 -->
-      <div class="quota-item">
-        <div class="quota-header">
-          <span class="quota-title">今日图片上传额度</span>
-          <span class="quota-value">
-            {{ formatMiB(remainingImageQuotaMiB) }} / {{ formatMiB(systemConfigStore.dailyImageUploadSize) }} MiB
+
+        <div class="form-row">
+          <span class="form-label type-label">类型 <span class="required" aria-hidden="true">*</span></span>
+          <div class="type-field">
+            <CcSegmented v-model="form.postType" :options="POST_TYPE_OPTIONS" size="sm" :disabled="submitting" />
+            <input v-if="form.postType === 2" v-model="form.originInfo" class="soft-input" placeholder="请填写原资源说明"
+              aria-label="原资源说明" aria-required="true" autocomplete="off" :disabled="submitting">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <span class="form-label">标签</span>
+          <VideoTag v-model:tags="tagList" :disabled="submitting" />
+        </div>
+
+        <div class="form-row">
+          <span class="form-label">分区 <span class="required" aria-hidden="true">*</span></span>
+          <div class="category-fields">
+            <CategoryDropdown :options="categoryOptions" :model-value="selectedParentNumber" placeholder="选择一级分区"
+              label="一级分区" :open="openCategoryMenu === 'parent'" :disabled="submitting"
+              @toggle="toggleCategoryMenu('parent')" @close="openCategoryMenu = null" @select="onPickParentCategory" />
+            <CategoryDropdown :options="childCategoryOptions" :model-value="selectedChildNumber"
+              :placeholder="selectedParentNumber ? '选择二级分区' : '请先选择一级分区'" label="二级分区"
+              :open="openCategoryMenu === 'child'" :disabled="submitting || !selectedParentNumber"
+              @toggle="toggleCategoryMenu('child')" @close="openCategoryMenu = null" @select="onPickChildCategory" />
+          </div>
+          <!-- 点下拉外面收起 -->
+          <div v-if="openCategoryMenu" class="dropdown-mask" @click="openCategoryMenu = null"></div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="cc-upload-intro">简介</label>
+          <span class="input-wrap">
+            <textarea id="cc-upload-intro" :value="form.introduction" class="intro-textarea"
+              placeholder="介绍一下这个视频（选填）" :disabled="submitting" @input="onIntroductionInput"></textarea>
+            <span class="input-counter intro-counter">{{ introductionCharCount }} / {{ MAX_INTRODUCTION_LENGTH }}</span>
           </span>
         </div>
-        <el-progress :percentage="imageQuotaPercent" :stroke-width="8" />
-      </div>
-    </div>
 
-    <div v-if="!submitState" class="upload-panel">
-      <!-- ========== 初始文件选择区域 ========== -->
-      <div v-if="!hasFileSelected" class="upload-panel">
-        <VideoUpload :disabled="submitting" @file-selected="onFileSelected" />
-      </div>
-
-      <!-- ========== 编辑面板 ========== -->
-      <div v-else class="edit-panel">
-
-        <!-- ===== 分P管理区域 ===== -->
-        <div class="panel-header">
-          <h2 class="panel-title">视频分P管理</h2>
-          <!-- 分P计数 -->
-          <span class="file-count">共 {{ activePreuploadList.length }} 个分P</span>
-        </div>
-
-        <!-- 可拖拽排序的分P列表 -->
-        <draggable v-model="activePreuploadList" item-key="uid" class="preupload-list" handle=".drag-handle"
-          :animation="200" :disabled="submitting">
-          <template #item="{ element, index }">
-            <div class="preupload-item">
-              <!-- 左侧：拖拽手柄 + 视频图标 + P序号 -->
-              <div class="item-left">
-                <!-- 拖拽手柄 -->
-                <div class="drag-handle" title="拖拽排序">
-                  <span class="drag-icon">⠿</span>
-                </div>
-                <!-- 视频图标 + 分P标签 -->
-                <div class="video-icon-wrapper">
-                  <img :src="videoIcon" alt="video" class="video-icon" />
-                  <span class="part-label">P{{ index + 1 }}</span>
-                </div>
-              </div>
-
-              <!-- 中间：文件名输入 + 进度信息 + 进度条 -->
-              <div class="item-right">
-                <!-- 文件名输入框 -->
-                <el-input v-model="element.filename" placeholder="视频文件名" class="filename-input" clearable
-                  :disabled="submitting" />
-
-                <div class="progress-info">
-                  <!-- 文件上传大小展示 -->
-                  <span class="progress-text">
-                    {{ formatMB(element.uploadedBytes) }}MB / {{ formatMB(element.fileSize) }}MB
-                  </span>
-                  <!-- 上传百分比 -->
-                  <span class="progress-percent">{{ uploadProgress(element) }}%</span>
-                  <!-- 转码状态徽标（仅旧文件） -->
-                  <span v-if="element.isExisting && element.transferResult === 0" class="transcoding-badge">转码中</span>
-                  <span v-else-if="element.isExisting && element.transferResult === 1" class="transfer-done-badge">
-                    转码成功
-                  </span>
-                  <span v-else-if="element.isExisting" class="existing-badge">
-                    原文件（未获取到状态）
-                  </span>
-                  <!-- 上传状态徽标 -->
-                  <span v-if="element.status === 'error'" class="error-badge">上传失败</span>
-                  <span v-else-if="element.status === 'done'" class="done-badge">已完成</span>
-                  <span v-else-if="element.status === 'uploading'" class="uploading-badge">上传中</span>
-                  <span v-else-if="element.status === 'pending'" class="pending-badge">待提交</span>
-                </div>
-
-                <!-- 上传进度条 -->
-                <el-progress :percentage="uploadProgress(element)" :stroke-width="8"
-                  :status="element.status === 'error' ? 'exception' : element.status === 'done' ? 'success' : undefined"
-                  class="progress-bar" />
-              </div>
-
-              <!-- 右侧：删除文件按钮 -->
-              <div class="item-delete">
-                <el-button type="danger" plain size="small" :disabled="submitting" @click="removeItem(element.uid)">
-                  删除文件
-                </el-button>
-              </div>
-            </div>
-          </template>
-        </draggable>
-
-        <!-- ===== 转码失败文件（禁用展示，不参与编辑/上传/提交） ===== -->
-        <div v-if="failedTransferList.length > 0" class="failed-transfer-section">
-          <h3 class="failed-title">转码失败的文件（不可修改，提交时不会携带）</h3>
-          <div class="failed-transfer-list">
-            <div v-for="item in failedTransferList" :key="item.uid" class="preupload-item is-disabled">
-              <div class="item-left">
-                <div class="drag-handle is-disabled" title="不可排序">
-                  <span class="drag-icon">⠿</span>
-                </div>
-                <div class="video-icon-wrapper">
-                  <img :src="videoIcon" alt="video" class="video-icon" />
-                </div>
-              </div>
-              <div class="item-right">
-                <el-input :model-value="item.filename" class="filename-input" disabled />
-                <div class="progress-info">
-                  <span class="progress-text">
-                    {{ formatMB(item.fileSize) }}MB / {{ formatMB(item.fileSize) }}MB
-                  </span>
-                  <span class="transfer-fail-badge">转码失败</span>
-                </div>
-                <el-progress :percentage="100" :stroke-width="8" status="exception" class="progress-bar" />
-              </div>
-              <div class="item-delete">
-                <el-button type="danger" plain size="small" disabled>删除文件</el-button>
-              </div>
-            </div>
+        <div class="form-row centered">
+          <span class="form-label">互动设置</span>
+          <div class="toggle-group">
+            <CcCheckChip v-model="closeDanmaku" label="关闭弹幕" :disabled="submitting" />
+            <CcCheckChip v-model="closeComment" label="关闭评论" :disabled="submitting" />
           </div>
         </div>
 
-        <!-- 添加更多分P的入口 -->
-        <div class="add-more-wrapper">
-          <VideoUpload :fold="true" :disabled="submitting" @file-selected="onFileSelected" class="add-more-upload" />
-        </div>
-
-        <!-- ===== 视频信息表单 ===== -->
-        <div class="video-info-section">
-          <h2 class="section-title">视频信息</h2>
-
-          <!-- 封面上传（CoverUpload 子组件） -->
-          <div class="form-row">
-            <span class="form-label"><span class="required-star">*</span>封面</span>
-            <div class="form-input">
-              <CoverUpload :key="formResetKey" :initial-cover-path="form.coverPath" :disabled="submitting"
-                @update:cover-blob="updateCoverBlob" @update:cover-quota-bytes="updateCoverQuotaBytes" />
-            </div>
-          </div>
-
-          <!-- 视频标题 -->
-          <div class="form-row">
-            <span class="form-label"><span class="required-star">*</span>标题</span>
-            <div class="form-input">
-              <el-input v-model="form.videoTitle" placeholder="请输入视频标题（最多100个字符）" maxlength="100" show-word-limit
-                clearable :disabled="submitting" />
-            </div>
-          </div>
-
-          <!-- 类型：自制 / 转载 -->
-          <div class="form-row">
-            <span class="form-label"><span class="required-star">*</span>类型</span>
-            <div class="form-input">
-              <el-radio-group v-model="form.postType" :disabled="submitting">
-                <el-radio :value="1">自制</el-radio>
-                <el-radio :value="2">转载</el-radio>
-              </el-radio-group>
-              <!-- 转载时显示原资源说明输入框 -->
-              <el-input v-if="form.postType === 2" v-model="form.originInfo" placeholder="请填写原资源说明" class="origin-input"
-                clearable :disabled="submitting" />
-            </div>
-          </div>
-
-          <!-- 标签选择（VideoTag 子组件） -->
-          <div class="form-row">
-            <span class="form-label">标签</span>
-            <div class="form-input">
-              <VideoTag :tags="tagList" :disabled="submitting" @update:tags="updateTags" />
-            </div>
-          </div>
-
-          <!-- 分区选择（一级 + 二级） -->
-          <div class="form-row">
-            <span class="form-label"><span class="required-star">*</span>分区</span>
-            <div class="form-input category-selects">
-              <!-- 一级分区 -->
-              <el-select v-model="selectedParentNumber" placeholder="请选择一级分区" class="category-select"
-                :teleported="false" :disabled="submitting" @change="onParentCategoryChange">
-                <el-option v-for="p in categoryOptions" :key="p.value" :label="p.label" :value="p.value" />
-              </el-select>
-              <!-- 二级分区 -->
-              <el-select v-model="selectedChildNumber" placeholder="请选择二级分区" class="category-select" :teleported="false"
-                :disabled="submitting || !selectedParentNumber || childCategoryOptions.length === 0"
-                @change="onChildCategoryChange">
-                <el-option v-for="c in childCategoryOptions" :key="c.value" :label="c.label" :value="c.value" />
-              </el-select>
-            </div>
-          </div>
-
-          <!-- 简介 -->
-          <div class="form-row">
-            <span class="form-label">简介</span>
-            <div class="form-input">
-              <el-input v-model="form.introduction" type="textarea" placeholder="请输入视频简介（最多2000个字符）" :rows="4"
-                resize="vertical" :disabled="submitting" @input="onIntroductionInput" />
-              <!-- 简介字符计数器 -->
-              <span class="intro-char-count">{{ introductionCharCount }} / {{ MAX_INTRODUCTION_LENGTH }}</span>
-            </div>
-          </div>
-
-          <!-- 互动设置：弹幕 / 评论开关 -->
-          <div class="form-row">
-            <span class="form-label">互动设置</span>
-            <div class="form-input">
-              <el-checkbox v-model="closeDanmaku" :disabled="submitting">关闭弹幕</el-checkbox>
-              <el-checkbox v-model="closeComment" style="margin-left: 24px" :disabled="submitting">关闭评论</el-checkbox>
-            </div>
-          </div>
-
-          <!-- 提交按钮行 -->
-          <div class="form-row submit-row">
-            <span class="form-label"></span>
-            <div class="form-input">
-              <!-- 提交 / 提交修改 -->
-              <el-button type="primary" :loading="submitting" @click="submitVideo"
-                :disabled="submitting || !isFormValid || activePreuploadList.length === 0 || hasMissingExistingFileId">
-                {{ isEditMode ? '提交修改' : '提交视频' }}
-              </el-button>
-              <!-- 返回上传界面 -->
-              <el-button plain :disabled="submitting" @click="returnToUploadPanel">返回上传界面</el-button>
-              <!-- 提交提示信息（各条件互斥展示） -->
-              <span v-if="hasExceededVideoEpisodes" class="submit-hint">
-                单个视频最多只能提交 {{ maxVideoEpisodes }} 个分P
-              </span>
-              <span v-else-if="!isFormValid && activePreuploadList.length > 0" class="submit-hint">
-                请完善必填信息后再提交
-              </span>
-              <span v-else-if="hasMissingExistingFileId" class="submit-hint">
-                存在旧分P数据损坏，请尝试删除旧分P
-              </span>
-              <span v-else-if="activePreuploadList.length === 0 && failedTransferList.length > 0" class="submit-hint">
-                请重新上传视频文件以替换转码失败的分P
-              </span>
-              <span v-else-if="activePreuploadList.length === 0 && failedTransferList.length === 0" class="submit-hint">
-                请选择视频文件后再提交
-              </span>
-            </div>
+        <div class="form-row centered submit-row">
+          <span></span>
+          <div class="submit-actions">
+            <button type="button" :class="['submit-button', { busy: submitting }]" :disabled="!canSubmit"
+              :aria-busy="submitting" @click="onSubmit">{{ submitLabel }}</button>
+            <button v-if="isEditMode" type="button" class="back-button" :disabled="submitting" @click="cancelEdit">
+              取消编辑
+            </button>
+            <button v-else type="button" class="back-button" :disabled="submitting" @click="returnToUploadPanel">
+              返回上传界面
+            </button>
+            <span :class="['submit-hint', submitHint.tone]" aria-live="polite">{{ submitHint.text }}</span>
           </div>
         </div>
-      </div>
-    </div>
-    <!-- 提交成功展示 -->
-    <div v-else class="submit-success">
-      <UploadSuccess @continue-upload="onContinueUpload" />
-    </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.content {
-  width: 100%;
+@use '@/pages/creativeCenter/shared/styles/cc' as *;
+
+.file-input {
+  display: none;
 }
 
-.quota-panel {
-  max-width: 900px;
-  margin: 0 auto 24px;
-  padding: 20px 24px;
+.info-panel {
+  @include panel(30px 32px 28px, 32px);
   display: flex;
   flex-direction: column;
-  row-gap: 16px;
-
-  .quota-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    column-gap: 16px;
-  }
-
-  .quota-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-  }
-
-  .quota-value {
-    font-size: 13px;
-    color: #666;
-    white-space: nowrap;
-  }
+  gap: 24px;
 }
 
-.edit-panel {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 32px 24px;
-
-  .panel-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 24px;
-
-    .panel-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1a1a1a;
-      margin: 0;
-    }
-
-    .file-count {
-      font-size: 14px;
-      color: #999;
-    }
-  }
+.panel-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
-.submit-success {
-  width: 100%;
-}
-
-// ==================== 分P列表 ====================
-
-.preupload-list {
-  display: flex;
-  flex-direction: column;
-  row-gap: 16px;
-}
-
-.preupload-item {
-  display: flex;
-  align-items: flex-start;
-  column-gap: 16px;
-  padding: 20px 24px;
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  transition: box-shadow 0.2s;
-
-  &:hover {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  }
-
-  .item-left {
-    display: flex;
-    align-items: center;
-    column-gap: 10px;
-    flex-shrink: 0;
-
-    .drag-handle {
-      cursor: grab;
-      color: #bbb;
-      font-size: 22px;
-      line-height: 1;
-      user-select: none;
-      padding: 4px;
-      border-radius: 4px;
-      transition: color 0.15s;
-
-      &:hover {
-        color: #666;
-      }
-
-      &:active {
-        cursor: grabbing;
-      }
-
-      .drag-icon {
-        display: block;
-        letter-spacing: 2px;
-      }
-    }
-
-    .video-icon-wrapper {
-      position: relative;
-      width: 56px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-
-      .video-icon {
-        width: 48px;
-        height: 42px;
-      }
-
-      .part-label {
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 12px;
-        font-weight: 700;
-        color: #fff;
-        background: #834ae5;
-        border-radius: 4px;
-        padding: 1px 6px;
-        line-height: 1.4;
-        white-space: nowrap;
-      }
-    }
-  }
-
-  .item-right {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    row-gap: 10px;
-    min-width: 0;
-
-    .filename-input {
-      width: 100%;
-    }
-
-    .progress-info {
-      display: flex;
-      align-items: center;
-      column-gap: 12px;
-
-      .progress-text {
-        flex: 1;
-        font-size: 13px;
-        color: #666;
-      }
-
-      .progress-percent {
-        font-size: 13px;
-        font-weight: 600;
-        color: #834ae5;
-      }
-
-      .error-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-red;
-        background: $color-badge-red-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .done-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-green;
-        background: $color-badge-green-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .existing-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-orange;
-        background: $color-badge-orange-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .transcoding-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-blue;
-        background: $color-badge-blue-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .transfer-done-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-green;
-        background: $color-badge-green-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .transfer-fail-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-red;
-        background: $color-badge-red-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .uploading-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-blue;
-        background: $color-badge-blue-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-
-      .pending-badge {
-        font-size: 12px;
-        font-weight: 600;
-        color: $color-badge-orange;
-        background: $color-badge-orange-bg;
-        padding: 2px 8px;
-        border-radius: 4px;
-      }
-    }
-
-    .progress-bar {
-      width: 100%;
-    }
-  }
-
-  .item-delete {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    padding-top: 2px;
-  }
-
-  &.is-disabled {
-    opacity: 0.62;
-    background: #f7f7f7;
-    border-color: #ebebeb;
-    pointer-events: none;
-    user-select: none;
-
-    &:hover {
-      box-shadow: none;
-    }
-
-    .drag-handle {
-      cursor: not-allowed;
-      color: #d0d0d0;
-
-      &:hover {
-        color: #d0d0d0;
-      }
-    }
-  }
-}
-
-.add-more-wrapper {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
-
-  .add-more-upload {
-    :deep(.content) {
-      padding: 0;
-    }
-
-    :deep(.el-upload-dragger) {
-      width: 100%;
-      min-width: 400px;
-      height: auto;
-      padding: 20px 40px;
-    }
-
-    :deep(.upload-handler) {
-      margin-bottom: 10px;
-    }
-  }
-}
-
-// ==================== 转码失败文件区域 ====================
-
-.failed-transfer-section {
-  margin-top: 20px;
-
-  .failed-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #999;
-    margin: 0 0 12px;
-  }
-}
-
-.failed-transfer-list {
-  display: flex;
-  flex-direction: column;
-  row-gap: 16px;
-}
-
-// ==================== 视频信息表单 ====================
-
-.video-info-section {
-  margin-top: 48px;
-  padding-top: 32px;
-  border-top: 1px solid #e8e8e8;
-
-  .section-title {
-    font-size: 20px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin: 0 0 24px;
-  }
-}
+/*——————表单行：左边 88px 标签列—————— */
 
 .form-row {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
 
-  .form-label {
-    flex-shrink: 0;
-    width: auto;
-    margin-right: 100px;
-    font-size: 15px;
-    font-weight: 500;
-    color: #333;
-    line-height: 32px;
-    white-space: nowrap;
-
-    // 红色必填星号
-    .required-star {
-      color: #f56c6c;
-      margin-right: 2px;
-      font-weight: 700;
-    }
-  }
-
-  .form-input {
-    flex: 1;
-    min-width: 0;
+  &.centered {
+    align-items: center;
   }
 }
 
-// 类型 - 转载来源输入框
-.origin-input {
-  margin-top: 12px;
-  width: 100%;
-}
+.form-label {
+  padding-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: $warm-ink;
 
-// 分区下拉
-.category-selects {
-  display: flex;
-  column-gap: 16px;
+  &.cover-label {
+    padding-top: 12px;
+  }
 
-  .category-select {
-    flex: 1;
-    min-width: 0;
+  // 和 46px 高的分段选择居中对齐
+  &.type-label {
+    padding-top: 13px;
+  }
+
+  .centered & {
+    padding-top: 0;
   }
 }
 
-// 提交按钮行
-.submit-row {
-  margin-top: 32px;
-
-  .submit-hint {
-    margin-left: 16px;
-    font-size: 13px;
-    color: #999;
-  }
+.required {
+  color: $warm-accent;
 }
 
-// 简介字符计数器
-.intro-char-count {
+.input-wrap {
+  position: relative;
   display: block;
-  text-align: right;
-  font-size: 12px;
-  color: #999;
+}
+
+.soft-input {
+  @include soft-input(50px, 16px);
+}
+
+.title-input {
+  padding-right: 90px;
+}
+
+.input-counter {
+  position: absolute;
+  top: 17px;
+  right: 18px;
+  @include mono(12px);
+  color: $warm-ink-4;
+  pointer-events: none;
+}
+
+.type-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.category-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dropdown-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+}
+
+.intro-textarea {
+  @include soft-input(140px, 16px);
+  display: block;
+  min-height: 140px;
+  padding: 14px 18px 32px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.intro-counter {
+  top: auto;
+  bottom: 14px;
+}
+
+.toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/*——————提交行—————— */
+
+.submit-row {
   margin-top: 4px;
+  padding-top: 24px;
+  border-top: 1px solid $cc-line;
+}
+
+.submit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.submit-button {
+  @include accent-button(50px, 0 32px, 15px);
+  font-weight: 700;
+  box-shadow: 0 14px 30px -14px rgba(0, 0, 242, 0.7);
+
+  &:disabled {
+    background: rgba(0, 0, 242, 0.28);
+    box-shadow: none;
+  }
+
+  // 上传中保持实色
+  &.busy:disabled {
+    background: $warm-accent;
+  }
+}
+
+.back-button {
+  @include soft-pill(50px, 0 24px, 14px);
+
+  &:hover:not(:disabled) {
+    background: $warm-sunken-hover;
+    color: $warm-ink;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+
+.submit-hint {
+  margin-left: 8px;
+  font-size: 13px;
+  color: $warm-ink-4;
+
+  &.danger {
+    color: $cc-danger;
+    font-weight: 600;
+  }
+
+  &.ready {
+    color: $warm-accent;
+    font-weight: 600;
+  }
 }
 </style>

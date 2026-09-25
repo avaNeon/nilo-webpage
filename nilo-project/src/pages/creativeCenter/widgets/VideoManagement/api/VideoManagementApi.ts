@@ -88,19 +88,14 @@ export const VideoManagementApi = {
    *
    * @param videoId     视频ID
    * @param interaction 互动设置值，如 "0"（关闭弹幕）、"1"（关闭评论）、"0,1"（都关闭）
+   * @returns 是否修改成功（后端 data 可能为空，只看请求本身有没有成功）
    */
-  async setInteraction(
-    videoId: string,
-    interaction: string,
-  ): Promise<Object | null> {
+  async setInteraction(videoId: string, interaction: string): Promise<boolean> {
     const result = await request({
       method: "post",
       url: Api.ccVideoInteraction + videoId,
       params: { interaction },
     });
-    if (!result) {
-      return null;
-    }
-    return result.data as Object;
+    return !!result;
   },
 } as const;

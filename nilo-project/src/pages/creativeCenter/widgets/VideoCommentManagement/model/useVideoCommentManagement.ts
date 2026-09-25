@@ -1,10 +1,24 @@
-import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { ref, computed, onMounted, onBeforeUnmount, reactive, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { CommentApi } from "@/shared/api/CommentApi";
+import {
+  readVideoFilterState,
+  type VideoFilterInfo,
+} from "@/pages/creativeCenter/shared/lib/videoFilter";
 import { CommentManagementApi } from "../api/CommentManagementApi";
 import type { CommentManagement } from "./CommentManagement";
 
+const ROUTE_NAME = "videoCommentManagement";
+
+/** 每页固定 10 条 */
+export const COMMENT_PAGE_SIZE = 10;
+
+/** 输入搜索词后自动搜索的延迟 */
+const SEARCH_DEBOUNCE_MS = 1000;
+
 export function useVideoCommentManagement() {
   const route = useRoute();
+  const router = useRouter();
 
   /* 路由参数 */
   const videoId = computed(() => {
@@ -12,44 +26,92 @@ export function useVideoCommentManagement() {
     return id ? String(id) : undefined;
   });
 
-  /** 当有 videoId 时不显示搜索栏 */
+  /** 当有 videoId 时不显示搜索栏，换成「仅看此视频」 */
   const hasVideoId = computed(() => !!videoId.value);
 
   /* 状态 */
   const searchKeyword = ref("");
-  const commentCount = ref(0);
+  /** 当前列表和数量实际使用的搜索词 */
+  const appliedKeyword = ref("");
+  /** 拿到数量之前为 null（标题先不显示数量） */
+  const commentCount = ref<number | null>(null);
   const commentList = ref<CommentManagement[]>([]);
+  /** 列表至少返回过一次，之前不显示空状态 */
+  const listLoaded = ref(false);
   const currentPage = ref(1);
-  const pageSize = ref(10);
+  /** 正在删除的评论，按钮先禁用 */
+  const deletingIds = reactive(new Set<string>());
+  /** 稿件管理跳过来时带的视频标题、封面 */
+  const filterState = ref<VideoFilterInfo | null>(null);
+
+  /** 「仅看此视频」胶囊：优先用跳转带过来的信息，没有就用第一条评论的视频 */
+  const filterVideo = computed(() => {
+    const first = commentList.value[0];
+    return {
+      title: filterState.value?.videoName ?? first?.videoName ?? null,
+      cover: filterState.value?.videoCover ?? first?.videoCover ?? null,
+    };
+  });
 
   /* 方法 */
 
+  // 请求序号：只采用最后一次请求的结果，避免先发后到覆盖新数据
+  let countSeq = 0;
+  let listSeq = 0;
+
   async function loadCommentCount() {
+    const seq = ++countSeq;
     const result = await CommentManagementApi.getCommentCount(
       videoId.value,
-      hasVideoId.value
-        ? undefined
-        : searchKeyword.value === ""
-          ? undefined
-          : searchKeyword.value,
+      appliedKeyword.value || undefined,
     );
+    if (seq !== countSeq) return;
     if (result !== null) {
       commentCount.value = result;
     }
   }
 
   async function loadCommentList() {
+    const seq = ++listSeq;
     const result = await CommentManagementApi.getCommentList(
       videoId.value,
       currentPage.value,
-      pageSize.value,
-      hasVideoId.value
-        ? undefined
-        : searchKeyword.value === ""
-          ? undefined
-          : searchKeyword.value,
+      COMMENT_PAGE_SIZE,
+      appliedKeyword.value || undefined,
     );
+    if (seq !== listSeq) return;
     commentList.value = result ?? [];
+    listLoaded.value = true;
+  }
+
+  let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelSearchDebounce() {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = null;
+    }
+  }
+
+  /** 按当前筛选和搜索词从第 1 页重新加载数量和列表 */
+  function reload() {
+    cancelSearchDebounce();
+    appliedKeyword.value = hasVideoId.value ? "" : searchKeyword.value.trim();
+    currentPage.value = 1;
+    loadCommentCount();
+    loadCommentList();
+  }
+
+  /** 输入搜索词：停顿一会儿再搜索 */
+  function handleKeywordInput(keyword: string) {
+    searchKeyword.value = keyword;
+    cancelSearchDebounce();
+    searchDebounceTimer = setTimeout(reload, SEARCH_DEBOUNCE_MS);
+  }
+
+  /** 回车或点放大镜：立即搜索 */
+  function handleSearch() {
+    reload();
   }
 
   function handlePageNoChange(pageNo: number) {
@@ -57,42 +119,58 @@ export function useVideoCommentManagement() {
     loadCommentList();
   }
 
-  function handlePageSizeChange(size: number) {
-    pageSize.value = size;
-    currentPage.value = 1;
-    loadCommentList();
+  /** 点 ×：回到全部视频 */
+  function clearVideoFilter() {
+    router.push({ name: ROUTE_NAME });
   }
 
-  function handleCommentDeleted(commentId: string) {
+  /** 删除评论，成功返回 true */
+  async function deleteComment(commentId: string): Promise<boolean> {
+    if (deletingIds.has(commentId)) return false;
+    deletingIds.add(commentId);
+    let ok = false;
+    try {
+      const result = await CommentApi.deleteComment(commentId);
+      ok = !!result && result.code === 200;
+    } finally {
+      deletingIds.delete(commentId);
+    }
+    if (!ok) return false;
+
+    // 这页只剩这一条时先不移除，等重新加载的结果替换，免得空状态闪一下
     const index = commentList.value.findIndex(c => c.commentId === commentId);
-    if (index !== -1) {
+    if (index !== -1 && commentList.value.length > 1) {
       commentList.value.splice(index, 1);
+    }
+    if (commentCount.value !== null) {
       commentCount.value = Math.max(0, commentCount.value - 1);
     }
-    // 当前页删空且不是第一页，回到上一页
-    if (commentList.value.length === 0 && currentPage.value > 1) {
-      currentPage.value--;
-      loadCommentList();
-    }
+    // 重新拉当前页，后面的评论补上来；这页删空了就回到最后一页
+    const lastPage = Math.max(1, Math.ceil((commentCount.value ?? 0) / COMMENT_PAGE_SIZE));
+    currentPage.value = Math.min(currentPage.value, lastPage);
+    loadCommentList();
+    return true;
   }
 
   /* 生命周期 */
 
-  let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  watch(searchKeyword, () => {
-    if (hasVideoId.value) return;
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      currentPage.value = 1;
-      loadCommentCount();
-      loadCommentList();
-    }, 1000);
+  // 路由组件会复用：/cc/comment/123 → /cc/comment（点 × 或侧栏）只是参数变了，要自己重新加载
+  watch(videoId, () => {
+    if (route.name !== ROUTE_NAME) return;
+    searchKeyword.value = "";
+    commentList.value = [];
+    commentCount.value = null;
+    listLoaded.value = false;
+    filterState.value = hasVideoId.value ? readVideoFilterState() : null;
+    reload();
   });
 
   onMounted(() => {
-    loadCommentCount();
-    loadCommentList();
+    filterState.value = hasVideoId.value ? readVideoFilterState() : null;
+    reload();
   });
+
+  onBeforeUnmount(cancelSearchDebounce);
 
   return {
     // 路由相关
@@ -100,13 +178,18 @@ export function useVideoCommentManagement() {
     hasVideoId,
     // 状态
     searchKeyword,
+    appliedKeyword,
     commentCount,
     commentList,
+    listLoaded,
     currentPage,
-    pageSize,
+    deletingIds,
+    filterVideo,
     // 方法
+    handleKeywordInput,
+    handleSearch,
     handlePageNoChange,
-    handlePageSizeChange,
-    handleCommentDeleted,
+    clearVideoFilter,
+    deleteComment,
   };
 }

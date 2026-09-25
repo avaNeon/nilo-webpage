@@ -34,7 +34,7 @@ export interface VideoUpload {
   /** 原资源说明（转载时填写） */
   originInfo?: string;
 
-  /** 互动设置（如 "1":关闭弹幕 "2":关闭评论，多个用逗号分隔） */
+  /** 互动设置（"0":关闭弹幕 "1":关闭评论，多个用逗号分隔） */
   interaction: string;
 
   /** 分 P 列表 */

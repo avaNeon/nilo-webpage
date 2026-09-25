@@ -81,7 +81,13 @@ export function useVideoUploadEditFlow(
   /** 编辑中的视频信息暂存 */
   const videoUploadEditStore = useVideoUploadEditStore();
 
-  async function loadEditVideo(videoId: string): Promise<boolean> {
+  /**
+   * @param isCurrent 分P列表回来时是否还在编辑这个稿件（加载期间可能已经切走）
+   */
+  async function loadEditVideo(
+    videoId: string,
+    isCurrent: () => boolean,
+  ): Promise<boolean> {
     const detail = videoUploadEditStore.editVideoInfo;
     if (!detail || String(detail.videoId ?? "") !== videoId) {
       message.error("加载视频信息失败");
@@ -99,10 +105,15 @@ export function useVideoUploadEditFlow(
     syncInteractionFlags(form.interaction, closeDanmaku, closeComment);
 
     const fileList = await videoFileApi.loadVideoFileUpload(videoId);
+    // 加载期间已经离开了这个稿件的编辑，旧分P不能写进新的投稿里
+    if (!isCurrent()) return false;
+
     hasFileSelected.value = true;
-    preuploadList.value = fileList?.length
-      ? buildExistingFileList(fileList, detail.status)
-      : [];
+    // 加载期间用「继续添加文件」加进来的新分P排在旧分P后面，不能被覆盖掉
+    preuploadList.value = [
+      ...(fileList?.length ? buildExistingFileList(fileList, detail.status) : []),
+      ...preuploadList.value.filter(item => !item.isExisting),
+    ];
 
     videoUploadEditStore.clearEditVideoInfo();
     return true;

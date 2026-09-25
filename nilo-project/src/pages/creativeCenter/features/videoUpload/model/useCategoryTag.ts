@@ -53,11 +53,6 @@ export function useCategoryTag() {
     selectedChildNumber.value = "";
   }
 
-  /** on child category changed */
-  function onChildCategoryChange() {
-    // category number sync is handled by watch in useVideoUpload
-  }
-
   function syncCategorySelectionByCategoryNumber(categoryNumber: string) {
     const selection = CategoryUtil.resolveSelectionByValue(
       categoryNumber,
@@ -75,7 +70,6 @@ export function useCategoryTag() {
     selectedChildNumber,
     childCategoryOptions,
     onParentCategoryChange,
-    onChildCategoryChange,
     syncCategorySelectionByCategoryNumber,
   };
 }

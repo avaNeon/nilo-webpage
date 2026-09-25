@@ -499,11 +499,12 @@ const playerHeight = 480;
         <div v-if="fileListOptions.length > 0" class="partition-panel">
           <h4 class="partition-title">分P列表</h4>
           <div class="partition-list">
-            <div v-for="opt in fileListOptions" :key="opt.value"
+            <button v-for="opt in fileListOptions" :key="opt.value" type="button"
               :class="['partition-item', { active: opt.value === currentFileIndex }]"
+              :aria-current="opt.value === currentFileIndex ? 'true' : undefined" :title="opt.label"
               @click="currentFileIndex = opt.value">
               <span class="partition-label">{{ opt.label }}</span>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -540,7 +541,7 @@ const playerHeight = 480;
     align-items: center;
     justify-content: center;
     height: 200px;
-    color: $color-text-muted;
+    color: $warm-ink-4;
     font-size: 15px;
   }
 
@@ -551,7 +552,7 @@ const playerHeight = 480;
     .player-container {
       flex: 1;
       min-width: 0;
-      border-radius: 8px;
+      border-radius: 14px;
       overflow: hidden;
       background: #000;
     }
@@ -559,17 +560,16 @@ const playerHeight = 480;
     .partition-panel {
       width: 200px;
       flex-shrink: 0;
-      border: 1px solid $color-border;
-      border-radius: 8px;
+      border-radius: 14px;
       padding: 12px;
       overflow-y: auto;
       max-height: 480px;
-      background: #fafafa;
+      background: $warm-sunken;
 
       .partition-title {
         font-size: 14px;
-        font-weight: 600;
-        color: $color-text-primary;
+        font-weight: 700;
+        color: $warm-ink;
         margin: 0 0 10px;
       }
 
@@ -583,20 +583,30 @@ const playerHeight = 480;
         display: flex;
         align-items: center;
         gap: 6px;
+        width: 100%;
         padding: 6px 10px;
-        border-radius: 6px;
+        border: none;
+        border-radius: 10px;
+        background: none;
+        font: inherit;
+        text-align: left;
         cursor: pointer;
         font-size: 13px;
-        color: $color-text-secondary;
-        transition: background-color 0.2s;
+        color: $warm-ink-3;
+        transition: background-color 0.2s, color 0.2s;
 
         &:hover {
-          background-color: $color-mask-10;
+          background-color: $warm-sunken-hover;
+        }
+
+        &:focus-visible {
+          outline: 2px solid $warm-accent;
+          outline-offset: 2px;
         }
 
         &.active {
-          background-color: rgba(35, 173, 229, 0.12);
-          color: $color-bilibili-blue;
+          background-color: $warm-accent-soft;
+          color: $warm-accent;
           font-weight: 600;
         }
 
@@ -617,14 +627,14 @@ const playerHeight = 480;
     align-items: center;
     justify-content: center;
     height: 200px;
-    color: $color-text-muted;
+    color: $warm-ink-4;
     font-size: 15px;
   }
 
   .field-value {
     word-break: break-all;
     font-size: 13px;
-    color: $color-text-primary;
+    color: $warm-ink-2;
   }
 }
 </style>

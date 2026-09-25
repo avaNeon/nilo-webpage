@@ -1,206 +1,292 @@
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { VideoManagementApi } from "../api/VideoManagementApi";
 import type { VideoUploadInfo } from "./VideoUploadInfo";
-import type { VideoInfo } from "@/shared/model/VideoInfo";
+import type { VideoStatusCount } from "./VideoStatusCount";
+import {
+  hasInteractionFlag,
+  InteractionFlag,
+  toggleInteractionFlag,
+  type InteractionFlagValue,
+} from "./videoWork";
+import message from "@/shared/lib/message";
+import confirm from "@/shared/lib/confirm";
 
-/* ─── 分类枚举 ─────────────────────────────────────────────── */
-const CategoryEnum = {
-  ALL: 0,
-  IN_PROGRESS: 1,
-  PASSED: 2,
-  FAILED: 3,
-} as const;
-
-/* ─── 转换函数 ─────────────────────────────────────────────── */
+/* ─── 状态标签 ─────────────────────────────────────────────── */
 
 /**
- * 将 VideoUploadInfo 转换为 VideoInfo
- *
- * 字段映射说明：
- *   - parentCategoryNumber → pCategoryNumber（重命名）
- *   - tags: string | null  → tags: string[] | null（按逗号分割）
- *   - userId / recommendType → 丢弃（VideoInfo 无对应字段）
- *   - briefUserInfo / userInfo → null（VideoUploadInfo 不包含用户详情）
+ * all 全部；ing 进行中（转码中 / 转码失败 / 待审核）；ok 已通过；no 未通过
+ * 同时也是地址栏 ?status= 的取值（投稿成功页跳到 /cc/video?status=ing）
  */
-function toVideoInfo(src: VideoUploadInfo): VideoInfo {
-  return {
-    videoId: src.videoId,
-    videoCover: src.videoCover,
-    videoName: src.videoName,
-    briefUserInfo: null,
-    userInfo: null,
-    createTime: src.createTime,
-    lastUpdateTime: src.lastUpdateTime,
-    pCategoryNumber: src.parentCategoryNumber,
-    categoryNumber: src.categoryNumber,
-    postType: src.postType,
-    originInfo: src.originInfo,
-    tags: src.tags ? src.tags.split(",").map(t => t.trim()) : null,
-    introduction: src.introduction,
-    interaction: src.interaction,
-    duration: src.duration,
-    playCount: src.playCount,
-    likeCount: src.likeCount,
-    danmakuCount: src.danmakuCount,
-    commentCount: src.commentCount,
-    coinCount: src.coinCount,
-    collectCount: src.collectCount,
-    status: src.status,
-  };
+export type WorksTab = "all" | "ing" | "ok" | "no";
+
+const WORKS_TABS: readonly WorksTab[] = ["all", "ing", "ok", "no"];
+
+const TAB_LABELS: Record<WorksTab, string> = {
+  all: "全部",
+  ing: "进行中",
+  ok: "已通过",
+  no: "未通过",
+};
+
+/** 每页固定 10 条 */
+export const PAGE_SIZE = 10;
+
+function parseWorksTab(value: unknown): WorksTab {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return WORKS_TABS.find(tab => tab === raw) ?? "all";
 }
 
-/* ─── 工具函数 ─────────────────────────────────────────────── */
-
 /**
- * 将前端分类映射到后端 status 参数
- *   ALL          → undefined（不传，查询全部）
- *   IN_PROGRESS  → -1（进行中）
- *   PASSED       →  3（已通过）
- *   FAILED       →  4（未通过）
+ * 将标签映射到后端 status 参数
+ *   all → undefined（不传，查询全部）
+ *   ing → -1（进行中）
+ *   ok  →  3（已通过）
+ *   no  →  4（未通过）
  */
-function getStatusParam(category: number): number | undefined {
-  switch (category) {
-    case CategoryEnum.IN_PROGRESS:
+function getStatusParam(tab: WorksTab): number | undefined {
+  switch (tab) {
+    case "ing":
       return -1;
-    case CategoryEnum.PASSED:
+    case "ok":
       return 3;
-    case CategoryEnum.FAILED:
+    case "no":
       return 4;
-    case CategoryEnum.ALL:
+    case "all":
     default:
       return undefined;
+  }
+}
+
+function getTabCount(tab: WorksTab, counts: VideoStatusCount): number {
+  switch (tab) {
+    case "ing":
+      return counts.pendingCount;
+    case "ok":
+      return counts.completedCount;
+    case "no":
+      return counts.failedCount;
+    case "all":
+    default:
+      return counts.pendingCount + counts.completedCount + counts.failedCount;
   }
 }
 
 /* ─── Composable ───────────────────────────────────────────── */
 
 export function useVideoManagement() {
+  const route = useRoute();
+  const router = useRouter();
+  /** 离开本页时 route 会先变，watch 要跳过别的页面 */
+  const ownRouteName = route.name;
+
   /* 状态 */
-  const selectedCategory = ref<number>(CategoryEnum.ALL);
+  const activeTab = ref<WorksTab>(parseWorksTab(route.query.status));
+
+  /** 输入框里的内容 */
   const searchKeyword = ref<string>("");
+  /** 真正用于查询的关键字（防抖结束或回车后才更新） */
+  const appliedKeyword = ref<string>("");
 
-  const videoCounts = ref({
-    pendingCount: 0,
-    completedCount: 0,
-    failedCount: 0,
-  });
+  /** 各状态数量（跟随搜索），第一次请求回来前为 null */
+  const videoCounts = ref<VideoStatusCount | null>(null);
 
-  /** original video list */
   const videoList = ref<VideoUploadInfo[]>([]);
+  /** 第一次列表请求回来前不显示空状态 */
+  const listLoaded = ref(false);
+  const listLoading = ref(false);
 
-  /** transformed video list */
-  const videoInfoList = computed<VideoInfo[]>(() =>
-    videoList.value.map(toVideoInfo),
+  /** 当前页，从 1 开始 */
+  const currentPage = ref(1);
+
+  /** 标题旁的总数 = 各状态数量之和 */
+  const allCount = computed<number | null>(() =>
+    videoCounts.value ? getTabCount("all", videoCounts.value) : null,
   );
 
-  // pagination
-  const currentPage = ref(1);
-  const pageSize = ref(10);
+  const tabOptions = computed(() =>
+    WORKS_TABS.map(tab => ({
+      label: TAB_LABELS[tab],
+      value: tab,
+      count: videoCounts.value ? getTabCount(tab, videoCounts.value) : null,
+    })),
+  );
 
-  /** 当前分类对应的视频总数 */
-  const totalCount = computed(() => {
-    const { pendingCount, completedCount, failedCount } = videoCounts.value;
-    switch (selectedCategory.value) {
-      case CategoryEnum.IN_PROGRESS:
-        return pendingCount;
-      case CategoryEnum.PASSED:
-        return completedCount;
-      case CategoryEnum.FAILED:
-        return failedCount;
-      case CategoryEnum.ALL:
-      default:
-        return pendingCount + completedCount + failedCount;
-    }
-  });
+  /** 当前标签对应的视频总数（列表接口不返回总数） */
+  const totalCount = computed(() =>
+    videoCounts.value ? getTabCount(activeTab.value, videoCounts.value) : 0,
+  );
 
-  /* 方法 */
+  /* 请求：只认最后一次发出的，避免快速切换时旧结果覆盖新结果 */
+
+  let countsRequestId = 0;
+  let listRequestId = 0;
 
   async function loadVideoCounts() {
+    const requestId = ++countsRequestId;
     const result = await VideoManagementApi.getVideoStatusCount(
-      searchKeyword.value === "" ? undefined : searchKeyword.value,
+      appliedKeyword.value === "" ? undefined : appliedKeyword.value,
     );
+    if (requestId !== countsRequestId) return;
     if (result) {
       videoCounts.value = result;
     }
   }
 
   async function loadVideos() {
-    const status = getStatusParam(selectedCategory.value);
+    const requestId = ++listRequestId;
+    listLoading.value = true;
     const result = await VideoManagementApi.loadVideoList(
-      status,
+      getStatusParam(activeTab.value),
       currentPage.value,
-      pageSize.value,
-      searchKeyword.value === "" ? undefined : searchKeyword.value,
+      PAGE_SIZE,
+      appliedKeyword.value === "" ? undefined : appliedKeyword.value,
     );
+    if (requestId !== listRequestId) return;
     videoList.value = result ?? [];
+    listLoaded.value = true;
+    listLoading.value = false;
   }
 
-  function changeCategory(category: number) {
-    selectedCategory.value = category;
-  }
-
-  function handleSizeChange() {
-    currentPage.value = 1;
-    loadVideos();
-  }
-
-  function handlePageChange() {
-    scrollToAnchor();
-    loadVideos();
-  }
-
-  function removeVideo(videoId: string) {
-    const index = videoList.value.findIndex(v => v.videoId === videoId);
-    if (index !== -1) {
-      videoList.value.splice(index, 1);
-    }
-  }
-
-  // 回到页面最顶端
-  const scrollToAnchor = () => {
-    window.scrollTo(0, 0);
-  };
-
-  /* 生命周期 */
-
-  // 每次切换分类时：重置页码 + 重新请求数量和列表
-  watch(selectedCategory, () => {
+  /** 回到第一页，重新请求数量和列表 */
+  function reload() {
     currentPage.value = 1;
     loadVideoCounts();
     loadVideos();
+  }
+
+  /* 标签：和地址栏 ?status= 同步，刷新后停在同一个标签 */
+
+  watch(
+    () => route.query.status,
+    value => {
+      if (route.name !== ownRouteName) return;
+      activeTab.value = parseWorksTab(value);
+    },
+  );
+
+  watch(activeTab, tab => {
+    if (route.name === ownRouteName && parseWorksTab(route.query.status) !== tab) {
+      const query = { ...route.query };
+      if (tab === "all") {
+        delete query.status;
+      } else {
+        query.status = tab;
+      }
+      router.replace({ query });
+    }
+    reload();
   });
 
+  /* 搜索：输入停下 1 秒自动搜，回车或点放大镜立即搜 */
+
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearSearchTimer() {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = null;
+    }
+  }
+
+  function search(keyword: string = searchKeyword.value) {
+    clearSearchTimer();
+    appliedKeyword.value = keyword.trim();
+    reload();
+  }
+
   watch(searchKeyword, () => {
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      currentPage.value = 1;
-      loadVideoCounts();
-      loadVideos();
-    }, 1000);
+    clearSearchTimer();
+    searchDebounceTimer = setTimeout(() => search(), 1000);
   });
+
+  /* 翻页 */
+
+  function changePage(page: number) {
+    currentPage.value = page;
+    // 回到页面最顶端
+    window.scrollTo(0, 0);
+    loadVideos();
+  }
+
+  /* 弹幕 / 评论开关 */
+
+  /** 同一稿件请求没回来前不再发，免得两次请求用同一份旧设置互相覆盖 */
+  const interactionBusy = new Set<string>();
+  /** 同一个开关 0.5 秒内只响应一次 */
+  const interactionCooldown = new Set<string>();
+
+  async function toggleInteraction(video: VideoUploadInfo, flag: InteractionFlagValue) {
+    const videoId = video.videoId;
+    if (!videoId) return;
+    const cooldownKey = `${videoId}:${flag}`;
+    if (interactionBusy.has(videoId) || interactionCooldown.has(cooldownKey)) return;
+
+    interactionBusy.add(videoId);
+    interactionCooldown.add(cooldownKey);
+    setTimeout(() => interactionCooldown.delete(cooldownKey), 500);
+
+    const currentlyClosed = hasInteractionFlag(video.interaction, flag);
+    const nextInteraction = toggleInteractionFlag(video.interaction, flag);
+    try {
+      const ok = await VideoManagementApi.setInteraction(videoId, nextInteraction);
+      if (!ok) return;
+      video.interaction = nextInteraction;
+      const target = flag === InteractionFlag.DanmakuClosed ? "弹幕" : "评论";
+      message.success(`${currentlyClosed ? "已开启" : "已关闭"}${target}`);
+    } finally {
+      interactionBusy.delete(videoId);
+    }
+  }
+
+  /* 删除 */
+
+  function deleteVideo(video: VideoUploadInfo) {
+    const videoId = video.videoId;
+    if (!videoId) return;
+    confirm({
+      message: `确定要删除「${video.videoName || "该视频"}」吗？删除后可能会无法恢复。`,
+      confirmText: "删除",
+      confirmFun: async () => {
+        const result = await VideoManagementApi.deleteVideo(videoId, "用户主动删除");
+        if (result === null || result.code !== 200) return;
+        message.success("视频已删除");
+        videoList.value = videoList.value.filter(v => v.videoId !== videoId);
+        // 这一页删空了就回到上一页；重新请求当前页，把后面的稿件补上来
+        if (videoList.value.length === 0 && currentPage.value > 1) {
+          currentPage.value -= 1;
+        }
+        loadVideoCounts();
+        loadVideos();
+      },
+    });
+  }
+
+  /* 生命周期 */
 
   onMounted(() => {
     loadVideoCounts();
     loadVideos();
   });
 
+  onBeforeUnmount(clearSearchTimer);
+
   return {
-    // 枚举
-    CategoryEnum,
     // 状态
-    selectedCategory,
-    videoCounts,
-    videoInfoList,
-    currentPage,
-    pageSize,
+    activeTab,
+    tabOptions,
+    allCount,
     totalCount,
     searchKeyword,
+    appliedKeyword,
+    videoList,
+    listLoaded,
+    listLoading,
+    currentPage,
     // 方法
-    changeCategory,
-    handleSizeChange,
-    handlePageChange,
-    removeVideo,
-    loadVideoCounts,
+    search,
+    changePage,
+    toggleInteraction,
+    deleteVideo,
   };
 }

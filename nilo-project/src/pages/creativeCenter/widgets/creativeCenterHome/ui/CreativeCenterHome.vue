@@ -1,92 +1,185 @@
 <script lang="ts" setup>
-import { TypeInfo } from '../model/TypeInfo';
+import CcPageHeader from '@/pages/creativeCenter/shared/ui/CcPageHeader.vue';
 import { useCcHome } from '../model/useCcHome';
-
+import DailyTrendChart from './DailyTrendChart.vue';
 
 const {
     currentDataType,
+    statCards,
+    dateRangeText,
+    currentTypeName,
+    chartPoints,
+    chartSumText,
     changeDataType,
-    summarizeStatistics
 } = useCcHome()
 </script>
 
 <template>
-    <div class="content">
-        <el-card class="box-list">
-            <div class="box-inner">
-                <div v-for="type in TypeInfo" :class="['box-item', currentDataType == type.value ? 'active' : '']"
-                    @click="changeDataType(type.value)">
-                    <div :class="['name', type.icon]">{{ type.name }}</div>
-                    <div class="count">{{ summarizeStatistics(type.value) }}</div>
+    <div class="cc-page">
+        <CcPageHeader title="数据概览">
+            <template v-if="dateRangeText" #default>
+                <span class="date-range">{{ dateRangeText }}</span>
+            </template>
+        </CcPageHeader>
+
+        <section class="overview-panel">
+            <!-- 7 个指标卡片，点哪个下面的图表就看哪个 -->
+            <div class="stat-grid">
+                <button v-for="card in statCards" :key="card.value" type="button"
+                    :class="['stat-card', { active: card.value === currentDataType }]"
+                    :aria-pressed="card.value === currentDataType" @click="changeDataType(card.value)">
+                    <span class="stat-label">{{ card.name }}</span>
+                    <span class="stat-number">{{ card.main }}</span>
+                    <span class="stat-sub">{{ card.sub }}</span>
+                </button>
+            </div>
+
+            <div class="chart-section">
+                <div class="chart-header">
+                    <div class="chart-title-group">
+                        <span class="chart-title">{{ currentTypeName }}</span>
+                        <span class="chart-caption">近 7 天每日新增</span>
+                    </div>
+                    <span class="chart-sum">7 日合计 <span class="chart-sum-value">{{ chartSumText }}</span></span>
+                </div>
+                <div class="chart-body">
+                    <DailyTrendChart :label="currentTypeName" :points="chartPoints" />
                 </div>
             </div>
-        </el-card>
-        <el-card class="statistics-chart">
-            <div class="chart-inner">
-                <div class="chart" ref="chartRef"></div>
-            </div>
-        </el-card>
+        </section>
     </div>
 </template>
 
 <style lang="scss" scoped>
-.content {
-    margin: 30px 130px 0;
+@use '@/pages/creativeCenter/shared/styles/cc' as *;
 
-    .box-list {
-        margin-bottom: 20px;
+/* 标题右侧的日期范围，只展示不能点 */
+.date-range {
+    @include mono(12px);
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #FFFFFF;
+    white-space: nowrap;
+}
 
-        .box-inner {
-            display: flex;
-            flex-wrap: wrap;
-            column-gap: 30px;
-            row-gap: 15px;
+.overview-panel {
+    @include panel(28px, 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
 
-            .box-item {
-                width: 220px;
-                border: 1px solid $color-border;
-                border-radius: 15px;
-                font-weight: 600;
-                font-size: 20px;
+/*——————指标卡片—————— */
 
-                display: flex;
-                flex-direction: column;
-                align-items: start;
-                row-gap: 5px;
-                padding: 15px;
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+}
 
-                cursor: pointer;
+.stat-card {
+    @include reset-button;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+    padding: 18px 14px 16px 16px;
+    border-radius: 22px;
+    background: $cc-soft;
+    color: $warm-ink;
+    text-align: left;
+    transition: background-color 0.2s;
 
-                &.active {
-                    background-color: $color-bilibili-blue;
-
-                    color: white;
-
-                    .name {
-                        color: white;
-                    }
-                }
-
-                .name {
-                    color: $color-mask-60;
-
-                    &::first-letter {
-                        margin-right: 10px;
-                    }
-                }
-            }
-        }
+    &:hover {
+        background: $warm-accent-soft;
     }
 
-    .statistics-chart {
-        .chart-inner {
-            padding: 10px;
+    &.active {
+        background: $warm-accent;
+        color: #FFFFFF;
+        box-shadow: 0 16px 30px -16px rgba(0, 0, 242, 0.8);
 
-            .chart {
-                width: 100%;
-                height: 350px;
-            }
+        .stat-label,
+        .stat-sub {
+            color: $warm-accent-on-dark-2;
         }
     }
+}
+
+.stat-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $warm-ink-4;
+}
+
+.stat-number {
+    overflow: hidden;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.stat-sub {
+    @include mono(11px);
+    overflow: hidden;
+    color: $warm-ink-4;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/*——————近 7 天图表—————— */
+
+.chart-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 4px;
+}
+
+.chart-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.chart-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.chart-caption {
+    font-size: 13px;
+    color: $warm-ink-4;
+}
+
+.chart-sum {
+    font-size: 13px;
+    color: $warm-ink-3;
+    white-space: nowrap;
+}
+
+.chart-sum-value {
+    font-weight: 700;
+    color: $warm-accent;
+}
+
+.chart-body {
+    padding: 8px 4px 0;
 }
 </style>

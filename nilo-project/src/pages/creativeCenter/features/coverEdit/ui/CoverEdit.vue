@@ -2,7 +2,6 @@
 import { useTemplateRef } from 'vue'
 import { VueCropper } from 'vue-cropper'
 import 'vue-cropper/dist/index.css'
-import { RefreshLeft, RefreshRight } from '@element-plus/icons-vue'
 import { useCoverEdit } from '../model/useCoverEdit'
 
 // ==================== Props ====================
@@ -51,8 +50,8 @@ const {
 </script>
 
 <template>
-    <el-dialog :model-value="props.modelValue" :title="title" width="680px" :close-on-click-modal="false"
-        @close="handleClose">
+    <el-dialog :model-value="props.modelValue" :title="title" width="680px" class="cc-cover-dialog" append-to-body
+        :close-on-click-modal="false" @close="handleClose">
         <!-- 裁剪区域 -->
         <div class="cropper-wrapper">
             <VueCropper v-if="props.modelValue" ref="cropperRef" :img="imgSrc" :output-size="outputSize"
@@ -63,13 +62,15 @@ const {
         <!-- 底部操作栏 -->
         <template #footer>
             <div class="cropper-footer">
-                <div class="cropper-actions-left">
-                    <el-button title="左旋 90°" :icon="RefreshLeft" circle @click="rotateLeft" />
-                    <el-button title="右旋 90°" :icon="RefreshRight" circle @click="rotateRight" />
+                <div class="cropper-actions">
+                    <button type="button" class="rotate-button" title="左旋 90°" aria-label="左旋 90°"
+                        @click="rotateLeft">↺</button>
+                    <button type="button" class="rotate-button" title="右旋 90°" aria-label="右旋 90°"
+                        @click="rotateRight">↻</button>
                 </div>
-                <div class="cropper-actions-right">
-                    <el-button @click="handleClose">取消</el-button>
-                    <el-button type="primary" @click="confirmCrop">确定</el-button>
+                <div class="cropper-actions">
+                    <button type="button" class="cancel-button" @click="handleClose">取消</button>
+                    <button type="button" class="confirm-button" @click="confirmCrop">确定</button>
                 </div>
             </div>
         </template>
@@ -77,10 +78,13 @@ const {
 </template>
 
 <style lang="scss" scoped>
+@use '@/pages/creativeCenter/shared/styles/cc' as *;
+
 .cropper-wrapper {
     width: 100%;
     height: 420px;
     overflow: hidden;
+    border-radius: 16px;
 }
 
 .cropper-footer {
@@ -90,13 +94,36 @@ const {
     width: 100%;
 }
 
-.cropper-actions-left {
+.cropper-actions {
     display: flex;
     gap: 8px;
 }
 
-.cropper-actions-right {
-    display: flex;
-    gap: 8px;
+.rotate-button {
+    @include soft-pill(40px, 0, 18px);
+    justify-content: center;
+    width: 40px;
+    font-weight: 400;
+}
+
+.cancel-button {
+    @include soft-pill(40px, 0 20px, 13px);
+
+    &:hover:not(:disabled) {
+        background: $warm-sunken-hover;
+        color: $warm-ink;
+    }
+}
+
+.confirm-button {
+    @include accent-button(40px, 0 22px, 13px);
+}
+</style>
+
+<style lang="scss">
+// 弹窗挂在 body 上，只能用类名限定
+.el-dialog.cc-cover-dialog {
+    padding: 24px;
+    border-radius: 28px;
 }
 </style>

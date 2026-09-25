@@ -1,0 +1,152 @@
+// 创作中心（设计稿 CreatorA5）：整页电光蓝底，内容放在白色大圆角面板里
+@use '@/assets/scss/variables.scss' as *;
+
+/** 面板里的行分隔线 */
+$cc-line: #EEF0F4;
+/** 统计卡片、规则卡片、分P行的浅灰底（比 $warm-sunken 更浅一点） */
+$cc-soft: #F5F6F9;
+/** 删除悬停的淡红底 + 红字 */
+$cc-danger: oklch(0.52 0.17 25);
+$cc-danger-soft: oklch(0.95 0.035 25);
+/** 状态胶囊：进行中（琥珀）、已通过（绿）、未通过（红） */
+$cc-ing: oklch(0.47 0.11 70);
+$cc-ing-soft: oklch(0.95 0.05 85);
+$cc-ok: oklch(0.44 0.11 155);
+$cc-ok-soft: oklch(0.95 0.04 155);
+$cc-no: $cc-danger;
+$cc-no-soft: $cc-danger-soft;
+
+/// 去掉按钮默认样式
+@mixin reset-button {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid $warm-accent;
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+    }
+}
+
+/// 白色大面板（蓝底上的内容区）
+@mixin panel($padding: 28px, $radius: 32px) {
+    padding: $padding;
+    border-radius: $radius;
+    background: #FFFFFF;
+    color: $warm-ink;
+}
+
+/// 浅灰胶囊按钮：继续添加文件、评论管理 →、返回上传界面
+@mixin soft-pill($height: 32px, $padding: 0 14px, $font-size: 12px) {
+    @include reset-button;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: $height;
+    padding: $padding;
+    border-radius: 999px;
+    background: $warm-sunken;
+    color: $warm-ink;
+    font-size: $font-size;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.2s, color 0.2s;
+
+    &:hover:not(:disabled) {
+        background: $warm-accent-soft;
+        color: $warm-accent;
+    }
+}
+
+/// 删除：浅灰胶囊，悬停变淡红
+@mixin danger-pill($height: 32px) {
+    @include soft-pill($height, 0 14px, 12px);
+    color: $warm-ink-3;
+
+    &:hover:not(:disabled) {
+        background: $cc-danger-soft;
+        color: $cc-danger;
+    }
+}
+
+/// 黑色主按钮：选择文件、选择封面
+@mixin ink-button($height: 40px, $padding: 0 20px, $font-size: 13px) {
+    @include reset-button;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: $height;
+    padding: $padding;
+    border-radius: 999px;
+    background: $warm-ink;
+    color: #FFFFFF;
+    font-size: $font-size;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+
+    &:hover:not(:disabled) {
+        background: $warm-accent;
+    }
+}
+
+/// 蓝色主按钮：提交视频、查看稿件
+@mixin accent-button($height: 48px, $padding: 0 26px, $font-size: 14px) {
+    @include reset-button;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: $height;
+    padding: $padding;
+    border-radius: 999px;
+    background: $warm-accent;
+    color: #FFFFFF;
+    font-size: $font-size;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+/// 等宽数字：时间、计数、文件大小
+@mixin mono($size: 12px) {
+    font-family: $warm-font-mono;
+    font-size: $size;
+}
+
+/// 输入框：浅灰底，聚焦时白底 + 蓝色描边
+@mixin soft-input($height: 50px, $radius: 16px) {
+    width: 100%;
+    height: $height;
+    padding: 0 18px;
+    border: 0;
+    border-radius: $radius;
+    outline: 0;
+    background: $warm-sunken;
+    font: inherit;
+    font-size: 15px;
+    color: $warm-ink;
+    transition: background-color 0.2s, box-shadow 0.2s;
+
+    &::placeholder {
+        color: #8A8E9A;
+    }
+
+    &:focus {
+        background: #FFFFFF;
+        box-shadow: inset 0 0 0 1.5px $warm-accent;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+}
