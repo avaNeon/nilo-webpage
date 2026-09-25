@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { getAutoLoginPromise } from "@/app/composables/useAutoLogin";
 import { isPublicRoute } from "@/app/router/publicRoutes";
 import { setPageTitle } from "@/shared/utils/PageTitle";
+import { installSectionTransition } from "@/app/router/sectionTransition";
 import Index from "@/pages/index/ui/Index.vue";
 import VideoDetail from "@/pages/videoDetail/ui/VideoDetail.vue";
 import CreativeCenter from "@/pages/creativeCenter/ui/CreativeCenter.vue";
@@ -196,5 +197,7 @@ router.afterEach((to, _from, failure) => {
     .find(record => record.meta.title !== undefined);
   setPageTitle(titleRecord?.meta.title ?? null);
 });
+
+installSectionTransition(router);
 
 export default router;

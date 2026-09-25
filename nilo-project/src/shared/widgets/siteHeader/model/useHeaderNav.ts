@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { MessageApi } from "@/shared/api/MessageApi";
 import { useLoginStateStore } from "@/shared/store/LoginStateStore";
 import { routerToNewPage } from "@/shared/utils/RouteUtil";
@@ -16,6 +17,7 @@ export function setHeaderUncheckedMessageCount(count: number) {
  * IndexHeader 与 SiteHeader 共用
  */
 export function useHeaderNav() {
+  const router = useRouter();
   const loginStateStore = useLoginStateStore();
 
   /*——————状态—————— */
@@ -29,15 +31,25 @@ export function useHeaderNav() {
 
   /*——————方法—————— */
 
-  /** 未登录时弹出登录面板，已登录则在新标签页打开 */
-  function requireLoginThen(pathOrFactory: string | (() => string)) {
+  /**
+   * 未登录时弹出登录面板，已登录则在新标签页打开
+   * sameTab：在当前页跳转（主页 / 热门 / 创作中心之间切换用）
+   */
+  function requireLoginThen(
+    pathOrFactory: string | (() => string),
+    { sameTab = false }: { sameTab?: boolean } = {},
+  ) {
     if (!loginStateStore.loginState || !loginStateStore.userInfo?.userId) {
       loginStateStore.showPanel = true;
       return;
     }
     const path =
       typeof pathOrFactory === "function" ? pathOrFactory() : pathOrFactory;
-    routerToNewPage(path);
+    if (sameTab) {
+      router.push(path);
+    } else {
+      routerToNewPage(path);
+    }
   }
 
   async function loadUncheckedMessageCount() {

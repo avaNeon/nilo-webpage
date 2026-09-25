@@ -54,6 +54,31 @@ body {
     font-size: 14px;
 }
 
+// 不管页面长短都留着滚动条的位置，主页 / 热门 / 创作中心互相切换时顶栏不会因为滚动条有无而左右挪 8px。
+// 页面最小宽度是 1440，再加上 8px 滚动条；窗口再窄就不强制，否则短页面也会出现横向滚动条。
+// 放在 body 上（会传给视口）而不是 html：Element Plus 弹窗锁滚动是给 body 加 overflow: hidden，html 上设了就锁不住了
+@media (min-width: 1448px) {
+    body {
+        overflow-y: scroll;
+    }
+}
+
+// 主页 / 热门 / 创作中心之间切换时的淡入淡出（见 app/router/sectionTransition.ts）
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+    animation-duration: 0.28s;
+    animation-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none;
+    }
+}
+
 * {
     box-sizing: border-box;
     font-family: PingFang SC,

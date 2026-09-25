@@ -14,10 +14,13 @@ const props = withDefaults(defineProps<{
     hideSearch?: boolean,
     /** 液态玻璃：悬浮的毛玻璃胶囊，底下的壁纸透上来（个人主页用） */
     glass?: boolean,
+    /** 蓝底白字（创作中心用），元素位置和白底顶栏完全一样 */
+    blue?: boolean,
 }>(), {
     aiSearch: false,
     hideSearch: false,
     glass: false,
+    blue: false,
 })
 
 const mainContentMaxWidth: number = inject('mainContentMaxWidth', 0)
@@ -35,6 +38,7 @@ const innerStyle = computed(() =>
 })
 
 const route = useRoute()
+const creativeCenterHref = useRouter().resolve('/cc').href
 const aboutHref = useRouter().resolve({ name: 'about' }).href
 
 const {
@@ -47,6 +51,7 @@ const {
 /** 首页和分类页都算「主页」 */
 const isHomeRoute = computed(() => route.name === 'index' || route.name === 'category')
 const isHotRoute = computed(() => route.name === 'hot-ranking')
+const isCreativeCenterRoute = computed(() => route.matched.some(record => record.name === 'creativeCenter'))
 const isHistoryRoute = computed(() => route.name === 'history')
 const isMessageRoute = computed(() => route.name === 'messageCenter')
 /** 只有看自己的收藏时才算，看别人的收藏不点亮 */
@@ -59,6 +64,20 @@ const messageLabel = computed(() =>
 
 const avatarSrc = computed(() => loginStateStore.userInfo ? imgRequestUrl(loginStateStore.userInfo.avatar, true) : '')
 const avatarUserId = computed(() => loginStateStore.userInfo ? loginStateStore.userInfo.userId : null)
+
+/** 创作中心要登录：没登录弹登录面板；登录了就在当前页切过去（中键、Ctrl 点击照常开新标签页） */
+function openCreativeCenter(event: MouseEvent)
+{
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    requireLoginThen('/cc', { sameTab: true })
+}
+
+/** 投稿：已经在创作中心里就直接切过去，别的页面照旧开新标签页 */
+function openUpload()
+{
+    requireLoginThen('/cc/upload', { sameTab: isCreativeCenterRoute.value })
+}
 
 /*——————滚动后才显示底部分隔线—————— */
 
@@ -107,7 +126,7 @@ onBeforeUnmount(() =>
 </script>
 
 <template>
-    <header :class="['site-header', { scrolled, glass }]">
+    <header :class="['site-header', { scrolled, glass, blue }]">
         <div class="site-header-inner" :style="innerStyle">
             <a class="brand" :href="aboutHref" target="_blank" rel="noopener noreferrer" aria-label="关于光点">
                 <span class="brand-mark"></span>
@@ -124,9 +143,10 @@ onBeforeUnmount(() =>
                     :aria-current="isHotRoute ? 'page' : undefined">
                     热门<span class="nav-dot"></span>
                 </RouterLink>
-                <button type="button" class="nav-item" @click="requireLoginThen('/cc')">
+                <a :href="creativeCenterHref" :class="['nav-item', { active: isCreativeCenterRoute }]"
+                    :aria-current="isCreativeCenterRoute ? 'page' : undefined" @click="openCreativeCenter">
                     创作中心<span class="nav-dot"></span>
-                </button>
+                </a>
             </nav>
 
             <div v-if="!hideSearch" ref="aiSearchRef" class="search-group">
@@ -183,7 +203,7 @@ onBeforeUnmount(() =>
                 <div v-if="glass" class="avatar-slot">
                     <Avatar :src="avatarSrc" :user-id="avatarUserId" :lazy="false" :width="44"></Avatar>
                 </div>
-                <button type="button" class="upload-button" @click="requireLoginThen('/cc/upload')">
+                <button type="button" class="upload-button" @click="openUpload">
                     <span class="upload-plus">+</span>投稿
                 </button>
             </div>
@@ -206,6 +226,8 @@ onBeforeUnmount(() =>
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'tnum';
     transition: border-color 0.2s;
+    // 主页 / 热门 / 创作中心互相切换时，顶栏单独做一层淡入淡出，位置不动只换颜色
+    view-transition-name: site-header;
 
     &.scrolled {
         border-bottom-color: $warm-line-soft;
@@ -639,6 +661,138 @@ onBeforeUnmount(() =>
 
     .upload-button {
         height: 44px;
+    }
+}
+
+/*——————蓝底（创作中心）：尺寸、位置全都不变，只换颜色—————— */
+
+.site-header.blue {
+    background: rgba(0, 0, 242, 0.92);
+    color: #FFFFFF;
+
+    &.scrolled {
+        border-bottom-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .brand {
+        color: #FFFFFF;
+    }
+
+    // 白圆 + 蓝点，和白底顶栏反过来
+    .brand-mark {
+        background: #FFFFFF;
+
+        &::after {
+            background: $warm-accent;
+        }
+    }
+
+    .brand-tag {
+        color: $warm-accent-on-dark-2;
+    }
+
+    .nav-item {
+        color: $warm-accent-on-dark-2;
+
+        &:hover,
+        &:focus-visible {
+            color: #FFFFFF;
+        }
+
+        &.active {
+            color: #FFFFFF;
+
+            .nav-dot {
+                background: #FFFFFF;
+            }
+        }
+    }
+
+    // 半透明白底 + 白色细描边；点进去输入时变回白底深色字
+    :deep(.site-search .search-box) {
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+
+        .search-icon-ring {
+            border-color: $warm-accent-on-dark-2;
+        }
+
+        .search-icon-handle {
+            background: $warm-accent-on-dark-2;
+        }
+
+        .search-input {
+            color: #FFFFFF;
+
+            &::placeholder {
+                color: $warm-accent-on-dark-2;
+            }
+        }
+
+        .search-shortcut {
+            background: rgba(255, 255, 255, 0.16);
+            color: #FFFFFF;
+        }
+
+        &:focus-within {
+            background: #FFFFFF;
+            box-shadow: inset 0 0 0 1.5px #FFFFFF;
+
+            .search-icon-ring {
+                border-color: $warm-ink-4;
+            }
+
+            .search-icon-handle {
+                background: $warm-ink-4;
+            }
+
+            .search-input {
+                color: $warm-ink;
+
+                &::placeholder {
+                    color: $warm-ink-4;
+                }
+            }
+        }
+    }
+
+    .avatar-slot :deep(.onLogin .image-container) {
+        border: none !important;
+        box-shadow: 0 0 0 2px #FFFFFF;
+    }
+
+    .icon-button {
+        background: rgba(255, 255, 255, 0.12);
+        color: #FFFFFF;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        &.active {
+            background: #FFFFFF;
+            color: $warm-accent;
+        }
+
+        &:focus-visible {
+            outline-color: #FFFFFF;
+        }
+    }
+
+    // 角标反色：白底蓝字，外圈用蓝色和底色断开
+    .message-badge {
+        background: #FFFFFF;
+        box-shadow: 0 0 0 2px $warm-accent;
+        color: $warm-accent;
+    }
+
+    .upload-button {
+        background: #FFFFFF;
+        color: $warm-accent;
+
+        &:hover {
+            background: $warm-accent-soft;
+        }
     }
 }
 </style>
