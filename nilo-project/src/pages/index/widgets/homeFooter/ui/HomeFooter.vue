@@ -27,8 +27,7 @@ const currentYear = new Date().getFullYear()
                 <span>© {{ currentYear }}</span>
             </div>
             <nav class="footer-links">
-                <RouterLink to="/cc" target="_blank">创作中心</RouterLink>
-                <RouterLink to="/popular" target="_blank">24小时热榜</RouterLink>
+                <RouterLink to="/about" target="_blank" rel="noopener noreferrer">关于</RouterLink>
                 <a :href="`mailto:${CONTACT_EMAIL}`">联系我们</a>
             </nav>
         </div>
