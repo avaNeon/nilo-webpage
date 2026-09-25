@@ -88,6 +88,14 @@ function onScroll()
     scrolled.value = window.scrollY > 0
 }
 
+/** 首页 AI 搜索还没提问时给的示例，都是站内找视频、定位片段 */
+const searchSuggestions = [
+    '有没有和开源软件相关的视频',
+    '有没有介绍 OBS Studio 的视频',
+    '介绍一下这个网站',
+    '你是谁',
+]
+
 /*——————AI 搜索弹层：点外面或按 Esc 关闭，关了不清空对话—————— */
 
 const aiSearchOpen = ref(false)
@@ -160,7 +168,7 @@ onBeforeUnmount(() =>
                         <!-- v-show：关掉再打开还能接着聊 -->
                         <div v-show="aiSearchOpen" class="ai-search-popover" role="dialog" aria-label="AI 搜索">
                             <AiAssistant embedded closable title="AI 搜索" subtitle="用一句话找到想看的"
-                                @close="aiSearchOpen = false" />
+                                :suggestions="searchSuggestions" @close="aiSearchOpen = false" />
                         </div>
                     </Transition>
                 </template>
