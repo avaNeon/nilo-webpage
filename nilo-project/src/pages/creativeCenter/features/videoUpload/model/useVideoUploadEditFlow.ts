@@ -83,10 +83,12 @@ export function useVideoUploadEditFlow(
 
   /**
    * @param isCurrent 分P列表回来时是否还在编辑这个稿件（加载期间可能已经切走）
+   * @param onFormApplied 稿件信息刚填进表单时调用（分P列表还没回来）
    */
   async function loadEditVideo(
     videoId: string,
     isCurrent: () => boolean,
+    onFormApplied?: () => void,
   ): Promise<boolean> {
     const detail = videoUploadEditStore.editVideoInfo;
     if (!detail || String(detail.videoId ?? "") !== videoId) {
@@ -103,6 +105,7 @@ export function useVideoUploadEditFlow(
     syncCategorySelectionByCategoryNumber(form.categoryNumber);
     initialTags.value = UploadUtil.parseTags(form.tags);
     syncInteractionFlags(form.interaction, closeDanmaku, closeComment);
+    onFormApplied?.();
 
     const fileList = await videoFileApi.loadVideoFileUpload(videoId);
     // 加载期间已经离开了这个稿件的编辑，旧分P不能写进新的投稿里

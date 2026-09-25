@@ -37,6 +37,7 @@ const {
   submitting,
   formResetKey,
   isEditMode,
+  hasChanges,
   hasMissingExistingFileId,
   maxVideoEpisodes,
   hasExceededVideoEpisodes,
@@ -195,6 +196,8 @@ const submitHint = computed<{ text: string, tone: HintTone }>(() =>
   {
     return { text: `简介不能超过 ${MAX_INTRODUCTION_LENGTH} 个字符`, tone: 'danger' }
   }
+  // 编辑稿件：原样不动不能提交
+  if (!hasChanges.value) return { text: '还没有做任何修改', tone: 'muted' }
   return { text: '信息已完善，可以提交', tone: 'ready' }
 })
 

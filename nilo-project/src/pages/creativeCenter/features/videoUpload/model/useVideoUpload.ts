@@ -2,6 +2,7 @@ import {
   ref,
   reactive,
   computed,
+  nextTick,
   onMounted,
   onBeforeUnmount,
   watch,
@@ -34,6 +35,7 @@ import { useUploadQuota } from "./useUploadQuota";
 import { isValidVideoExtension } from "./videoFileTypes";
 
 const LEAVE_CONFIRM_MESSAGE = "离开此页面将丢失当前所有上传数据，确认退出？";
+const LEAVE_EDIT_CONFIRM_MESSAGE = "离开此页面将丢失当前所有修改，确认退出？";
 
 export function useVideoUpload() {
   /* —————— 外部依赖 —————— */
@@ -146,7 +148,9 @@ export function useVideoUpload() {
     preuploadList.value.splice(index, 1);
   }
 
+  /** 离开页面会不会丢东西：新投稿看有没有选文件，编辑稿件看有没有改动 */
   function hasPendingData(): boolean {
+    if (isEditMode.value) return hasChanges.value;
     return preuploadList.value.length > 0;
   }
 
@@ -161,6 +165,8 @@ export function useVideoUpload() {
     hasFileSelected.value = false;
     modifiedVideoId.value = null;
     editVideoStatus.value = null;
+    editFieldsBaseline.value = null;
+    editPartsBaseline.value = null;
     coverBlob.value = null;
     tagList.value = [];
     closeDanmaku.value = false;
@@ -233,6 +239,38 @@ export function useVideoUpload() {
     editVideoStatus,
   );
 
+  /* —————— 编辑模式：有没有改动 —————— */
+
+  /** 稿件信息刚加载好时的样子；null 表示还在加载。和当前对比就知道用户改没改 */
+  const editFieldsBaseline = ref<string | null>(null);
+  const editPartsBaseline = ref<string | null>(null);
+
+  /** 表单里能改的项（封面单独按「是否选了新封面」判断） */
+  function fieldsSignature(): string {
+    return JSON.stringify([
+      form.videoTitle,
+      form.postType,
+      // 只有转载才有原资源说明，自制时改了它也不算
+      form.postType === 2 ? (form.originInfo ?? "").trim() : "",
+      form.categoryNumber,
+      form.introduction,
+      tagList.value.join(","),
+      closeDanmaku.value,
+      closeComment.value,
+    ]);
+  }
+
+  /** 分P：旧分P看文件和名称、顺序；新加的分P每个都算一处改动。转码失败的分P不参与 */
+  function partsSignature(list: PreuploadVideoFile[]): string {
+    return JSON.stringify(
+      list
+        .filter(item => !isTransferFailedFile(item))
+        .map(item =>
+          item.isExisting ? ["old", item.fileId, item.filename] : ["new", item.uid],
+        ),
+    );
+  }
+
   /** 根据路由 query 判断是否进入编辑模式并加载已有视频数据 */
   async function initEditVideo(query: LocationQuery) {
     if (query.mode !== "edit") return;
@@ -242,8 +280,21 @@ export function useVideoUpload() {
 
     modifiedVideoId.value = videoId;
     const isCurrent = () => modifiedVideoId.value === videoId;
+    const loaded = await loadEditVideo(videoId, isCurrent, () => {
+      // 表单刚填好：等分区、标签的监听同步完，再把现在的样子记成「没改过」
+      nextTick(() => {
+        if (isCurrent()) editFieldsBaseline.value = fieldsSignature();
+      });
+    });
+    if (loaded) {
+      // 加载期间自己加进来的新分P不算「原样」
+      editPartsBaseline.value = partsSignature(
+        preuploadList.value.filter(item => item.isExisting),
+      );
+      return;
+    }
     // 加载失败按新投稿处理；加载期间已经离开这个稿件的编辑就什么都不动
-    if (!(await loadEditVideo(videoId, isCurrent)) && isCurrent()) {
+    if (isCurrent()) {
       modifiedVideoId.value = null;
       editVideoStatus.value = null;
       router.replace({ query: {} });
@@ -340,9 +391,24 @@ export function useVideoUpload() {
     setCoverQuotaBytes,
   } = useUploadQuota(preuploadList, coverBlob, submitState);
 
+  /** 编辑稿件时有没有改过东西；新投稿没有「没改过」一说，始终为 true */
+  const hasChanges = computed(() => {
+    if (!isEditMode.value) return true;
+    // 还在加载，没有可比的原样
+    if (editFieldsBaseline.value === null || editPartsBaseline.value === null) {
+      return false;
+    }
+    return (
+      shouldUploadCover.value ||
+      fieldsSignature() !== editFieldsBaseline.value ||
+      partsSignature(preuploadList.value) !== editPartsBaseline.value
+    );
+  });
+
   const canSubmit = computed(
     () =>
       !submitting.value &&
+      hasChanges.value &&
       isFormValid.value &&
       activePreuploadList.value.length > 0 &&
       !hasMissingExistingFileId.value &&
@@ -580,6 +646,10 @@ export function useVideoUpload() {
     form.tags = tags.join(",");
   });
 
+  function leaveMessage(): string {
+    return isEditMode.value ? LEAVE_EDIT_CONFIRM_MESSAGE : LEAVE_CONFIRM_MESSAGE;
+  }
+
   /** 提交中阻止离开；有未保存数据时弹出二次确认 */
   onBeforeRouteLeave((_to, _from, next) => {
     if (submitting.value) return next(false);
@@ -587,7 +657,7 @@ export function useVideoUpload() {
     if (!hasPendingData() || submitState.value) return next();
 
     confirm({
-      message: LEAVE_CONFIRM_MESSAGE,
+      message: leaveMessage(),
       confirmText: "确认退出",
       confirmFun: () => {
         cleanupAll();
@@ -618,7 +688,7 @@ export function useVideoUpload() {
     if (!hasPendingData() || submitState.value) return proceed();
 
     confirm({
-      message: LEAVE_CONFIRM_MESSAGE,
+      message: leaveMessage(),
       confirmText: "确认退出",
       confirmFun: proceed,
     });
@@ -669,6 +739,7 @@ export function useVideoUpload() {
     formResetKey,
     // 编辑模式
     isEditMode,
+    hasChanges,
     // 衍生计算
     hasMissingExistingFileId,
     maxVideoEpisodes,
