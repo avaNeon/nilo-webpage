@@ -80,3 +80,108 @@ body {
 .el-tooltip__trigger:focus-visible {
     outline: unset;
 }
+
+// 二次确认（ElMessageBox + .nilo-confirm）。不作用于 el-dialog
+.el-message-box.nilo-confirm {
+    --el-messagebox-width: 440px;
+    --el-messagebox-border-radius: 28px;
+    --el-messagebox-padding-primary: 0px;
+    --el-messagebox-font-size: 20px;
+    --el-messagebox-font-line-height: 1.35;
+    --el-messagebox-content-font-size: 14px;
+    --el-messagebox-content-color: #{$warm-ink-3};
+    --el-messagebox-title-color: #{$warm-ink};
+    --el-messagebox-box-shadow: 0 0 0 1px rgba(11, 12, 18, 0.06), 0 32px 64px -24px rgba(11, 12, 18, 0.45);
+    padding: 28px 28px 24px;
+    overflow: visible;
+    background: #ffffff;
+    color: $warm-ink;
+    -webkit-font-smoothing: antialiased;
+
+    &,
+    & * {
+        font-family: $warm-font-sans;
+    }
+
+    .el-message-box__header {
+        padding: 0;
+    }
+
+    .el-message-box__title {
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        line-height: 1.35;
+        text-wrap: pretty;
+    }
+
+    .el-message-box__content {
+        margin-top: 12px;
+        padding: 0;
+    }
+
+    .el-message-box__status {
+        display: none;
+    }
+
+    .el-message-box__message p {
+        color: $warm-ink-3;
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.75;
+        text-wrap: pretty;
+    }
+
+    .el-message-box__btns {
+        gap: 10px;
+        padding-top: 26px;
+    }
+
+    .el-message-box__btns .el-button {
+        height: 44px;
+        margin: 0;
+        padding: 0 22px;
+        border: none;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1;
+        box-shadow: none;
+        --el-button-bg-color: #{$warm-sunken};
+        --el-button-border-color: transparent;
+        --el-button-text-color: #{$warm-ink};
+        --el-button-hover-bg-color: #{$warm-sunken-hover};
+        --el-button-hover-border-color: transparent;
+        --el-button-hover-text-color: #{$warm-ink};
+        --el-button-active-bg-color: #{$warm-sunken-hover};
+        --el-button-active-border-color: transparent;
+        --el-button-active-text-color: #{$warm-ink};
+        --el-button-outline-color: transparent;
+    }
+
+    .el-message-box__btns .el-button--primary {
+        padding: 0 24px;
+        font-weight: 700;
+        box-shadow: 0 12px 26px -12px rgba(0, 0, 242, 0.7);
+        --el-button-bg-color: #{$warm-accent};
+        --el-button-border-color: transparent;
+        --el-button-text-color: #ffffff;
+        --el-button-hover-bg-color: #0000c8;
+        --el-button-hover-border-color: transparent;
+        --el-button-hover-text-color: #ffffff;
+        --el-button-active-bg-color: #0000c8;
+        --el-button-active-border-color: transparent;
+        --el-button-active-text-color: #ffffff;
+        --el-button-outline-color: transparent;
+    }
+
+    &.nilo-confirm--danger .el-message-box__btns .el-button--primary {
+        box-shadow: 0 12px 26px -12px oklch(0.55 0.2 25);
+        --el-button-bg-color: oklch(0.55 0.2 25);
+        --el-button-hover-bg-color: oklch(0.5 0.2 25);
+        --el-button-active-bg-color: oklch(0.5 0.2 25);
+    }
+
+    &.nilo-confirm--title-only .el-message-box__content {
+        display: none;
+    }
+}
