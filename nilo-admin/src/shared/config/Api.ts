@@ -2,13 +2,13 @@
 const Api = {
   // ——————管理员账户管理——————
   /** 获取验证码 */
-  captcha: "/account/captcha",
+  captcha: "/admin/captcha",
   /** 管理员登录 */
-  login: "/account/login",
+  login: "/admin/login",
   /** 自动登录 */
-  autoLogin: "/account/autoLogin",
+  autoLogin: "/admin/autoLogin",
   /** 登出 */
-  logout: "/account/logout",
+  logout: "/admin/logout",
 
   // ——————用户账户管理——————
   /** 获取用户账户列表 */
