@@ -43,7 +43,7 @@ export function usePlayCount() {
     // 只累加合理的增量（超过3秒认为是 seek/跳转，不计入）
     if (delta > 0 && delta <= 3) {
       accumulatedTime += delta;
-      console.log("增加播放时长：", delta, "  累计播放时长：", accumulatedTime);
+      // console.log("增加播放时长：", delta, "  累计播放时长：", accumulatedTime);
     }
 
     if (accumulatedTime >= videoStateStore.videoInfo.duration * 0.2) {
