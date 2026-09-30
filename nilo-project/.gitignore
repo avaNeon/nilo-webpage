@@ -26,5 +26,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Ignore local source assets (images, videos used during development)
-src/assets/
+# 只忽略 src/assets/backup/（备份图片，代码没有引用）。
+# 其余素材都被代码引用，必须提交，否则 CI 上构建会缺文件
+src/assets/backup/
