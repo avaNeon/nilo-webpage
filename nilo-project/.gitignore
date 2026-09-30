@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# 本地环境变量，不提交（部署时构建所需的变量由部署工作流注入）
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

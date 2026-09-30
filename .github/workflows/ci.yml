@@ -1,0 +1,35 @@
+name: CI
+
+# 每次 push 和 Pull Request 都会把两个前端各构建一遍：vue-tsc 类型检查 + vite 打包。
+# 目前没有测试，构建能通过，至少说明类型和打包没问题。
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false        # 一个前端失败了，另一个也照常跑完
+      matrix:
+        app: [nilo-project, nilo-admin]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      # npm ci 严格按 package-lock.json 安装，比 npm install 更可重复
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
