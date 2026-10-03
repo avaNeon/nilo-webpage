@@ -1,7 +1,8 @@
 name: Deploy
 
-# 手动触发：GitHub 仓库页面 -> Actions -> "Deploy" -> Run workflow，勾选要发布的前端。
-# GitHub 云服务器负责构建（并把环境相关的值注入进去），再用 rsync 把 dist 上传到服务器对应的目录。
+# 手动触发：先把代码推送到 main 并等 CI 跑完，再到 GitHub 仓库页面 -> Actions -> "Deploy" -> Run workflow，勾选要发布的前端。
+# 这里不构建：dist 由 CI 工作流在推送到 main 时构建好（并注入环境相关的值），
+# 这里取当前提交对应的那份产物，用 rsync 上传到服务器对应的目录。
 # 服务器上是 nginx 直接托管这些静态文件，所以不需要重启任何容器。
 #
 # 需要提前在仓库 Settings -> Secrets and variables -> Actions 里配置：
@@ -10,14 +11,9 @@ name: Deploy
 #     SSH_USER         前端上传专用账号 deploy-web
 #                       （它的公钥在服务器上被强制命令限制成只能往网站目录写文件，不能执行别的命令）
 #     SSH_PRIVATE_KEY  deploy-web 专用的私钥内容
-#   Variables（不是敏感信息。注意：它们会被打包进公开的 JS，所以这里绝对不能放密钥）：
-#     MINIO_ENDPOINT   浏览器访问 MinIO 的地址，如 https://xxx，不带末尾斜杠。必填
+#   Variables（不是敏感信息）：
 #     SITE_URL         主站地址，用于发布后的冒烟检查。可选，不填就跳过检查
-#
-# 本地的 .env 不提交（已加入 .gitignore），构建需要的变量全部由这个工作流在构建时传入：
-#   VITE_APP_BASE_URL   固定为 /api，是和服务器 nginx 转发前缀之间的约定
-#   VITE_MINIO_ENDPOINT 取自上面的 MINIO_ENDPOINT
-# 两个 bucket 的名字没有传，前端代码里有默认值。
+#   构建用的 MINIO_ENDPOINT 见 ci.yml，在 CI 里使用。
 
 on:
   workflow_dispatch:
@@ -31,6 +27,10 @@ on:
         type: boolean
         default: true
 
+# 只需要读取 CI 上传的构建产物
+permissions:
+  actions: read
+
 # 同一时间只跑一个发布，后点的排队等前一个结束
 concurrency:
   group: deploy
@@ -39,16 +39,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 把勾选了的前端拼成空格分隔的一行；一个都没勾、或者 MinIO 地址没配，直接失败，不要悄悄用错误的值打包
+      # 把勾选了的前端拼成空格分隔的一行；一个都没勾，直接失败
       - name: Pick apps
         id: pick
         env:
           PICK_PROJECT: ${{ inputs.nilo-project }}
           PICK_ADMIN: ${{ inputs.nilo-admin }}
-          MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
         run: |
           apps=""
           [ "$PICK_PROJECT" = "true" ] && apps="$apps nilo-project"
@@ -58,21 +54,26 @@ jobs:
             echo "一个前端都没勾选" >&2
             exit 1
           fi
-          if [ -z "$MINIO_ENDPOINT" ]; then
-            echo "仓库 Variables 里没有配置 MINIO_ENDPOINT" >&2
-            exit 1
-          fi
           echo "apps=$apps" >> "$GITHUB_OUTPUT"
           echo "本次发布：$apps"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: |
-            nilo-project/package-lock.json
-            nilo-admin/package-lock.json
+      # 找到当前提交在 main 上构建成功的那次 CI，把勾选的前端的 dist 下载下来。
+      # 找不到通常是：CI 还没跑完，或者这次选的不是 main 上的提交
+      - name: Download build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPS: ${{ steps.pick.outputs.apps }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push \
+            --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::提交 $GITHUB_SHA 在 main 上没有构建成功的 CI，请确认已推送到 main 且 CI 已跑完"
+            exit 1
+          fi
+          echo "使用 CI 运行 $run_id 的构建产物"
+          for app in $APPS; do
+            gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name "$app-dist" --dir "dist/$app"
+          done
 
       # 准备 SSH 私钥。ssh-keyscan 只是记下服务器的公钥，私钥不会因此泄露给任何人
       - name: Set up SSH
@@ -85,12 +86,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-      # 逐个构建并上传。上传目标是相对路径：服务器的强制命令已经把它限制在网站根目录里
+      # 逐个上传。上传目标是相对路径：服务器的强制命令已经把它限制在网站根目录里
       #   nilo-project -> www，nilo-admin -> admin
-      - name: Build and upload
+      - name: Upload
         env:
           APPS: ${{ steps.pick.outputs.apps }}
-          MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
@@ -99,13 +99,10 @@ jobs:
               nilo-project) dir=www ;;
               nilo-admin)   dir=admin ;;
             esac
-            echo "::group::构建 $app"
-            (cd "$app" && npm ci && VITE_APP_BASE_URL=/api VITE_MINIO_ENDPOINT="$MINIO_ENDPOINT" npm run build)
-            echo "::endgroup::"
             # --delete：把服务器上已经不存在于新版本的旧文件删掉
             rsync -az --delete --chmod=D755,F644 \
               -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes" \
-              "$app/dist/" "$SSH_USER@$SSH_HOST:$dir/"
+              "dist/$app/" "$SSH_USER@$SSH_HOST:$dir/"
           done
 
       # 发布后的冒烟检查：主站能打开，并且返回的是前端页面。同时验证了 nginx、证书和静态文件

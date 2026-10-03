@@ -2,6 +2,16 @@ name: CI
 
 # 每次 push 和 Pull Request 都会把两个前端各构建一遍：vue-tsc 类型检查 + vite 打包。
 # 目前没有测试，构建能通过，至少说明类型和打包没问题。
+#
+# 推送到 main 时，构建结果（dist）还会作为构建产物上传到这次运行里，名字是 <前端目录名>-dist。
+# 这一步只负责"打包"，和部署无关：Deploy 工作流直接取用这份产物，不再重新构建。
+# PR 和其他分支只做构建检查，不上传。
+#
+# 构建需要的环境相关的值在这里注入（本地的 .env 不提交，已加入 .gitignore）：
+#   VITE_APP_BASE_URL   固定为 /api，是和服务器 nginx 转发前缀之间的约定
+#   VITE_MINIO_ENDPOINT 取自仓库 Variables 里的 MINIO_ENDPOINT（浏览器访问 MinIO 的地址，如 https://xxx，
+#                       不带末尾斜杠）。它会被打包进公开的 JS，所以这里绝对不能放密钥
+# 两个 bucket 的名字没有传，前端代码里有默认值。
 on:
   push:
   pull_request:
@@ -27,9 +37,32 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
 
+      # 推送到 main 的产物是要上线的，没配 MINIO_ENDPOINT 就会打出指向错误地址的包，所以直接失败
+      - name: Check MINIO_ENDPOINT
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
+        run: |
+          if [ -z "$MINIO_ENDPOINT" ]; then
+            echo "::error::仓库 Variables 里没有配置 MINIO_ENDPOINT"
+            exit 1
+          fi
+
       # npm ci 严格按 package-lock.json 安装，比 npm install 更可重复
       - name: Install dependencies
         run: npm ci
 
       - name: Build
+        env:
+          VITE_APP_BASE_URL: /api
+          VITE_MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
         run: npm run build
+
+      # path 不受上面的 working-directory 影响，要从仓库根目录写起
+      - name: Upload dist
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-dist
+          path: ${{ matrix.app }}/dist
+          if-no-files-found: error
