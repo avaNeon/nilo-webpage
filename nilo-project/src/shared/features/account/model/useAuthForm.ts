@@ -428,8 +428,11 @@ export function useAuthForm() {
 
   /** 结果页上的按钮：登录成功 → 关窗口；注册 / 重置密码成功 → 回到登录 */
   function finishDone() {
-    if (done.value === "login") closePanel();
-    else setMode("login");
+    if (done.value === "login") {
+      closePanel();
+      // 登录后用户数据不会自动加载，刷新一次走自动登录流程
+      window.location.reload();
+    } else setMode("login");
   }
 
   return {
