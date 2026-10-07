@@ -993,7 +993,7 @@ export function usePlayer() {
 
       // 如果已经做好播放统计，结束记录
       if (needReport) {
-        videoApi.reportPlayCount(videoId.value);
+        videoApi.reportPlayCount(videoId.value, getOrCreateSessionId());
         player.off("video:timeupdate", onTimeUpdate);
       }
     });

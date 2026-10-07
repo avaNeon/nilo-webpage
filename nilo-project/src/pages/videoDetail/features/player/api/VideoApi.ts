@@ -51,11 +51,16 @@ function getPendingVideoResource(videoId: string, index: number): string {
   return `${getWebBaseUrl()}${Api.hlsMasterPlaylist}/${videoId}/${index}/master.m3u8`;
 }
 
-/** 上报播放统计 */
-async function reportPlayCount(videoId: string): Promise<void> {
+/**
+ * 上报播放统计
+ * 后端按 sessionId-videoId、IP-videoId 限流，被限流属于预期情况，不弹错误提示
+ */
+async function reportPlayCount(videoId: string, sessionId: string): Promise<void> {
   await request({
     method: "post",
     url: Api.playCount + `/${videoId}`,
+    params: { sessionId },
+    showError: false,
   });
 }
 
