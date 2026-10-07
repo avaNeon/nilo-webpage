@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import SiteHeader from '@/shared/widgets/siteHeader/ui/SiteHeader.vue';
 import { useVideoDetail } from '../composables/useVideoDetail';
-import { computed, inject, onMounted } from 'vue';
+import { computed, inject, onMounted, ref } from 'vue';
 import Avatar from '@/shared/entities/avatar/ui/Avatar.vue';
 import { imgRequestUrl } from '@/shared/utils/ImgUtil';
 import Player from '@/pages/videoDetail/features/player/ui/Player.vue';
@@ -22,6 +22,7 @@ import { formatCount } from '@/shared/utils/NumberUtil';
 import useCategoryStore from '@/shared/store/CategoryStore';
 import AiAssistant from '@/shared/features/aiAssistant/ui/AiAssistant.vue';
 import VideoSummary from '@/pages/videoDetail/entities/videoSummary/ui/VideoSummary.vue';
+import VideoSummaryToggle from '@/pages/videoDetail/entities/videoSummary/ui/VideoSummaryToggle.vue';
 import HomeFooter from '@/pages/index/widgets/homeFooter/ui/HomeFooter.vue';
 
 const {
@@ -122,6 +123,9 @@ const currentFileIndex = computed(() => Number(route.params.index) || 1)
 const currentFilePath = computed(() =>
     videoStateStore.videoFileList.find(file => file.fileIndex === currentFileIndex.value)?.filePath ?? '')
 
+/** AI 总结是否展开：按钮在操作栏，卡片在操作栏下方，默认收起 */
+const summaryOpen = ref(false)
+
 onMounted(() =>
 {
     initLoad()
@@ -180,14 +184,20 @@ onMounted(() =>
                         </el-dropdown>
                         <button v-else type="button" class="follow-button" @click="subscribe">+ 关注</button>
                     </div>
-                    <VideoActionItem @action-done="() => loadVideoInfo(route.params.videoId as string)" />
+                    <VideoActionItem @action-done="() => loadVideoInfo(route.params.videoId as string)">
+                        <template #leading>
+                            <VideoSummaryToggle v-if="currentFilePath" :open="summaryOpen"
+                                @toggle="summaryOpen = !summaryOpen" />
+                        </template>
+                    </VideoActionItem>
                 </section>
+
+                <!-- AI 总结：点操作栏里的「AI 总结」展开，紧跟在操作栏下方 -->
+                <VideoSummary v-if="currentFilePath" class="video-summary-card" :file-path="currentFilePath"
+                    :file-index="currentFileIndex" :open="summaryOpen" @jump="onAiJump" />
 
                 <VideoIntroduction :introduction="videoStateStore.videoInfo?.introduction || ''"
                     :tags="videoStateStore.videoInfo.tags || []" />
-
-                <VideoSummary v-if="currentFilePath" :file-path="currentFilePath" :file-index="currentFileIndex"
-                    @jump="onAiJump" />
 
                 <section class="comment-block">
                     <VideoComment class="video-comment" :video-comments="comments" :available="isCommentAvailable()"
@@ -361,8 +371,7 @@ $aside-width: 392px;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    padding-bottom: 28px;
-    border-bottom: 1px solid $warm-line;
+    padding-bottom: 24px;
 
     .creator {
         display: flex;
@@ -460,6 +469,11 @@ $aside-width: 392px;
             }
         }
     }
+}
+
+// 展开的 AI 总结：操作栏下方已有 28px 的间距，往上收 8px 让卡片离分隔线近一点
+.video-summary-card {
+    margin-top: -8px;
 }
 
 // ==================== 评论 ====================

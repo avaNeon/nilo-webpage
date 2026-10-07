@@ -95,6 +95,9 @@ onMounted(() =>
 
 <template>
     <div class="video-action-items">
+        <!-- 排在最前面的额外按钮（AI 总结），由页面传入 -->
+        <slot name="leading"></slot>
+
         <!-- 点赞 -->
         <button type="button"
             :class="['video-action-item', { active: videoActionState.liked, 'animating-like': isAnimating(UserVideoAction.like) }]"
