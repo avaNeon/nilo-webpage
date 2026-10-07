@@ -15,7 +15,7 @@ defineProps<{
         <div class="brand">
             <span class="brand-mark"><i></i></span>
             <span class="brand-name">光点</span>
-            <span class="brand-tag">LUMI</span>
+            <span class="brand-tag">Nilo</span>
         </div>
 
         <div class="stage" aria-hidden="true">

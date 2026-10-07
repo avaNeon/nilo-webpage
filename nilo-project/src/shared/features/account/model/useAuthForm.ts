@@ -278,7 +278,8 @@ export function useAuthForm() {
     } else {
       const code = formData.emailCode.trim();
       if (!code) found.emailCode = "请输入邮箱验证码";
-      else if (!regs.emailCode.test(code)) found.emailCode = "验证码为6位数字或字母";
+      else if (!regs.emailCode.test(code))
+        found.emailCode = "验证码为6位数字或字母";
 
       if (showNickName.value) {
         const nick = formData.nickName.trim();
