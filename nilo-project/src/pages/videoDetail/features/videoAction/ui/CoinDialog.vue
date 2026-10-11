@@ -2,8 +2,6 @@
 import { UserVideoAction } from '@/shared/constant/UserVideoActionEnum';
 import { useVideoAction } from '../model/useVideoAction';
 import { useVideoActionUiStore } from '../store/VideoActionUiStore';
-import coin1 from '@/assets/coin1.png'
-import coin2 from '@/assets/coin2.png'
 
 const { coinAmount, updateCoinAmount, doVideoAction, checkLogin } = useVideoAction()
 const videoActionUiStore = useVideoActionUiStore()
@@ -40,11 +38,9 @@ async function handleAction(actionType: number, coinAmount: number)
         </div>
         <div class="content">
             <div :class="['coin-item', { active: coinAmount === 1 }]" @click="updateCoinAmount(1)">
-                <img class="image" :src="coin1" alt="Coin 1">
                 <p class="label">1硬币</p>
             </div>
             <div :class="['coin-item', { active: coinAmount === 2 }]" @click="updateCoinAmount(2)">
-                <img class="image" :src="coin2" alt="Coin 2">
                 <p class="label">2硬币</p>
             </div>
         </div>
