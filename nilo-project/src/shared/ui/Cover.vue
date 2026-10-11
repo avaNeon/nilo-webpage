@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<{
     lazy: true,
     fit: 'scale-down',
     preview: false,
-    notFound: '../../assets/img/404.png',
+    notFound: '../../assets/404.png',
     borderRadius: 5,
     scale: 1,
     defaultSrc: '../../assets/unknown.png',
@@ -100,7 +100,7 @@ function showPreview()
             </template>
             <template #error>
                 <div class="loading-failed">
-                    <img src="../../assets/failed.jpg" alt="Failed to load image">
+                    <img src="../../assets/failed.png" alt="Failed to load image">
                 </div>
             </template>
         </el-image>
@@ -119,7 +119,7 @@ function showPreview()
             </template>
             <template #error>
                 <div class="loading-failed">
-                    <img src="../../assets/failed.jpg" alt="Failed to load image">
+                    <img src="../../assets/failed.png" alt="Failed to load image">
                 </div>
             </template>
         </el-image>
