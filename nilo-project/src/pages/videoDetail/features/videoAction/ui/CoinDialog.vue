@@ -81,10 +81,7 @@ async function handleAction(actionType: number, coinAmount: number)
         justify-content: space-around;
 
         .coin-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-bottom: 12px;
+            padding: 6px 24px;
             cursor: pointer;
 
             border: 2px solid $warm-border;
@@ -103,7 +100,6 @@ async function handleAction(actionType: number, coinAmount: number)
             }
 
             .label {
-                margin-top: 10px;
                 font-size: 15px;
                 font-weight: 500;
                 color: $warm-ink-3;
@@ -115,6 +111,7 @@ async function handleAction(actionType: number, coinAmount: number)
     .dialog-footer {
         display: flex;
         justify-content: center;
+        margin-bottom: 10px;
     }
 }
 </style>
