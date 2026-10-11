@@ -81,7 +81,8 @@ const categoryLabel = computed(() =>
     return names.join(' · ')
 })
 
-interface MetaItem {
+interface MetaItem
+{
     /** 加粗显示的数字，没有就只显示 text */
     value?: string
     text: string
@@ -91,7 +92,7 @@ interface MetaItem {
 const metaItems = computed((): MetaItem[] =>
 {
     const videoInfo = videoStateStore.videoInfo
-    const publishTime = formatBackendDateTime(videoInfo.createTime)
+    const publishTime = formatBackendDateTime(videoInfo.lastUpdateTime)
     const items: MetaItem[] = [
         { value: formatCount(videoInfo.playCount), text: ' 观看' },
         { value: formatCount(videoInfo.danmakuCount), text: ' 弹幕' },
@@ -154,8 +155,9 @@ onMounted(() =>
                     <div class="video-meta">
                         <template v-for="(item, index) in metaItems" :key="index">
                             <span v-if="index > 0" class="meta-dot"></span>
-                            <span class="meta-item"><span v-if="item.value" class="meta-value">{{ item.value
-                            }}</span>{{ item.text }}</span>
+                            <span class="meta-item">
+                                <span v-if="item.value" class="meta-value">{{ item.value }}</span>{{ item.text }}
+                            </span>
                         </template>
                     </div>
                 </section>
