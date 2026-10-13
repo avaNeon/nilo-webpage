@@ -2,7 +2,7 @@
 
 欢迎来到 Nilo 开源视频网站的前端仓库！
 
-> 因成本限制，目前 Nilo 仅在 (UTC+0) 23:00 ~ 次日 13:00 提供服务（ UTC+8 : 7:00 ~ 21:00 ）
+> 因成本限制，目前 Nilo 仅在 (UTC+0) 23:00 ~ 次日 11:00 提供服务（ UTC+8 : 7:00 ~ 19:00 ）
 
 [介绍页](https://www.nilo.video/about) - 介绍 Nilo <br/>
 [首页](https://www.nilo.video/) - 抢先体验 <br/>
